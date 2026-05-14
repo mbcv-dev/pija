@@ -16,6 +16,7 @@
 | **CID** | Classificação Internacional de Doenças. Código padrão utilizado para registrar diagnósticos em internações. |
 | **Condicao_atendimento** | Campo da vw_consultas que classifica o tipo de atendimento: Regulada, Retorno, Teletriagem, Interconsulta. |
 | **ETL** | Extract, Transform, Load. Processo de extração de dados de fontes originais, transformação para um formato padronizado e carga em um repositório analítico. |
+| **Glosa** | Recusa total ou parcial de pagamento por parte de um convênio ou plano de saúde em relação a um procedimento cobrado pelo hospital. Processo de auditoria financeira fora do escopo da PIJA. |
 | **Gargalo** | Etapa da jornada assistencial com tempo de espera sistematicamente elevado, que compromete a progressão do fluxo. |
 | **Grade** | Campo que classifica a fila ou modalidade de atendimento/exame dentro do AGHU. |
 | **HC-UFPE** | Hospital das Clínicas da Universidade Federal de Pernambuco. |
@@ -52,7 +53,6 @@
 | AGHU | Sistema de Gestão Hospitalar Universitário |
 | BPMN | Business Process Model and Notation |
 | CID | Classificação Internacional de Doenças |
-| CIn | Centro de Informática |
 | ETL | Extract, Transform, Load |
 | HC | Hospital das Clínicas |
 | IESI | Integração e Evolução de Sistemas de Informação |
@@ -66,7 +66,6 @@
 | REST | Representational State Transfer |
 | SDD | Spec-Driven Development |
 | TLS | Transport Layer Security |
-| UFPE | Universidade Federal de Pernambuco |
 
 ---
 

@@ -278,11 +278,8 @@ Unifica todos os eventos das 7 entidades em estrutura flat para consultas analí
 
 ## 5. Campos a Validar com o DBA do HC-UFPE
 
-> ⚠️ Os itens abaixo podem impactar KPIs diretamente. Confirmar antes do desenvolvimento da pipeline ETL.
-
 - Disponibilidade de `situacao/status` em `vw_consultas`, `vw_exames`, `vw_internacoes`
 - Disponibilidade de `data_hora_agendamento` em `vw_consultas` e `vw_exames`
 - Disponibilidade de `data_hora_solicitacao` em `vw_internacoes`
 - Consistência do `paciente_id` entre módulos do AGHU
 - Disponibilidade e estrutura dos campos LEC em `vw_cirurgias`
-- Tipo do banco do AGHU (PostgreSQL ou Oracle) — impacta driver de conexão

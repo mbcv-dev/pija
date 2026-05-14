@@ -37,7 +37,7 @@
 
 ### [CARE-RF001] Reconstrução Cronológica da Jornada
 
-- **Context**: Pipeline ETL executou com sucesso; banco SQLite local contém registros das 7 entidades com `paciente_id` e `timestamp_principal` preenchidos.
+- **Context**: Pipeline ETL (Extrair, Transformar e Carregar) executou com sucesso; banco SQLite local contém registros das 7 entidades com `paciente_id` e `timestamp_principal` preenchidos.
 - **Action**: Implementar provider `jornada_provider.py` que executa `sql/jornada_cronologica.sql` com `paciente_id` como parâmetro, retornando todos os eventos ordenados por `timestamp_principal ASC`.
 - **Result**: Lista de dicionários com eventos cronológicos do paciente, cruzando todas as entidades, sem lacunas ou duplicidades.
 - **Evaluation**: `pytest tests/test_jornada_provider.py` — validar que para um `paciente_id` com eventos em 3 entidades distintas a ordenação temporal está correta e nenhum evento é omitido.
@@ -47,9 +47,9 @@
 ### [CARE-RF002] Linha do Tempo por Paciente
 
 - **Context**: Usuário autenticado com perfil assistencial ou gestão acessa o dashboard e informa um `paciente_id` válido.
-- **Action**: Implementar endpoint `GET /api/v1/jornada/{paciente_id}` no router FastAPI, validado via Pydantic; controller formata os eventos em cards com tipo, data/hora, unidade, especialidade e status.
-- **Result**: Response JSON com lista de eventos ordenados; frontend Vue 3 renderiza timeline com agrupamento visual por área (ambulatório, diagnóstico, internação, cirurgia).
-- **Evaluation**: `pytest tests/test_router_jornada.py` — testar `paciente_id` válido (200 + dados), inválido (404) e sem permissão (403).
+- **Action**: Implementar endpoint `GET /api/v1/jornada/{paciente_id}` no router e controller formata os eventos em cards com tipo, data/hora, unidade, especialidade e status.
+- **Result**: Response JSON com lista de eventos ordenados e frontend renderiza timeline com agrupamento visual por área (ambulatório, diagnóstico, internação, cirurgia).
+- **Evaluation**: `pytest tests/test_router_jornada.py` — testar `paciente_id` válido, inválido e sem permissão.
 
 ---
 
