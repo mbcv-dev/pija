@@ -67,10 +67,10 @@ flowchart LR
 
 #### [CARE-UC001] Implementação da Linha do Tempo
 
-- **Context**: Usuário autenticado; `paciente_id` informado via input no frontend Vue 3.
-- **Action**: Frontend chama `api.ts → GET /api/v1/jornada/{paciente_id}`; router valida via Pydantic; controller formata eventos em estrutura de cards agrupados por área.
+- **Context**: Usuário autenticado; `paciente_id` informado via input no frontend.
+- **Action**: Frontend chama `api.ts → GET /api/v1/jornada/{paciente_id}`; router valida e controller formata eventos em estrutura de cards agrupados por área.
 - **Result**: Timeline renderizada com todos os eventos das 7 entidades, sem omissões ou duplicidades, ordenados cronologicamente.
-- **Evaluation**: `pytest tests/test_router_jornada.py` — testar paciente com eventos em 3 entidades diferentes; validar ordenação, agrupamento e ausência de duplicatas.
+- **Evaluation**: `pytest tests/test_router_jornada.py` — testar paciente com eventos em 3 entidades diferentes. Validar ordenação, agrupamento e ausência de duplicatas.
 
 ---
 
@@ -90,7 +90,7 @@ flowchart LR
 #### [CARE-UC002] Implementação dos Filtros
 
 - **Context**: Usuário autenticado; painel carregado com filtros em estado inicial (sem seleção = todos os dados do período padrão).
-- **Action**: Frontend envia filtros via query string para `GET /api/v1/eventos`; Pinia store atualiza estado dos filtros; componente Vue reage reativamente; provider executa `sql/eventos_filtrados.sql` com placeholders substituídos.
+- **Action**: Frontend envia filtros via query string para `GET /api/v1/eventos`; Pinia store atualiza estado dos filtros; componente reage reativamente; provider executa `sql/eventos_filtrados.sql` com placeholders substituídos.
 - **Result**: Dados atualizados sem recarregar a página; KPIs recalculados automaticamente.
 - **Evaluation**: `pytest tests/test_filtros.py` — 4 cenários: sem filtro, filtro por unidade, filtro por período, combinação de filtros. Validar contagens contra queries diretas no banco de teste.
 
