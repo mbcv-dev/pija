@@ -7,141 +7,204 @@
 
 ## 1. Visão Macro
 
-A PIJA é arquitetada em três camadas principais, separando claramente a **integração de dados**, o **processamento analítico** e a **visualização**:
+A PIJA adota o **Framework Full-Stack para dados hospitalares** definido pela disciplina IESI, baseado na filosofia do **Monólito Moderno**: um servidor único (FastAPI) que expõe a API e serve os arquivos estáticos do frontend simultaneamente, simplificando o deployment.
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                     CAMADA DE ORIGEM                 │
-│   AGHU (PostgreSQL / Oracle) – Acesso read-only      │
-│   vw_prontuarios_criados | vw_consultas | vw_exames  │
-│   vw_internacoes | vw_cirurgias | vw_procedimentos   │
-│   vw_altas                                           │
-└────────────────────┬────────────────────────────────┘
-                     │ Extração batch (ETL)
+┌─────────────────────────────────────────────────────────────┐
+│                      BANCOS EXTERNOS                         │
+│   AGHU (PostgreSQL / Oracle) – Acesso read-only             │
+│   Consultas via arquivos .sql nativos (sql_helper.py)        │
+└────────────────────┬────────────────────────────────────────┘
+                     │ SQL nativo (asyncpg / python-oracledb)
                      ▼
-┌─────────────────────────────────────────────────────┐
-│               CAMADA ANALÍTICA (PIJA)                │
-│  ┌──────────────┐   ┌──────────────────────────┐    │
-│  │ Pipeline ETL │   │ Repositório Analítico     │    │
-│  │ (batch diário│──►│ fato_eventos_jornada      │    │
-│  │  01h00–05h00)│   │ dim_unidade, dim_especi.  │    │
-│  └──────────────┘   └──────────┬───────────────┘    │
-│                                │                     │
-│                    ┌───────────▼───────────┐         │
-│                    │  Motor de KPIs e       │         │
-│                    │  Reconstrução Jornada  │         │
-│                    └───────────┬───────────┘         │
-│                                │                     │
-│                    ┌───────────▼───────────┐         │
-│                    │    API Analítica       │         │
-│                    │    (REST / JSON)       │         │
-│                    └───────────┬───────────┘         │
-└────────────────────────────────┼────────────────────┘
-                                 │ HTTP / HTTPS (rede interna)
+┌─────────────────────────────────────────────────────────────┐
+│              BACKEND – FastAPI (Python 3.10+)                │
+│                                                              │
+│  [1] .sql Templates → [2] Resources → [3] Providers         │
+│                                             ↓                │
+│                       [4] Controllers (regras/KPIs)          │
+│                                             ↓                │
+│                       [5] Routers (contrato HTTP/Pydantic)   │
+│                                                              │
+│  SQLite (local) · SQLAlchemy 2.0 · Alembic                  │
+│  Auth: Double Token (JWT + HttpOnly Cookie) via AD/LDAP      │
+└────────────────────────────────┬────────────────────────────┘
+                                 │ HTTP (rede interna HC)
                                  ▼
-┌─────────────────────────────────────────────────────┐
-│               CAMADA DE VISUALIZAÇÃO                 │
-│   Dashboard Web (Metabase / Superset / React)        │
-│   Autenticação LDAP/AD | RBAC por perfil             │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│              FRONTEND – Vue 3 + TypeScript                   │
+│   Vite · Pinia · Tailwind CSS · Zod + Vee-Validate          │
+│   Axios centralizado em src/services/api.ts                  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Componentes Principais
+## 2. Stack Tecnológica
 
-### 2.1 Pipeline ETL (Extração, Transformação e Carga)
+### 2.1 Backend
 
-| Atributo | Decisão |
+| Camada | Tecnologia | Função |
+|---|---|---|
+| Framework Web | **FastAPI** (Python 3.10+) | API REST + serve arquivos estáticos do frontend |
+| Validação / Tipagem | **Pydantic v2** | Contratos de entrada/saída (tipagem ponta-a-ponta) |
+| Segurança / Auth | **PyJWT + python-ldap** | Double Token + autenticação via Active Directory |
+| Persistência local | **SQLAlchemy 2.0 Async + Alembic** | Tabelas internas: tokens, configs, logs de auditoria |
+| Banco local | **SQLite** | Repositório local — **nunca PostgreSQL local** |
+| Banco externo (AGHU) | **asyncpg** (PostgreSQL) ou **python-oracledb** (Oracle) | Conexão read-only com o AGHU — a confirmar com HC |
+| Acesso ao AGHU | **SQL nativo** via arquivos `.sql` externos | Consultas às views — sem ORM sobre o AGHU |
+
+> ⚠️ O ORM (SQLAlchemy) é usado **apenas** para tabelas internas do framework (tokens, configs). As consultas ao AGHU são feitas exclusivamente via SQL nativo em arquivos `.sql`.
+
+### 2.2 Frontend
+
+| Tecnologia | Função |
 |---|---|
-| **Frequência** | Batch diário (01h00–05h00) |
-| **Modo** | Incremental: extrai apenas registros novos ou modificados desde a última carga |
-| **Transformações** | Padronização de tipos, tratamento de nulos, validação de timestamps, geração de `evento_id`, enriquecimento com dimensões |
-| **Tecnologia sugerida** | Apache Airflow (orquestração) + DBT (transformações SQL) ou Python + SQLAlchemy |
-| **Log** | Registro de início, fim, volume por view, erros e alertas |
-| **Fallback** | Em caso de falha parcial: mantém dados do dia anterior e notifica administrador |
+| **Vue 3** | Framework principal de interface |
+| **TypeScript** | Tipagem ponta-a-ponta no frontend |
+| **Vite** | Build tool e hot reload em desenvolvimento |
+| **Pinia** | Gerenciamento de estado reativo e modular |
+| **Tailwind CSS** | Estilização utility-first (sem bibliotecas pesadas de componentes) |
+| **Zod + Vee-Validate** | Schemas e validação de formulários |
+| **Axios** (`src/services/api.ts`) | Toda comunicação com o backend, isolada em serviços |
 
-### 2.2 Repositório Analítico
+### 2.3 Autenticação — já implementada no framework
 
-| Atributo | Decisão |
+O sistema de autenticação adota o **Padrão Double Token**, já pronto:
+
+| Passo | Descrição |
 |---|---|
-| **Tecnologia sugerida** | PostgreSQL (MVP) ou DuckDB (analytics-first, embedded) |
-| **Modelo** | Star schema simplificado: `fato_eventos_jornada` + dimensões (`dim_unidade`, `dim_especialidade`) |
-| **Acesso** | Apenas pela API analítica; sem acesso direto por usuários |
-| **Retenção** | Dados históricos completos; sem exclusão física (soft delete via campo `situacao`) |
-
-### 2.3 Motor de KPIs e Reconstrução de Jornada
-
-| Atributo | Decisão |
-|---|---|
-| **Função** | Calcular KPIs sobre `fato_eventos_jornada` conforme regras definidas em `02-requisitos.md` |
-| **Implementação** | Views materializadas ou queries SQL pré-calculadas (atualização pós-ETL) |
-| **Rastreabilidade** | Cada KPI tem sua regra de cálculo documentada e versionada |
-
-### 2.4 API Analítica
-
-| Atributo | Decisão |
-|---|---|
-| **Padrão** | REST (JSON) |
-| **Autenticação** | JWT (gerado pelo módulo de autenticação LDAP/AD) |
-| **Autorização** | RBAC: endpoints filtram automaticamente pelo perfil e unidade do usuário autenticado |
-| **Exposição** | Apenas na rede interna do HC-UFPE; sem exposição à internet |
-
-### 2.5 Frontend / Dashboard
-
-| Atributo | Decisão |
-|---|---|
-| **MVP** | Metabase ou Apache Superset (BI open source, deploy rápido) |
-| **Evolução** | Aplicação React customizada com componentes de timeline e filtros dinâmicos |
-| **Autenticação** | Integração com LDAP/AD do HC-UFPE |
+| 1. Login | Autenticação corporativa via **Active Directory (LDAP)** |
+| 2. Access Token | **JWT de vida curta**, enviado no Header para acesso às rotas |
+| 3. Interceptor | Quando o Access Token expira (401), o frontend intercepta silenciosamente e renova usando o Cookie |
+| 4. Refresh Token | **Vida longa**, blindado em **HttpOnly Cookie** (proteção contra XSS) |
 
 ---
 
-## 3. Guardrails – O que a IA e o Desenvolvimento DEVEM e NÃO DEVEM fazer
+## 3. Fluxo Obrigatório de Dados (AGHU → Frontend)
+
+Todas as funcionalidades que consomem dados do AGHU devem seguir este fluxo sem exceção:
+
+```
+[1] .sql Templates
+    Código SQL nativo puro. Sem lógica Python. Substitui placeholders por parâmetros.
+        ↓
+[2] Resources
+    Gerenciamento de pools de conexão com o AGHU. Já implementado no framework.
+        ↓
+[3] Providers
+    Execução do SQL e retorno de dicionários brutos (dados sem tratamento).
+        ↓
+[4] Controllers
+    Cérebro do negócio: formatação, cálculo de KPIs, aplicação de regras assistenciais.
+        ↓
+[5] Routers
+    Contrato HTTP exposto ao frontend. Validação de entrada e saída via Pydantic v2.
+```
+
+---
+
+## 4. Os 4 Pilares de Design Crítico
+
+| Pilar | Descrição |
+|---|---|
+| **Monorepo** | Frontend e backend no mesmo repositório — facilita deployment em servidores com restrição de recursos |
+| **Service-Base Frontend** | Toda comunicação HTTP do frontend isolada em `src/services/api.ts` — componentes Vue não chamam a API diretamente |
+| **Dependency Injection** | `Depends()` no FastAPI desacopla autenticação do acesso a dados, permitindo testes isolados |
+| **Estética Sem Peso** | Tailwind CSS garante consistência visual sem sobrecarga de bibliotecas de componentes |
+
+---
+
+## 5. Estrutura de Repositório (Monorepo)
+
+```
+pija/
+├── backend/
+│   ├── routers/          # Endpoints FastAPI (contrato HTTP + validação Pydantic)
+│   ├── controllers/      # Regras de negócio e cálculo de KPIs da jornada
+│   ├── providers/        # Execução SQL e retorno de dicionários brutos
+│   ├── resources/        # Pool de conexão com o AGHU (já implementado)
+│   ├── sql/              # Arquivos .sql nativos por entidade
+│   │   ├── consultas.sql
+│   │   ├── exames.sql
+│   │   ├── internacoes.sql
+│   │   ├── cirurgias.sql
+│   │   ├── procedimentos.sql
+│   │   ├── altas.sql
+│   │   └── prontuarios.sql
+│   ├── models/           # SQLAlchemy – tabelas internas (tokens, configs, audit log)
+│   ├── auth/             # Double Token, LDAP, PyJWT (já implementado)
+│   └── main.py           # Entrypoint FastAPI
+├── frontend/
+│   ├── src/
+│   │   ├── views/        # Páginas Vue (dashboard, timeline, KPIs, gargalos)
+│   │   ├── components/   # Componentes reutilizáveis
+│   │   ├── stores/       # Pinia – estado global (filtros, usuário, KPIs)
+│   │   ├── services/
+│   │   │   └── api.ts    # TODA comunicação HTTP centralizada aqui
+│   │   └── schemas/      # Zod schemas para validação frontend
+│   ├── tailwind.config.js
+│   └── vite.config.ts
+└── README.md
+```
+
+---
+
+## 6. Como Começar (Sequência de Ignição)
+
+```
+[1] Pré-requisitos: Python 3.10+ e Node.js 20+
+
+[2] Backend:
+    cd backend
+    python -m venv venv
+    venv\Scripts\activate        (Windows)
+    pip install -r requirements.txt
+    uvicorn main:app --reload
+
+[3] Frontend:
+    cd frontend
+    npm install
+    npm run dev
+
+[4] Exploração da API:
+    http://localhost:8000/docs   →  Swagger UI interativo
+```
+
+---
+
+## 7. Guardrails
 
 ### ✅ DEVE
 
-- Seguir rigorosamente o modelo de dados definido em `04-modelo-dados.md`
-- Extrair dados do AGHU exclusivamente pelas views definidas (nunca por tabelas brutas)
-- Implementar soft delete: registros cancelados/inválidos recebem flag, nunca são excluídos
-- Registrar trilha de auditoria imutável para todas as consultas de usuários
-- Utilizar RBAC para controle de acesso por perfil
-- Documentar e versionar todas as regras de cálculo de KPIs
-- Validar schemas de entrada na pipeline ETL antes de carregar no repositório
-- Usar `paciente_id` como único identificador de paciente; nunca armazenar dados pessoais diretos
+- Seguir o fluxo: `.sql → Resources → Providers → Controllers → Routers` sem pular etapas
+- Usar **SQL nativo** (arquivos `.sql`) para todas as consultas ao AGHU
+- Usar **SQLAlchemy** apenas para tabelas internas (tokens, configs, audit log)
+- Usar **SQLite** como banco local — nunca PostgreSQL local
+- Isolar toda comunicação HTTP do frontend em `src/services/api.ts`
+- Validar entrada e saída de todos os endpoints via **Pydantic v2**
+- Usar `Depends()` do FastAPI para injeção de dependências
+- Implementar soft delete em tabelas internas: nunca exclusão física
+- Registrar trilha de auditoria imutável para consultas de usuários
 
 ### ❌ NÃO DEVE
 
-- Criar conexões diretas com tabelas brutas do AGHU (somente via views)
-- Implementar exclusão física de registros (soft delete obrigatório)
-- Burlar o sistema de RBAC para acesso a dados de outras unidades
-- Expor a API analítica fora da rede interna do HC-UFPE
-- Criar dependências externas não documentadas neste arquivo
-- Armazenar nome, CPF, data de nascimento ou qualquer dado pessoal direto do paciente
-- Modificar dados no AGHU (acesso estritamente read-only)
+- Usar ORM para consultar o AGHU (apenas SQL nativo)
+- Conectar diretamente em tabelas brutas do AGHU (apenas pelas views)
+- Usar PostgreSQL como banco local (SQLite obrigatório)
+- Fazer chamadas HTTP dentro de componentes Vue
+- Burlar o Double Token ou o RBAC já implementado
+- Expor dados pessoais diretos (nome, CPF) — apenas `paciente_id`
+- Escrever dados no AGHU (acesso estritamente read-only)
 
 ---
 
-## 4. Segurança e Conformidade LGPD
-
-| Requisito | Implementação |
-|---|---|
-| Pseudoanonimização | Uso exclusivo de `paciente_id` (nº de prontuário) |
-| Acesso mínimo | Usuário de serviço ETL com `GRANT SELECT` apenas nas views |
-| Criptografia em trânsito | TLS/HTTPS em todas as comunicações |
-| Auditoria | Log imutável: usuário, endpoint, parâmetros, timestamp |
-| RBAC | Perfis: Assistencial, Gestor de Unidade, Gestor Hospitalar, Administrador |
-| Retenção de dados | Definir política com o HC-UFPE (ex: dados analíticos retidos por 3 anos) |
-
----
-
-## 5. Decisões Técnicas Pendentes (Validar com HC-UFPE)
+## 8. Decisões Pendentes (Validar com HC-UFPE)
 
 | Decisão | Status | Impacto |
 |---|---|---|
-| Tipo de banco do AGHU (PostgreSQL ou Oracle) | A validar | Driver ETL, sintaxe SQL |
-| Ambiente disponível para deploy do repositório analítico | A validar | Infraestrutura |
-| Integração com LDAP/AD do HC | A validar | Autenticação |
-| Janela de extração batch (horário e duração aceitável) | A validar | Operação do ETL |
-| Política de retenção de dados analíticos | A validar | Armazenamento |
-| Dados da LEC: views no AGHU ou sistema separado | A validar | Escopo das cirurgias |
+| Tipo de banco do AGHU (Oracle ?) | A validar | Driver: asyncpg vs python-oracledb |
+| Ambiente de deploy no HC | A validar | Configuração do servidor único (FastAPI) |
+| Janela de consulta ao AGHU permitida | A validar | Agendamento e frequência de atualização |
+| Campos opcionais disponíveis nas views | A validar | KPIs dependentes de timestamps |
+| Dados da LEC: view no AGHU ou sistema separado | A validar | Escopo das funcionalidades cirúrgicas |
