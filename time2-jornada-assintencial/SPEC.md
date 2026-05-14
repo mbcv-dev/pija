@@ -11,96 +11,95 @@ Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvo
 
 ### Objetivos de Alto Nível
 
-- [ ] Implementar pipeline ETL batch com extração das 7 views do AGHU
+- [ ] Implementar pipeline ETL com extração das 7 views do AGHU para banco SQLite local
 - [ ] Construir repositório analítico com modelo `fato_eventos_jornada`
 - [ ] Implementar motor de cálculo dos 10 KPIs prioritários (RF004)
-- [ ] Disponibilizar API analítica REST com RBAC e autenticação LDAP/AD
-- [ ] Entregar dashboards funcionais: linha do tempo, KPIs, gargalos, fluxos, prontuários inertes
+- [ ] Disponibilizar API FastAPI com RBAC e autenticação Double Token via AD/LDAP
+- [ ] Entregar dashboards Vue 3 funcionais: linha do tempo, KPIs, gargalos, fluxos, prontuários inertes
 - [ ] Garantir trilhas de auditoria imutáveis para todas as consultas de usuários
 
 ---
 
 ## 2. Contexto do Projeto (Documentação Imutável)
 
-As definições detalhadas estão nos seguintes documentos. **Nunca contradizer ou ignorar estas referências:**
-
 | Documento | Conteúdo |
-|---|---|
+|:---|:---|
 | [01-visao.md](01-visao.md) | Problema, objetivos, escopo, critérios de sucesso |
-| [02-requisitos.md](02-requisitos.md) | RF001–RF008 e RNF001–RNF006 |
-| [03-casos-uso.md](03-casos-uso.md) | UC001–UC007 |
-| [04-modelo-dados.md](04-modelo-dados.md) | Views AGHU, `fato_eventos_jornada`, dimensões |
-| [05-interfaces.md](05-interfaces.md) | Interface AGHU, API REST, telas, LGPD |
-| [06-arquitetura.md](06-arquitetura.md) | Arquitetura macro, componentes, guardrails |
+| [02-requisitos.md](02-requisitos.md) | RF001–RF008 e RNF001–RNF006 com padrão CARE |
+| [03-casos-uso.md](03-casos-uso.md) | UC001–UC007 com Mermaid e CARE |
+| [04-modelo-dados.md](04-modelo-dados.md) | Views AGHU, `fato_eventos_jornada`, JSON Schemas |
+| [05-interfaces.md](05-interfaces.md) | API FastAPI, TypeScript interfaces, telas Vue 3 |
+| [06-arquitetura.md](06-arquitetura.md) | Stack, fluxo obrigatório, guardrails, monorepo |
 | [07-glossario.md](07-glossario.md) | Glossário, acrônimos, referências |
 
 ---
 
-## 3. Limites de Escopo e Guardrails
+## 3. Guardrails — Escopo Positivo (O que DEVE ser feito)
 
-### ✅ A IA e o Desenvolvimento DEVEM
+- Seguir o fluxo obrigatório: `.sql → Resources → Providers → Controllers → Routers`
+- Usar **SQL nativo** (arquivos `.sql`) para todas as consultas ao AGHU
+- Usar **SQLAlchemy** apenas para tabelas internas (tokens, configs, audit log, etl_log)
+- Usar **SQLite** como banco local — nunca PostgreSQL local
+- Isolar toda comunicação HTTP do frontend em `src/services/api.ts`
+- Validar entrada e saída de todos os endpoints via **Pydantic v2**
+- Usar `Depends()` do FastAPI para injeção de dependências (auth, conexão)
+- Comentar funções complexas seguindo padrão **docstring Python** no backend e **JSDoc/TSDoc** no frontend
+- Usar blocos `try/except` com logs de erro padronizados em todo o backend
+- Criar arquivo de teste `test_*.py` para cada novo controller e provider
 
-- Seguir rigorosamente o modelo de dados definido em `04-modelo-dados.md`
-- Extrair dados do AGHU **somente pelas views definidas** (nunca por tabelas brutas)
-- Implementar soft delete: registros cancelados recebem flag, nunca são excluídos fisicamente
-- Registrar trilha de auditoria imutável para todas as consultas de usuários (quem, o quê, quando)
-- Utilizar RBAC para controle de acesso por perfil (assistencial, gestão, administrador)
-- Documentar e versionar todas as regras de cálculo de KPIs
-- Usar `paciente_id` como único identificador; nunca armazenar dados pessoais diretos
-- Implementar testes unitários para cada KPI calculado
+## 4. Guardrails — Escopo Negativo (O que NÃO DEVE ser feito — Anti-Patterns)
 
-### ❌ A IA e o Desenvolvimento NÃO DEVEM
-
-- Criar conexões diretas com tabelas brutas do AGHU (apenas via views)
-- Implementar exclusão física de registros
-- Burlar o sistema de RBAC
-- Expor a API analítica fora da rede interna do HC-UFPE
-- Criar dependências externas não documentadas em `06-arquitetura.md`
-- Armazenar nome, CPF, data de nascimento ou qualquer dado pessoal direto do paciente
-- Modificar dados no AGHU (acesso estritamente read-only)
+- **No Hard Deletes**: proibido `DELETE` SQL físico. Usar coluna `deleted_at` (NULL = ativo; preenchido = excluído logicamente)
+- **No Secrets in Code**: proibido salvar strings de conexão, senhas ou chaves JWT no código. Usar exclusivamente `.env`
+- **No Refactoring Unasked**: proibido alterar arquivos de infraestrutura ou configuração global (`main.py`, `resources/`, `auth/`, `vite.config.ts`, `tailwind.config.js`) sem instrução explícita neste `SPEC.md`
+- **No ORM on AGHU**: proibido usar SQLAlchemy para consultar o AGHU (apenas SQL nativo via `.sql`)
+- **No Direct HTTP in Components**: proibido fazer chamadas HTTP dentro de componentes Vue (usar `src/services/api.ts`)
+- **No Personal Data**: proibido armazenar nome, CPF, data de nascimento — apenas `paciente_id`
+- **No Write on AGHU**: proibido qualquer operação de escrita no banco do AGHU
 
 ---
 
-## 4. Task Breakdown (Plano de Implementação)
+## 5. Task Breakdown (Plano de Implementação)
 
-### Fase 1 – Integração e Dados
+### Fase 1 – Infraestrutura e Dados
 
 - [ ] **TASK-001** Validar disponibilidade das 7 views com o DBA do HC-UFPE
-- [ ] **TASK-002** Mapear campos opcionais disponíveis por view (situacao, timestamps)
-- [ ] **TASK-003** Implementar pipeline ETL batch para as 7 views (RF008)
-- [ ] **TASK-004** Criar schema do repositório analítico (`fato_eventos_jornada`, dimensões)
-- [ ] **TASK-005** Configurar log de auditoria de execuções ETL e consultas de usuários
+- [ ] **TASK-002** Confirmar campos opcionais disponíveis por view (situacao, timestamps)
+- [ ] **TASK-003** Configurar `.env` com variáveis de conexão AGHU, JWT secret e SQLite path
+- [ ] **TASK-004** Criar schema SQLite via Alembic (`fato_eventos_jornada`, `dim_unidade`, `dim_especialidade`, `etl_log`)
+- [ ] **TASK-005** Implementar pipeline ETL batch para as 7 views (RF008 / UC007)
 
 ### Fase 2 – Motor Analítico
 
-- [ ] **TASK-006** Implementar reconstrução cronológica da jornada por `paciente_id` (RF001)
-- [ ] **TASK-007** Implementar cálculo dos 10 KPIs prioritários (RF004)
-- [ ] **TASK-008** Implementar identificação de gargalos e ranking por tempo de espera (RF005)
-- [ ] **TASK-009** Implementar agrupamento de fluxos predominantes (RF006)
-- [ ] **TASK-010** Implementar identificação de prontuários inertes (RF007)
+- [ ] **TASK-006** Implementar `sql/jornada_cronologica.sql` e `jornada_provider.py` (RF001)
+- [ ] **TASK-007** Implementar `sql/kpis/` e `kpi_controller.py` com os 10 KPIs (RF004)
+- [ ] **TASK-008** Implementar `sql/gargalos.sql` e `gargalo_controller.py` (RF005)
+- [ ] **TASK-009** Implementar `sql/fluxos_predominantes.sql` e `fluxo_provider.py` (RF006)
+- [ ] **TASK-010** Implementar `sql/prontuarios_inertes.sql` e método em `prontuario_controller.py` (RF007)
 
 ### Fase 3 – API e Autenticação
 
-- [ ] **TASK-011** Implementar API analítica REST com endpoints definidos em `05-interfaces.md`
-- [ ] **TASK-012** Implementar autenticação JWT / LDAP-AD e RBAC por perfil
+- [ ] **TASK-011** Implementar routers FastAPI com Pydantic v2 para todos os endpoints de `05-interfaces.md`
+- [ ] **TASK-012** Validar integração com Double Token e RBAC já implementados no framework
 
-### Fase 4 – Dashboards (MVP)
+### Fase 4 – Frontend Vue 3
 
-- [ ] **TASK-013** Desenvolver Tela 1: Dashboard inicial com KPIs e alertas
-- [ ] **TASK-014** Desenvolver Tela 2: Linha do tempo do paciente (RF002)
-- [ ] **TASK-015** Desenvolver Tela 3: Painel de KPIs com filtros (RF003, RF004)
-- [ ] **TASK-016** Desenvolver Tela 4: Análise de gargalos (RF005)
-- [ ] **TASK-017** Desenvolver Tela 5: Fluxos predominantes (RF006)
-- [ ] **TASK-018** Desenvolver Tela 6: Prontuários inertes (RF007)
+- [ ] **TASK-013** Configurar Pinia stores: `useFilterStore`, `useUserStore`, `useKpiStore`
+- [ ] **TASK-014** Implementar `TimelineView.vue` (UC001)
+- [ ] **TASK-015** Implementar `DashboardView.vue` com filtros e KPIs (UC002 + UC003)
+- [ ] **TASK-016** Implementar `GargaloView.vue` com drill-down (UC004)
+- [ ] **TASK-017** Implementar `FluxoView.vue` (UC005)
+- [ ] **TASK-018** Implementar `InertesView.vue` (UC006)
 
 ---
 
-## 5. Critérios de Verificação Global
+## 6. Critérios de Verificação Global
 
-- [ ] Todos os KPIs calculados validados contra consultas manuais no AGHU (DBA)
+- [ ] Todos os KPIs calculados validados contra queries manuais no banco de teste
 - [ ] Zero dados pessoais diretos armazenados fora do campo `paciente_id`
 - [ ] Log de auditoria operacional para todas as consultas de usuário
 - [ ] RBAC validado: perfil assistencial não acessa dados de outras unidades
-- [ ] Pipeline ETL concluída em até 4 horas na janela noturna
-- [ ] Dashboards retornam filtros simples em até 5 segundos
-- [ ] Cobertura de testes unitários nos módulos de KPI e ETL
+- [ ] `deleted_at` em uso — zero `DELETE` físico em qualquer tabela interna
+- [ ] Zero secrets no código — tudo via `.env`
+- [ ] Arquivo `test_*.py` presente para cada controller e provider
+- [ ] Toda comunicação HTTP do frontend centralizada em `src/services/api.ts`
