@@ -8,7 +8,7 @@
 
 ## 1. Declaração do Problema
 
-Os dados da jornada assistencial do Hospital das Clínicas da UFPE (HC-UFPE) existem no sistema AGHU, porém estão distribuídos em módulos independentes — ambulatório, diagnóstico, internação, centro cirúrgico e regulação interna — sem uma camada de integração que permita correlacioná-los temporalmente e por paciente.
+Os dados da jornada assistencial do Hospital das Clínicas da UFPE (HC-UFPE) existem no sistema AGHU, porém estão distribuídos em módulos independentes (ambulatório, diagnóstico, internação, centro cirúrgico e regulação interna). Falta uma camada de integração mais efetiva que permita correlacioná-los temporalmente e por paciente.
 
 Como consequência, equipes assistenciais e gestores hospitalares não dispõem de uma visão cronológica e integrada da jornada dos pacientes, o que dificulta:
 
@@ -50,14 +50,13 @@ A PIJA **não** substitui sistemas transacionais. Ela opera como **camada analí
 - Prontuário clínico (evolução, prescrição, anamnese)
 - Farmácia e dispensação de medicamentos
 - Faturamento e glosas
-- Integração com sistemas externos ao HC-UFPE
 - Módulo de análise preditiva com IA (pós-MVP)
 
 ---
 
 ## 4. Perspectiva Adotada
 
-Este sistema adota a **Perspectiva 1 – Assistencial**: voltada às unidades e áreas prestadoras de serviço, com foco em indicadores de produção, desempenho, tempos de espera, gargalos e eficiência dos fluxos assistenciais.
+Este sistema adota a **Perspectiva Assistencial**, voltada às unidades e áreas prestadoras de serviço, com foco em indicadores de produção, desempenho, tempos de espera, gargalos e eficiência dos fluxos assistenciais.
 
 > A perspectiva do paciente individual (histórico clínico pessoal) está fora do escopo desta entrega.
 
