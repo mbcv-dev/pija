@@ -26,7 +26,6 @@
 | **Internação pós-operatória** | Internação para recuperação após cirurgia (inclui UTI pós-op). |
 | **Jornada assistencial** | Percurso completo do paciente pelo sistema de saúde, desde o acesso (criação de prontuário) até o desfecho (alta, transferência ou óbito). |
 | **KPI** | Key Performance Indicator. Indicador-chave de desempenho utilizado para medir e monitorar resultados. |
-| **LEC** | Lista de Espera Cirúrgica. Fila gerenciada pelo HC-UFPE para agendamento de cirurgias eletivas. |
 | **LGPD** | Lei Geral de Proteção de Dados (Lei nº 13.709/2018). Lei brasileira que regula o tratamento de dados pessoais. |
 | **MVP** | Minimum Viable Product. Produto com o conjunto mínimo de funcionalidades para validar a solução com usuários reais. |
 | **Near real-time** | Processamento de dados com latência mínima (segundos a minutos), em contraposição ao batch diário. |
