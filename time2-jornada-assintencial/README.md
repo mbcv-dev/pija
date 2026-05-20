@@ -9,7 +9,7 @@
 
 ## Sobre o Sistema
 
-A PIJA é uma plataforma de **integração, visualização e análise da jornada assistencial** do HC-UFPE. A solução consolida dados fragmentados do AGHU em uma visão cronológica, integrada e analítica do percurso dos pacientes, permitindo identificar gargalos, calcular KPIs e apoiar a tomada de decisão operacional e gerencial.
+A PIJA é uma plataforma de **integração, visualização e análise da jornada assistencial** do HC-UFPE. A solução consolida dados fragmentados do AGHU em uma visão integrada e analítica do percurso dos pacientes, permitindo identificar gargalos, calcular KPIs e apoiar a tomada de decisão operacional e gerencial.
 
 **Entidades no escopo:** Prontuários · Consultas · Exames · Internações · Cirurgias · Procedimentos · Altas
 
@@ -32,11 +32,11 @@ Este projeto utiliza o padrão **Spec-Driven Development**: a documentação té
 | Documento | Conteúdo |
 |---|---|
 | [01-visao.md](01-visao.md) | Problema, objetivos, escopo, critérios de sucesso |
-| [02-requisitos.md](02-requisitos.md) | Requisitos funcionais (RF) e não funcionais (RNF) com padrão CARE |
-| [03-casos-uso.md](03-casos-uso.md) | Casos de uso detalhados com atores, fluxos e critérios de avaliação |
+| [02-requisitos.md](02-requisitos.md) | RF001–RF006 e RNF001–RNF006 com padrão CARE |
+| [03-casos-uso.md](03-casos-uso.md) | UC001–UC006 com Mermaid e CARE |
 | [04-modelo-dados.md](04-modelo-dados.md) | Views do AGHU, tabela fato, dimensões, regras de integridade |
 | [05-interfaces.md](05-interfaces.md) | Interface com AGHU, API analítica, especificação de telas, LGPD |
-| [06-arquitetura.md](06-arquitetura.md) | Visão macro, componentes, guardrails, segurança |
+| [06-arquitetura.md](06-arquitetura.md) | Stack, fluxo obrigatório, guardrails, monorepo |
 | [07-glossario.md](07-glossario.md) | Glossário de termos, acrônimos e referências bibliográficas |
 
 ---
@@ -45,7 +45,7 @@ Este projeto utiliza o padrão **Spec-Driven Development**: a documentação té
 
 A proposta de solução completa (template preenchido) está disponível em:
 
-> 📄 `proposta_pija.docx` – Visão executiva e estratégica: problema, TO-BE, arquitetura macro, KPIs, MVP, viabilidade e próximos passos
+> 📄 `Proposta Solução - Time 2 - PIJA.docx` – Visão executiva e estratégica: problema, TO-BE, arquitetura macro, KPIs, MVP, viabilidade e próximos passos
 
 ---
 
@@ -54,10 +54,11 @@ A proposta de solução completa (template preenchido) está disponível em:
 | Componente | Decisão MVP | Evolução |
 |---|---|---|
 | Fonte de dados | AGHU – 7 views SQL (read-only) | Novos sistemas satélites |
-| Pipeline ETL | Batch diário (01h–05h) | Near real-time |
-| Repositório analítico | PostgreSQL / DuckDB | Data warehouse dedicado |
-| Dashboard | Metabase / Superset | React customizado |
-| Autenticação | LDAP/AD HC-UFPE | — |
+| Pipeline ETL | Batch (matutino/noturno) | Near real-time |
+| Banco local | SQLite | — |
+| Frontend | Vue 3 + TypeScript + Vite + Tailwind | — |
+| Backend | FastAPI (Python 3.10+) | — |
+| Autenticação | Double Token via AD/LDAP (já implementado no framework) | — |
 | IA | Fora do MVP | Detecção de padrões e anomalias |
 
 ---
