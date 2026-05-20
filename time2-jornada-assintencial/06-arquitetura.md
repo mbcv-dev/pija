@@ -207,4 +207,3 @@ pija/
 | Ambiente de deploy no HC | A validar | Configuração do servidor único (FastAPI) |
 | Janela de consulta ao AGHU permitida | A validar | Agendamento e frequência de atualização |
 | Campos opcionais disponíveis nas views | A validar | KPIs dependentes de timestamps |
-| Dados da LEC: view no AGHU ou sistema separado | A validar | Escopo das funcionalidades cirúrgicas |
