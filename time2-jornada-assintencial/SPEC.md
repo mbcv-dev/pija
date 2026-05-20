@@ -13,9 +13,9 @@ Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvo
 
 - [ ] Implementar pipeline ETL com extração das 7 views do AGHU para banco SQLite local
 - [ ] Construir repositório analítico com modelo `fato_eventos_jornada`
-- [ ] Implementar motor de cálculo dos 10 KPIs prioritários (RF004)
+- [ ] Implementar motor de cálculo dos 9 KPIs prioritários (RF002)
 - [ ] Disponibilizar API FastAPI com RBAC e autenticação Double Token via AD/LDAP
-- [ ] Entregar dashboards Vue 3 funcionais: linha do tempo, KPIs, gargalos, fluxos, prontuários inertes
+- [ ] Entregar dashboards Vue 3 funcionais: filtros, KPIs, gargalos, fluxos, prontuários inertes
 - [ ] Garantir trilhas de auditoria imutáveis para todas as consultas de usuários
 
 ---
@@ -25,8 +25,8 @@ Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvo
 | Documento | Conteúdo |
 |:---|:---|
 | [01-visao.md](01-visao.md) | Problema, objetivos, escopo, critérios de sucesso |
-| [02-requisitos.md](02-requisitos.md) | RF001–RF008 e RNF001–RNF006 com padrão CARE |
-| [03-casos-uso.md](03-casos-uso.md) | UC001–UC007 com Mermaid e CARE |
+| [02-requisitos.md](02-requisitos.md) | RF001–RF006 e RNF001–RNF006 com padrão CARE |
+| [03-casos-uso.md](03-casos-uso.md) | UC001–UC006 com Mermaid e CARE |
 | [04-modelo-dados.md](04-modelo-dados.md) | Views AGHU, `fato_eventos_jornada`, JSON Schemas |
 | [05-interfaces.md](05-interfaces.md) | API FastAPI, TypeScript interfaces, telas Vue 3 |
 | [06-arquitetura.md](06-arquitetura.md) | Stack, fluxo obrigatório, guardrails, monorepo |
@@ -67,29 +67,27 @@ Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvo
 - [ ] **TASK-002** Confirmar campos opcionais disponíveis por view (situacao, timestamps)
 - [ ] **TASK-003** Configurar `.env` com variáveis de conexão AGHU, JWT secret e SQLite path
 - [ ] **TASK-004** Criar schema SQLite via Alembic (`fato_eventos_jornada`, `dim_unidade`, `dim_especialidade`, `etl_log`)
-- [ ] **TASK-005** Implementar pipeline ETL batch para as 7 views (RF008 / UC007)
+- [ ] **TASK-005** Implementar pipeline ETL batch para as 7 views (RF006 / UC006)
 
 ### Fase 2 – Motor Analítico
 
-- [ ] **TASK-006** Implementar `sql/jornada_cronologica.sql` e `jornada_provider.py` (RF001)
-- [ ] **TASK-007** Implementar `sql/kpis/` e `kpi_controller.py` com os 10 KPIs (RF004)
-- [ ] **TASK-008** Implementar `sql/gargalos.sql` e `gargalo_controller.py` (RF005)
-- [ ] **TASK-009** Implementar `sql/fluxos_predominantes.sql` e `fluxo_provider.py` (RF006)
-- [ ] **TASK-010** Implementar `sql/prontuarios_inertes.sql` e método em `prontuario_controller.py` (RF007)
+- [ ] **TASK-006** Implementar `sql/kpis/` e `kpi_controller.py` com os 9 KPIs (RF002)
+- [ ] **TASK-007** Implementar `sql/gargalos.sql` e `gargalo_controller.py` (RF003)
+- [ ] **TASK-008** Implementar `sql/fluxos_predominantes.sql` e `fluxo_provider.py` (RF004)
+- [ ] **TASK-009** Implementar `sql/prontuarios_inertes.sql` e método em `prontuario_controller.py` (RF005)
 
 ### Fase 3 – API e Autenticação
 
-- [ ] **TASK-011** Implementar routers FastAPI com Pydantic v2 para todos os endpoints de `05-interfaces.md`
-- [ ] **TASK-012** Validar integração com Double Token e RBAC já implementados no framework
+- [ ] **TASK-010** Implementar routers FastAPI com Pydantic v2 para todos os endpoints de `05-interfaces.md`
+- [ ] **TASK-011** Validar integração com Double Token e RBAC já implementados no framework
 
 ### Fase 4 – Frontend Vue 3
 
-- [ ] **TASK-013** Configurar Pinia stores: `useFilterStore`, `useUserStore`, `useKpiStore`
-- [ ] **TASK-014** Implementar `TimelineView.vue` (UC001)
-- [ ] **TASK-015** Implementar `DashboardView.vue` com filtros e KPIs (UC002 + UC003)
-- [ ] **TASK-016** Implementar `GargaloView.vue` com drill-down (UC004)
-- [ ] **TASK-017** Implementar `FluxoView.vue` (UC005)
-- [ ] **TASK-018** Implementar `InertesView.vue` (UC006)
+- [ ] **TASK-012** Configurar Pinia stores: `useFilterStore`, `useUserStore`, `useKpiStore`
+- [ ] **TASK-013** Implementar `DashboardView.vue` com filtros e KPIs (UC001 + UC002)
+- [ ] **TASK-014** Implementar `GargaloView.vue` com drill-down (UC003)
+- [ ] **TASK-015** Implementar `FluxoView.vue` (UC004)
+- [ ] **TASK-016** Implementar `InertesView.vue` (UC005)
 
 ---
 
