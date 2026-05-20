@@ -21,11 +21,9 @@ Como consequência, equipes assistenciais e gestores hospitalares não dispõem 
 ## 2. Objetivo da Solução
 
 Desenvolver uma plataforma de **integração, visualização e análise da jornada assistencial** do HC-UFPE, que:
-
-1. Reconstrua a jornada de forma cronológica a partir dos dados existentes no AGHU;
-2. Permita navegação por paciente, unidade, especialidade, tipo de evento e período;
-3. Calcule KPIs assistenciais e operacionais padronizados para cada etapa e relação entre etapas da jornada;
-4. Apoie a tomada de decisão clínica, operacional e gerencial com base no percurso real dos pacientes.
+1. Permita navegação por paciente, unidade, especialidade, tipo de evento e período;
+2. Calcule KPIs assistenciais e operacionais padronizados para cada etapa e relação entre etapas da jornada;
+3. Apoie a tomada de decisão clínica, operacional e gerencial com base no percurso real dos pacientes.
 
 A PIJA **não** substitui sistemas transacionais. Ela opera como **camada analítica e observacional** sobre o AGHU.
 
