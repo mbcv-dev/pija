@@ -68,7 +68,6 @@ A proposta de solução completa (template preenchido) está disponível em:
 - [ ] Campos opcionais: `situacao`, `data_hora_agendamento`, `data_hora_solicitacao`
 - [ ] Consistência do `paciente_id` entre módulos
 - [ ] Ambiente de deploy e acesso read-only ao AGHU
-- [ ] Estrutura da LEC (view no AGHU ou sistema separado)
 - [ ] Política de retenção de dados e regras LGPD aplicáveis
 
 ---
