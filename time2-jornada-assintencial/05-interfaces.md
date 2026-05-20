@@ -136,7 +136,6 @@ interface ProntuariosInertesResponse {
 | Tela | Componente Vue | Descrição |
 |:---|:---|:---|
 | Dashboard Inicial | `views/DashboardView.vue` | KPIs do período, alertas de gargalos, filtros globais |
-| Linha do Tempo | `views/TimelineView.vue` | Busca por `paciente_id`, cards de eventos por área |
 | Painel de KPIs | `views/KpiView.vue` | Cards de indicadores com filtros e gráfico de tendência |
 | Gargalos | `views/GargaloView.vue` | Ranking com drill-down por etapa |
 | Fluxos | `views/FluxoView.vue` | Visualização dos fluxos predominantes |
