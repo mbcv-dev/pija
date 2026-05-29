@@ -5,19 +5,38 @@
 
 ---
 
-## 1. Interface com o AGHU (Sistema Legado)
+## 1. Interface com os Dados de Origem
+
+A camada de dados de origem usa o adapter **`Resource`** (selecionado por env `RESOURCE_MODE`):
+
+| Modo | Quando | Implementação |
+|:---|:---|:---|
+| `csv` (default MVP) | **MVP — Fases 0 a 4** | `CsvResource` — lê CSVs exportados das 7 views (pandas chunked, streaming) |
+| `aghu` | **Cutover — Fase 5** | `AghuResource` — pool `python-oracledb` contra views Oracle do AGHU, via VPN HC-UFPE |
+
+### 1.1 Modo `csv` (MVP)
 
 | Atributo | Descrição |
 |:---|:---|
-| **Tipo** | Banco de dados relacional — acesso read-only via views SQL |
-| **Driver** | `python-oracledb` (Oracle) — a confirmar com HC |
-| **Modo de acesso** | Somente leitura (`SELECT` nas views `vw_*`) |
-| **Gerenciamento** | Pool de conexão já implementado no framework (`resources/aghu_resource.py`) |
-| **Autenticação** | Usuário de serviço com `GRANT SELECT` restrito às views |
-| **Segurança** | Conexão na rede interna do HC-UFPE; sem exposição externa |
-| **Fallback** | Falha na extração: banco local mantém dados do dia anterior; log registra erro |
+| **Fonte** | CSVs exportados pelo HC-UFPE das 7 views (entrega manual) |
+| **Localização** | Diretório configurável por env `CSV_DIR` (fora do repositório, em `.gitignore`) |
+| **Leitura** | `pandas.read_csv(chunksize=50_000)` — streaming; nunca carrega arquivo inteiro em memória |
+| **Modo dev** | Flag `--sample N` no `etl_runner` para subset rápido |
+| **Validação** | Pydantic v2 por linha; linhas inválidas → soft-fail registrado em `etl_log.rows_rejected` |
 
-**Views consumidas:**
+### 1.2 Modo `aghu` (Pós-MVP — Fase 5)
+
+| Atributo | Descrição |
+|:---|:---|
+| **Tipo** | Oracle (read-only via views SQL) |
+| **Driver** | `python-oracledb` |
+| **Modo de acesso** | Somente leitura (`SELECT` nas views `vw_*`) |
+| **Gerenciamento** | Pool de conexão dentro do `AghuResource` |
+| **Autenticação** | Usuário de serviço com `GRANT SELECT` restrito às views |
+| **Segurança** | Conexão na rede interna do HC-UFPE via VPN; sem exposição externa |
+| **Fallback** | Falha na extração: banco local mantém dados anteriores; log registra erro |
+
+**Views consumidas (mesmas em ambos os modos):**
 ```
 vw_prontuarios_criados · vw_consultas · vw_exames
 vw_internacoes · vw_cirurgias · vw_procedimentos · vw_altas
@@ -35,26 +54,27 @@ Nenhum componente Vue faz chamadas HTTP diretamente.
 
 ### Endpoints (visão geral)
 
-| Método | Endpoint | Descrição |
-|:---|:---|:---|
-| `GET` | `/api/v1/jornada/{paciente_id}` | Linha do tempo cronológica de um paciente |
-| `GET` | `/api/v1/eventos` | Lista de eventos com filtros multidimensionais |
-| `GET` | `/api/v1/kpis` | KPIs calculados para o recorte selecionado |
-| `GET` | `/api/v1/gargalos` | Ranking de etapas por tempo médio de espera |
-| `GET` | `/api/v1/fluxos` | Sequências de eventos mais frequentes |
-| `GET` | `/api/v1/prontuarios/inertes` | Prontuários sem eventos assistenciais subsequentes |
-| `POST` | `/api/v1/auth/login` | Autenticação via Active Directory |
-| `POST` | `/api/v1/auth/refresh` | Renovação silenciosa do Access Token |
+| Método | Endpoint | Descrição | MVP? |
+|:---|:---|:---|:---|
+| `POST` | `/api/v1/auth/login` | Autenticação (MVP: `users.yml`; Fase 5: AD via LDAP) | ✅ |
+| `POST` | `/api/v1/auth/refresh` | Renovação silenciosa do Access Token | ✅ |
+| `GET` | `/api/v1/eventos` | Lista de eventos com filtros (RF001 / UC001) | ✅ |
+| `GET` | `/api/v1/kpis/tempos-medios` | 5 KPIs de tempo médio entre eventos (RF002 subset) | ✅ |
+| `GET` | `/api/v1/gargalos` | Ranking de etapas por tempo médio de espera (RF003) | ✅ |
+| `GET` | `/api/v1/jornada/{paciente_id}` | Linha do tempo cronológica de um paciente | ⏸ Pós-MVP |
+| `GET` | `/api/v1/fluxos` | Sequências de eventos mais frequentes | ⏸ Pós-MVP |
+| `GET` | `/api/v1/prontuarios/inertes` | Prontuários sem eventos assistenciais subsequentes | ⏸ Pós-MVP |
 
 ### Parâmetros comuns
 
 | Parâmetro | Tipo | Aplicável em |
 |:---|:---|:---|
-| `unidade` | string | `/eventos`, `/kpis`, `/gargalos`, `/prontuarios/inertes` |
-| `especialidade` | string | `/eventos`, `/kpis`, `/gargalos`, `/fluxos` |
+| `unidade` | string | `/eventos`, `/kpis/tempos-medios`, `/gargalos` |
+| `especialidade` | string | `/eventos`, `/kpis/tempos-medios`, `/gargalos` |
+| `tipo_entidade` | string (enum) | `/eventos` |
 | `data_inicio` | string (YYYY-MM-DD) | Todos os endpoints analíticos |
 | `data_fim` | string (YYYY-MM-DD) | Todos os endpoints analíticos |
-| `kpi_codes[]` | lista de strings | `/kpis` |
+| `kpi_codes[]` | lista de strings | `/kpis/tempos-medios` |
 
 ### Códigos de resposta padrão
 
@@ -131,15 +151,17 @@ interface ProntuariosInertesResponse {
 
 ---
 
-## 4. Telas Principais (MVP)
+## 4. Telas Principais
 
-| Tela | Componente Vue | Descrição |
-|:---|:---|:---|
-| Dashboard Inicial | `views/DashboardView.vue` | KPIs do período, alertas de gargalos, filtros globais |
-| Painel de KPIs | `views/KpiView.vue` | Cards de indicadores com filtros e gráfico de tendência |
-| Gargalos | `views/GargaloView.vue` | Ranking com drill-down por etapa |
-| Fluxos | `views/FluxoView.vue` | Visualização dos fluxos predominantes |
-| Prontuários Inertes | `views/InertesView.vue` | Volume, percentual e distribuição por unidade |
+| Tela | Componente Vue | Descrição | MVP? |
+|:---|:---|:---|:---|
+| Login | `views/LoginView.vue` | Formulário Double Token (Vee-Validate + Zod) | ✅ |
+| Dashboard | `views/DashboardView.vue` | Filtros globais + 5 cards de KPI de tempo médio | ✅ |
+| Gargalos | `views/GargaloView.vue` | Ranking simples por tempo médio de espera | ✅ |
+| Painel de KPIs estendido | `views/KpiView.vue` | Cards com gráfico de tendência | ⏸ Pós-MVP |
+| Fluxos | `views/FluxoView.vue` | Visualização dos fluxos predominantes | ⏸ Pós-MVP |
+| Prontuários Inertes | `views/InertesView.vue` | Volume, percentual e distribuição por unidade | ⏸ Pós-MVP |
+| Linha do Tempo | `views/JornadaView.vue` | Timeline cronológica por `paciente_id` | ⏸ Pós-MVP |
 
 ---
 
