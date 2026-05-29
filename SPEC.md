@@ -2,21 +2,38 @@
 ## PIJA – Plataforma Integrada da Jornada Assistencial
 
 **Projeto:** HC-UFPE · CIn-UFPE | IESI 2026.1 | Time 2 – Perspectiva Assistencial
+**Última atualização:** 2026-05-28
 
 ---
 
 ## 1. Visão Geral e Resultados Esperados
 
-Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvolvimento da PIJA. O objetivo é construir uma plataforma analítica segura, em conformidade com a LGPD, que integre e visualize a jornada assistencial do paciente no HC-UFPE a partir dos dados existentes no AGHU.
+Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvolvimento da PIJA. O objetivo do **MVP** é entregar uma plataforma analítica enxuta, segura e em conformidade com a LGPD, que responda a um subconjunto-chave das **perguntas direcionadoras** da disciplina IESI 2026.1 a partir dos dados existentes no AGHU.
 
-### Objetivos de Alto Nível
+### Estratégia de dados em duas etapas
 
-- [ ] Implementar pipeline ETL com extração das 7 views do AGHU para banco SQLite local
-- [ ] Construir repositório analítico com modelo `fato_eventos_jornada`
-- [ ] Implementar motor de cálculo dos 9 KPIs prioritários (RF002)
-- [ ] Disponibilizar API FastAPI com RBAC e autenticação Double Token via AD/LDAP
-- [ ] Entregar dashboards Vue 3 funcionais: filtros, KPIs, gargalos, fluxos, prontuários inertes
-- [ ] Garantir trilhas de auditoria imutáveis para todas as consultas de usuários
+1. **MVP (Fases 0–4)** — desenvolvimento e validação contra **CSVs reais exportados das views do AGHU** (entregues pelo HC).
+2. **Cutover (Fase 5)** — quando a VPN do HC for liberada, o adapter `Resource` troca de `CsvResource` para `AghuResource` (`python-oracledb`) sem alterar Providers, Controllers ou Routers.
+
+### Objetivos do MVP
+
+- [ ] Pipeline ETL **CSV → SQLite** em streaming (chunked), idempotente, com `etl_log`
+- [ ] Repositório analítico local com modelo `fato_eventos_jornada`
+- [ ] **3 endpoints** essenciais (filtros, KPIs de tempo médio, ranking de gargalos)
+- [ ] **2 telas** Vue 3: Dashboard (filtros + cards de KPI) e Gargalos (ranking)
+- [ ] Auth interina **PyJWT + `users.yml`** seguindo o contrato Double Token do framework HC
+- [ ] Trilha de auditoria imutável para toda consulta de usuário
+- [ ] Adapter `Resource` plugável (`CsvResource` agora, `AghuResource` no cutover)
+
+### Pós-MVP (fora desta entrega)
+
+- Linha do tempo cronológica por paciente (`/jornada/{paciente_id}`)
+- Painel de prontuários inertes (RF005)
+- Fluxos predominantes (RF004)
+- Integração LEC (Lista de Espera Cirúrgica)
+- Taxa de não realização (faltas/cancelamentos)
+- Proporções de tipos de encaminhamento
+- KPIs adicionais além dos 5 de tempo médio
 
 ---
 
@@ -25,79 +42,130 @@ Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvo
 | Documento | Conteúdo |
 |:---|:---|
 | [01-visao.md](01-visao.md) | Problema, objetivos, escopo, critérios de sucesso |
-| [02-requisitos.md](02-requisitos.md) | RF001–RF006 e RNF001–RNF006 com padrão CARE |
+| [02-requisitos.md](02-requisitos.md) | Requisitos (MVP marcado explicitamente) com padrão CARE |
 | [03-casos-uso.md](03-casos-uso.md) | UC001–UC006 com Mermaid e CARE |
 | [04-modelo-dados.md](04-modelo-dados.md) | Views AGHU, `fato_eventos_jornada`, JSON Schemas |
 | [05-interfaces.md](05-interfaces.md) | API FastAPI, TypeScript interfaces, telas Vue 3 |
-| [06-arquitetura.md](06-arquitetura.md) | Stack, fluxo obrigatório, guardrails, monorepo |
+| [06-arquitetura.md](06-arquitetura.md) | Stack, fluxo obrigatório, guardrails, monorepo, adapter `Resource` |
 | [07-glossario.md](07-glossario.md) | Glossário, acrônimos, referências |
+| [docs/PLANO.md](docs/PLANO.md) | Plano de implementação por fase + skills Claude Code recomendadas |
 
 ---
 
 ## 3. Guardrails — Escopo Positivo (O que DEVE ser feito)
 
 - Seguir o fluxo obrigatório: `.sql → Resources → Providers → Controllers → Routers`
-- Usar **SQL nativo** (arquivos `.sql`) para todas as consultas ao AGHU
-- Usar **SQLAlchemy** apenas para tabelas internas (tokens, configs, audit log, etl_log)
+- Usar **SQL nativo** (arquivos `.sql`) para consultas analíticas — vale tanto para `CsvResource` (staging local) quanto para `AghuResource` (Oracle)
+- Usar **SQLAlchemy 2.0 Async** apenas para tabelas internas (`fato_eventos_jornada`, `etl_log`, `audit_log`, `users` interim)
 - Usar **SQLite** como banco local — nunca PostgreSQL local
 - Isolar toda comunicação HTTP do frontend em `src/services/api.ts`
 - Validar entrada e saída de todos os endpoints via **Pydantic v2**
-- Usar `Depends()` do FastAPI para injeção de dependências (auth, conexão)
+- Usar `Depends()` do FastAPI para injeção de dependências (auth, conexão, `Resource`)
+- Selecionar `Resource` via env `RESOURCE_MODE=csv|aghu` (default `csv` no MVP)
 - Comentar funções complexas seguindo padrão **docstring Python** no backend e **JSDoc/TSDoc** no frontend
 - Usar blocos `try/except` com logs de erro padronizados em todo o backend
 - Criar arquivo de teste `test_*.py` para cada novo controller e provider
+- ETL **streaming-first**: `pandas.read_csv(chunksize=...)` + upsert batched no SQLite
 
-## 4. Guardrails — Escopo Negativo (O que NÃO DEVE ser feito — Anti-Patterns)
+## 4. Guardrails — Escopo Negativo (Anti-Patterns)
 
-- **No Hard Deletes**: proibido `DELETE` SQL físico. Usar coluna `deleted_at` (NULL = ativo; preenchido = excluído logicamente)
+- **No Hard Deletes**: proibido `DELETE` SQL físico em tabelas internas. Usar coluna `deleted_at` (NULL = ativo; preenchido = excluído logicamente)
 - **No Secrets in Code**: proibido salvar strings de conexão, senhas ou chaves JWT no código. Usar exclusivamente `.env`
 - **No Refactoring Unasked**: proibido alterar arquivos de infraestrutura ou configuração global (`main.py`, `resources/`, `auth/`, `vite.config.ts`, `tailwind.config.js`) sem instrução explícita neste `SPEC.md`
 - **No ORM on AGHU**: proibido usar SQLAlchemy para consultar o AGHU (apenas SQL nativo via `.sql`)
 - **No Direct HTTP in Components**: proibido fazer chamadas HTTP dentro de componentes Vue (usar `src/services/api.ts`)
 - **No Personal Data**: proibido armazenar nome, CPF, data de nascimento — apenas `paciente_id`
 - **No Write on AGHU**: proibido qualquer operação de escrita no banco do AGHU
+- **No In-Memory Full CSV Load**: proibido carregar CSVs do HC inteiros em memória; sempre streaming
+- **No LDAP em Dev sem Mock**: o auth interim usa `users.yml`; substituição por LDAP real só na Fase 5
 
 ---
 
-## 5. Task Breakdown (Plano de Implementação)
+## 5. Task Breakdown — MVP Enxuto
 
-### Fase 1 – Infraestrutura e Dados
+Detalhamento por fase, gates e skills Claude Code: [`docs/PLANO.md`](docs/PLANO.md).
 
-- [ ] **TASK-001** Validar disponibilidade das 7 views com o DBA do HC-UFPE
-- [ ] **TASK-002** Confirmar campos opcionais disponíveis por view (situacao, timestamps)
-- [ ] **TASK-003** Configurar `.env` com variáveis de conexão AGHU, JWT secret e SQLite path
-- [ ] **TASK-004** Criar schema SQLite via Alembic (`fato_eventos_jornada`, `dim_unidade`, `dim_especialidade`, `etl_log`)
-- [ ] **TASK-005** Implementar pipeline ETL batch para as 7 views (RF006 / UC006)
+### Fase 0 — Scaffold (1–2 dias)
 
-### Fase 2 – Motor Analítico
+- [ ] **T0-1** Consolidar repositório (✓ feito 2026-05-28); arquivar templates HC
+- [ ] **T0-2** Backend skeleton: `backend/`, `pyproject.toml`, FastAPI `/health`, estrutura conforme `06-arquitetura.md §5`
+- [ ] **T0-3** Frontend skeleton: Vite + Vue 3 + TS + Tailwind + Pinia + Axios + Zod + Vee-Validate, página `/health`
+- [ ] **T0-4** `.env.example` validado por Pydantic Settings (vars: `RESOURCE_MODE`, `SQLITE_PATH`, `JWT_SECRET`, `CSV_DIR`, `AGHU_DSN`, `LDAP_URI`)
+- [ ] **T0-5** Estrutura de testes (`pytest` backend, `vitest` frontend); CI mínima (lint + test)
 
-- [ ] **TASK-006** Implementar `sql/kpis/` e `kpi_controller.py` com os 9 KPIs (RF002)
-- [ ] **TASK-007** Implementar `sql/gargalos.sql` e `gargalo_controller.py` (RF003)
-- [ ] **TASK-008** Implementar `sql/fluxos_predominantes.sql` e `fluxo_provider.py` (RF004)
-- [ ] **TASK-009** Implementar `sql/prontuarios_inertes.sql` e método em `prontuario_controller.py` (RF005)
+### Fase 1 — ETL CSV → SQLite (3–5 dias)
 
-### Fase 3 – API e Autenticação
+- [ ] **T1-1** Schema Alembic: `fato_eventos_jornada`, `dim_unidade`, `dim_especialidade`, `etl_log`, `audit_log`, `users`
+- [ ] **T1-2** `BaseResource` Protocol + `CsvResource` (pandas chunked, streaming)
+- [ ] **T1-3** `AghuResource` stub (mesma interface, `raise NotImplementedError`)
+- [ ] **T1-4** `resource_factory.py` + `Depends()` (seleção por `RESOURCE_MODE`)
+- [ ] **T1-5** `etl_runner.py`: itera 7 entidades, normaliza, upsert batched, modo `--sample N`, log
+- [ ] **T1-6** 7 arquivos `.sql` de extração (rodam contra staging local no MVP)
+- [ ] **T1-7** Testes ETL: idempotência (rerun não duplica), soft-fail (linha inválida), volumes batem
 
-- [ ] **TASK-010** Implementar routers FastAPI com Pydantic v2 para todos os endpoints de `05-interfaces.md`
-- [ ] **TASK-011** Validar integração com Double Token e RBAC já implementados no framework
+### Fase 2 — 3 Endpoints Essenciais (3–5 dias)
 
-### Fase 4 – Frontend Vue 3
+- [ ] **T2-1** `GET /api/v1/eventos` com filtros (unidade, especialidade, tipo_entidade, data_inicio, data_fim) — RF001 / UC001
+- [ ] **T2-2** `GET /api/v1/kpis/tempos-medios` — RF002 subset:
+  - `KPI-01`: prontuário → 1º evento
+  - `KPI-03`: agendamento → realização (consulta)
+  - `KPI-05`: solicitação → realização (exame)
+  - `KPI-06`: solicitação → internação
+  - `KPI-07`: tempo médio de internação (admissão → alta administrativa)
+- [ ] **T2-3** `GET /api/v1/gargalos` ranking — RF003 / UC003
+- [ ] **T2-4** Fixture dataset SQLite com valores conhecidos para validação determinística
+- [ ] **T2-5** Testes contra fixture (tolerância 0%)
 
-- [ ] **TASK-012** Configurar Pinia stores: `useFilterStore`, `useUserStore`, `useKpiStore`
-- [ ] **TASK-013** Implementar `DashboardView.vue` com filtros e KPIs (UC001 + UC002)
-- [ ] **TASK-014** Implementar `GargaloView.vue` com drill-down (UC003)
-- [ ] **TASK-015** Implementar `FluxoView.vue` (UC004)
-- [ ] **TASK-016** Implementar `InertesView.vue` (UC005)
+### Fase 3 — Auth Interim (1–2 dias)
+
+- [ ] **T3-1** `auth/local_auth.py`: `users.yml` (3 perfis: `gestor`, `assistencial`, `etl`) + bcrypt
+- [ ] **T3-2** `auth/jwt_service.py`: PyJWT (access curto + refresh em HttpOnly cookie)
+- [ ] **T3-3** `auth/dependencies.py`: `get_current_user`, `require_role(...)` via `Depends()` (mesmo contrato que o framework HC vai entregar)
+- [ ] **T3-4** Middleware `audit_log`: registra `user, endpoint, params, ts` em toda requisição
+- [ ] **T3-5** Testes integração: login OK, refresh silencioso, RBAC nega, audit grava
+
+### Fase 4 — Frontend (2 telas, 4–6 dias)
+
+- [ ] **T4-1** `src/services/api.ts`: Axios + interceptor 401 + refresh silencioso (Passo 3 da arquitetura)
+- [ ] **T4-2** Pinia stores: `useFilterStore`, `useUserStore`, `useKpiStore`
+- [ ] **T4-3** Layout base + roteamento + auth guards
+- [ ] **T4-4** `LoginView.vue` (Double Token client side)
+- [ ] **T4-5** `DashboardView.vue`: filtros globais + 5 cards de KPI de tempo médio
+- [ ] **T4-6** `GargaloView.vue`: ranking de etapas por tempo de espera
+- [ ] **T4-7** Schemas Zod + Vee-Validate em formulários de filtro
+- [ ] **T4-8** Revisão de acessibilidade + guidelines de UI
+
+### Fase 5 — Cutover HC (Pós-MVP, gated externamente)
+
+- [ ] **T5-1** Implementar `AghuResource` real (`python-oracledb`, pool) — substitui o stub
+- [ ] **T5-2** Validar `.sql` da Fase 1 contra as 7 views reais; ajustar se necessário
+- [ ] **T5-3** Validar volumes ETL contra `SELECT COUNT(*)` direto nas views
+- [ ] **T5-4** Substituir `local_auth` por `ldap_auth` (`python-ldap` contra AD HC) — env-only swap
+- [ ] **T5-5** Deploy no ambiente HC; configurar agendamento batch (cron noturno)
 
 ---
 
 ## 6. Critérios de Verificação Global
 
-- [ ] Todos os KPIs calculados validados contra queries manuais no banco de teste
+- [ ] Todos os KPIs validados contra fixture SQLite com tolerância 0%
 - [ ] Zero dados pessoais diretos armazenados fora do campo `paciente_id`
-- [ ] Log de auditoria operacional para todas as consultas de usuário
-- [ ] RBAC validado: perfil assistencial não acessa dados de outras unidades
+- [ ] Log de auditoria operacional para toda consulta de usuário
+- [ ] RBAC validado: perfil assistencial bloqueado de dados fora da sua unidade
 - [ ] `deleted_at` em uso — zero `DELETE` físico em qualquer tabela interna
 - [ ] Zero secrets no código — tudo via `.env`
 - [ ] Arquivo `test_*.py` presente para cada controller e provider
 - [ ] Toda comunicação HTTP do frontend centralizada em `src/services/api.ts`
+- [ ] ETL idempotente: `etl_runner` reexecutado não duplica nem altera contagens
+- [ ] Adapter `Resource` selecionável por env — Fase 5 troca código zero (só `RESOURCE_MODE`)
+
+---
+
+## 7. Pendências Críticas (Validar com HC-UFPE)
+
+- [ ] Recebimento dos CSVs exportados das 7 views (formato, volume, frequência de atualização)
+- [ ] Disponibilidade e estrutura das 7 views no AGHU (para a Fase 5)
+- [ ] Campos opcionais (`situacao`, `data_hora_agendamento`, `data_hora_solicitacao`) presentes nos exports
+- [ ] Consistência do `paciente_id` entre módulos
+- [ ] Liberação de VPN + acesso read-only ao AGHU (gate da Fase 5)
+- [ ] Política de retenção de dados e regras LGPD aplicáveis
+- [ ] Confirmação do driver Oracle (`python-oracledb`) e DSN
