@@ -83,7 +83,10 @@ Este sistema adota a **Perspectiva Assistencial**, voltada às unidades e áreas
 
 ## 7. Critérios de Sucesso (MVP)
 
-- Reconstrução cronológica da jornada para pelo menos as 7 entidades mapeadas
-- Dashboards funcionais com filtros por unidade, especialidade, tipo de evento e período
-- Pelo menos 5 KPIs calculados e validados com o HC-UFPE
-- Identificação automatizada de pelo menos 2 gargalos recorrentes no fluxo
+- Repositório analítico (`fato_eventos_jornada`) com dados cronologicamente ordenados das 7 entidades mapeadas
+- Dashboard funcional com filtros por unidade, especialidade, tipo de evento e período (RF001)
+- **5 KPIs de tempo médio entre eventos** calculados e validados com fixture determinística (RF002 subset — KPI-01, 03, 05, 06, 07)
+- Ranking automatizado de gargalos por tempo médio de espera (RF003)
+- Auditoria imutável de todas as consultas de usuário
+
+> A **linha do tempo cronológica por paciente** (visualização) é Pós-MVP. A reconstrução cronológica é entregue no modelo de dados, mas a tela dedicada de timeline por paciente fica para versões futuras.
