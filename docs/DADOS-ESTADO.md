@@ -226,7 +226,19 @@ Decisão: gerar evento ALTA **só se `dthr_fim` não-nulo**.
 
 ---
 
-## 8. Bugs detectados durante implementação
+## 8. Observações operacionais (Task 17 — smoke real CSVs)
+
+Smoke test contra os 5 CSVs reais com `--sample 1000` por view, segunda execução idempotente (commit `35cffd2`):
+
+- ✅ Pipeline completo: 7 `tipo_entidade` (PRONTUARIO, CONSULTA, PROCEDIMENTO, EXAME, INTERNACAO, ALTA, CIRURGIA)
+- ✅ Idempotência: rerun NÃO duplica registros
+- ✅ 0 rejeições no top-1000 de cada view
+- ⚠️ **Dedup via upsert observada**:
+  - `vw_cirurgias`: read=1000, loaded=1000, mas apenas **648 distintos em `fato_eventos_jornada`** → ~35% dos `cirurgia_id` aparecem mais de uma vez nas primeiras 1000 linhas. Hipótese: múltiplos registros por cirurgia no AGHU (entrada/saída sala, anestesia, etc.) — o upsert por `evento_id = "X-{cirurgia_id}"` mantém o último. Em produção isso pode mascarar histórico/atualização — investigar antes de KPIs cirúrgicos na F2.
+  - `vw_consultas`: read=1000, loaded=1000, mas **956 distintos** (44 colisões em `num_consulta`). Mesma natureza.
+- 💡 Implicação para F2 (KPIs): a interpretação de "1 evento = 1 linha no fato" pode estar OK, mas precisamos confirmar com HC se as duplicatas representam (a) o mesmo evento atualizado várias vezes, (b) eventos distintos com mesmo ID, ou (c) outro artefato de exportação.
+
+## 9. Bugs detectados durante implementação
 
 Registro de bugs encontrados pelos testes de integração (Task 16) e corrigidos no commit `1b978a4`:
 
