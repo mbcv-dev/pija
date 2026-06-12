@@ -1,17 +1,30 @@
 """Tipos e utilidades comuns aos mappers."""
 
-from collections.abc import Iterable
-from typing import TypedDict
+from collections.abc import Callable, Iterable
+from typing import Required, TypedDict
 
 
 class FatoRow(TypedDict, total=False):
-    """Linha pronta para INSERT em fato_eventos_jornada."""
+    """Linha pronta para INSERT em fato_eventos_jornada.
 
-    evento_id: str
-    paciente_id: str
-    tipo_entidade: str
-    entidade_id: str
-    timestamp_principal: str
+    Chaves marcadas Required são obrigatórias (conforme schema
+    fato_eventos_jornada). As outras são opcionais por entidade.
+
+    Convenção de prefixos em `evento_id`:
+        P-{id}    → PRONTUARIO
+        C-{id}    → CONSULTA
+        PA-{id}   → PROCEDIMENTO (de vw_consultas com tipo=PROCEDIMENTO)
+        E-{id}    → EXAME
+        I-{id}    → INTERNACAO
+        A-{id}    → ALTA (derivada de INTERNACAO)
+        X-{id}    → CIRURGIA
+    """
+
+    evento_id: Required[str]
+    paciente_id: Required[str]
+    tipo_entidade: Required[str]
+    entidade_id: Required[str]
+    timestamp_principal: Required[str]
     timestamp_solicitacao: str | None
     timestamp_agendamento: str | None
     timestamp_realizacao: str | None
@@ -45,8 +58,13 @@ def first_nonempty(row: dict[str, str], *keys: str) -> str | None:
     return None
 
 
+# Mappers can return None (rejected), a single FatoRow, or a list of FatoRows
+# (e.g., INTERNACAO emits both INTERNACAO and derived ALTA — Task 13).
+Mapper = Callable[[dict[str, str]], FatoRow | list[FatoRow] | None]
+
+
 def iter_mapped(
-    rows: Iterable[dict[str, str]], mapper
+    rows: Iterable[dict[str, str]], mapper: Mapper
 ) -> Iterable[FatoRow]:
     """Aplica um mapper e descarta None (linhas rejeitadas)."""
     for row in rows:

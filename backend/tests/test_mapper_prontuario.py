@@ -56,3 +56,14 @@ def test_rejects_row_with_invalid_date():
         "situacao_prontuario": "Ativo",
     })
     assert out is None
+
+
+def test_accepts_accented_column_name():
+    """`first_nonempty` resolves the prontuário column across name variants."""
+    out = map_pacientes_row({
+        "Prontuário": "555",
+        "data_cadastro": "10/3/2018",
+    })
+    assert out is not None
+    assert out["paciente_id"] == "555"
+    assert out["evento_id"] == "P-555"
