@@ -55,4 +55,15 @@ async def test_etl_log_records(tmp_path):
         session.add(log)
         await session.commit()
 
+        result = await session.execute(select(EtlLog))
+        logs = result.scalars().all()
+        assert len(logs) == 1
+        log_back = logs[0]
+        assert log_back.id is not None
+        assert log_back.view_name == "vw_pacientes"
+        assert log_back.rows_read == 357346
+        assert log_back.rows_loaded == 357340
+        assert log_back.rows_rejected == 6
+        assert log_back.errors is None
+
     await engine.dispose()
