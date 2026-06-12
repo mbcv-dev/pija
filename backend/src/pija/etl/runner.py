@@ -43,14 +43,20 @@ def _make_exame_mapper() -> Callable[[dict[str, str]], FatoRow | None]:
     return _wrap
 
 
-# Cada entrada: (view_name, mapper)
-VIEWS: list[tuple[str, Callable[[dict[str, str]], FatoRow | None | list[FatoRow]]]] = [
-    ("vw_pacientes", map_pacientes_row),
-    ("vw_consultas", map_consulta_row),
-    ("vw_exames", _make_exame_mapper()),
-    ("vw_internacoes", map_internacao_row),
-    ("vw_cirurgias", map_cirurgia_row),
-]
+def _build_views() -> list[tuple[str, Callable[[dict[str, str]], FatoRow | None | list[FatoRow]]]]:
+    """Constrói a lista de (view_name, mapper) por execução.
+
+    Mappers com estado (ex.: contador do exame) precisam ser instanciados a cada
+    run_etl para preservar idempotência — caso contrário o contador acumula entre
+    execuções e gera evento_ids diferentes para a mesma linha do CSV.
+    """
+    return [
+        ("vw_pacientes", map_pacientes_row),
+        ("vw_consultas", map_consulta_row),
+        ("vw_exames", _make_exame_mapper()),
+        ("vw_internacoes", map_internacao_row),
+        ("vw_cirurgias", map_cirurgia_row),
+    ]
 
 
 def _now_iso() -> str:
@@ -58,13 +64,22 @@ def _now_iso() -> str:
 
 
 async def _upsert_batch(session: AsyncSession, batch: list[FatoRow], dt_carga: str) -> int:
-    """Upsert por evento_id (ON CONFLICT DO UPDATE)."""
+    """Upsert por evento_id (ON CONFLICT DO UPDATE).
+
+    Normaliza cada dict para conter exatamente as colunas da tabela — necessário
+    porque o INSERT multi-row do SQLAlchemy/SQLite exige que todas as linhas
+    declarem o mesmo conjunto de colunas. Mappers diferentes (ex.: INTERNACAO vs
+    ALTA) podem omitir colunas opcionais, então preenchemos com None aqui.
+    """
     if not batch:
         return 0
+    columns = [c.name for c in FatoEvento.__table__.columns]
+    normalized: list[dict[str, object]] = []
     for r in batch:
         r["dt_carga"] = dt_carga
-    stmt = sqlite_insert(FatoEvento).values(batch)
-    update_cols = {c: stmt.excluded[c] for c in FatoEvento.__table__.columns.keys() if c != "evento_id"}
+        normalized.append({c: r.get(c) for c in columns})
+    stmt = sqlite_insert(FatoEvento).values(normalized)
+    update_cols = {c: stmt.excluded[c] for c in columns if c != "evento_id"}
     stmt = stmt.on_conflict_do_update(index_elements=["evento_id"], set_=update_cols)
     await session.execute(stmt)
     return len(batch)
@@ -124,7 +139,8 @@ async def run_etl(*, sample: int | None = None, only_view: str | None = None) ->
     engine = make_engine(f"sqlite+aiosqlite:///{settings.sqlite_path}")
     SessionLocal = make_sessionmaker(engine)
 
-    for view_name, mapper in VIEWS:
+    views = _build_views()
+    for view_name, mapper in views:
         if only_view and view_name != only_view:
             continue
         logger.info("Iniciando ETL: %s", view_name)
