@@ -60,32 +60,32 @@ class CsvResource:
         path = self._resolve_path(view)
         produced = 0
         # dtype=str => preserva todos os campos como string; conversão fica para os mappers
-        reader = pd.read_csv(
+        with pd.read_csv(
             path,
             chunksize=self.chunksize,
             dtype=str,
             keep_default_na=False,  # célula vazia vira "" não NaN
             encoding="utf-8",
-        )
-        for chunk in reader:
-            for row in chunk.to_dict(orient="records"):
-                yield row
-                produced += 1
-                if sample is not None and produced >= sample:
-                    return
+        ) as reader:
+            for chunk in reader:
+                for row in chunk.to_dict(orient="records"):
+                    yield row
+                    produced += 1
+                    if sample is not None and produced >= sample:
+                        return
 
     def count(self, view: str) -> int:
         """Conta linhas (exclui header). Lê em chunks para não estourar memória."""
         path = self._resolve_path(view)
         total = 0
-        reader = pd.read_csv(
+        with pd.read_csv(
             path,
             chunksize=self.chunksize,
             dtype=str,
             keep_default_na=False,
             encoding="utf-8",
             usecols=[0],  # só primeira coluna basta para contar
-        )
-        for chunk in reader:
-            total += len(chunk)
+        ) as reader:
+            for chunk in reader:
+                total += len(chunk)
         return total

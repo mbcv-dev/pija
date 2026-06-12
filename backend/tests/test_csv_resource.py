@@ -46,3 +46,20 @@ def test_csv_resource_raises_when_missing(tmp_path: Path):
     res = CsvResource(csv_dir=str(tmp_path))
     with pytest.raises(FileNotFoundError):
         list(res.iter_rows("vw_nonexistent"))
+
+
+def test_csv_resource_preserves_utf8_characters(tmp_path: Path):
+    """DADOS-ESTADO.md §2 flags encoding as critical — preserve accents end-to-end."""
+    p = tmp_path / "vw_utf8.csv"
+    p.write_text(
+        "nome,unidade,especialidade\n"
+        "João,UAC: BIOQUÍMICA,UROLOGIA\n"
+        "Maria,9º NORTE,GINECOLOGIA E OBSTETRÍCIA\n",
+        encoding="utf-8",
+    )
+    res = CsvResource(csv_dir=str(tmp_path))
+    rows = list(res.iter_rows("vw_utf8"))
+    assert len(rows) == 2
+    assert rows[0]["nome"] == "João"
+    assert rows[0]["unidade"] == "UAC: BIOQUÍMICA"
+    assert rows[1]["especialidade"] == "GINECOLOGIA E OBSTETRÍCIA"
