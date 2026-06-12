@@ -18,16 +18,16 @@ class Settings(BaseSettings):
     resource_mode: Literal["csv", "aghu"] = "csv"
 
     # Banco local
-    sqlite_path: str = "./data/pija.db"
+    sqlite_path: str = "./backend/data/pija.db"
 
     # Auth
-    jwt_secret: str = Field(..., min_length=16)
+    jwt_secret: str = Field(..., min_length=32)
     jwt_access_ttl_seconds: int = 900       # 15 min
     jwt_refresh_ttl_seconds: int = 604800   # 7 dias
-    users_yml_path: str = "./users.yml"
+    users_yml_path: str = "./backend/users.yml"
 
     # Fonte CSV (MVP)
-    csv_dir: str = "../CSV-aghu"
+    csv_dir: str = "./CSV-aghu"
 
     # Fonte AGHU (Fase 5)
     aghu_dsn: str = ""
