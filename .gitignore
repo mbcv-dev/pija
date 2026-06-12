@@ -12,6 +12,7 @@ backend/.venv/
 backend/build/
 backend/dist/
 backend/*.egg-info/
+backend/src/*.egg-info/
 .pytest_cache/
 .coverage
 htmlcov/
