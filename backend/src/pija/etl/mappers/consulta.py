@@ -42,8 +42,13 @@ def map_consulta_row(row: dict[str, str]) -> FatoRow | None:
     retorno = empty_to_none(row.get("Retorno"))
     realizacao = inicio if retorno in REALIZACAO_STATUSES else None
 
-    tipo_csv = (row.get("tipo") or "CONSULTA").strip().upper()
-    tipo_entidade, prefix = TIPO_MAP.get(tipo_csv, ("CONSULTA", "C"))
+    # `tipo` vazio → trata como CONSULTA (padrão). Qualquer outro valor
+    # desconhecido → rejeita a linha (evita corromper KPIs com classificação errada).
+    tipo_csv = (row.get("tipo") or "").strip().upper() or "CONSULTA"
+    mapped = TIPO_MAP.get(tipo_csv)
+    if mapped is None:
+        return None
+    tipo_entidade, prefix = mapped
 
     return {
         "evento_id": f"{prefix}-{entidade_id}",

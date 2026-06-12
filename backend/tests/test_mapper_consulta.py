@@ -50,3 +50,31 @@ def test_consulta_falta_does_not_set_realizacao(sample_rows):
 def test_rejects_consulta_without_prontuario(sample_rows):
     out = map_consulta_row(sample_rows[2])
     assert out is None
+
+
+def test_consulta_sem_retorno_no_realizacao(sample_rows):
+    """`Retorno=""` deve resultar em situacao=None e realizacao=None."""
+    row = dict(sample_rows[0])
+    row["Retorno"] = ""
+    out = map_consulta_row(row)
+    assert out is not None
+    assert out["situacao"] is None
+    assert out["timestamp_realizacao"] is None
+
+
+def test_empty_tipo_defaults_to_consulta(sample_rows):
+    """tipo vazio → trata como CONSULTA (padrão permissivo)."""
+    row = dict(sample_rows[0])
+    row["tipo"] = ""
+    out = map_consulta_row(row)
+    assert out is not None
+    assert out["tipo_entidade"] == "CONSULTA"
+    assert out["evento_id"].startswith("C-")
+
+
+def test_unknown_tipo_rejects_row(sample_rows):
+    """tipo desconhecido (typo, valor novo) → rejeita (não corrompe KPIs)."""
+    row = dict(sample_rows[0])
+    row["tipo"] = "CONSUTA"  # typo intencional
+    out = map_consulta_row(row)
+    assert out is None
