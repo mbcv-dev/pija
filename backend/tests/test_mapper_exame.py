@@ -46,3 +46,14 @@ def test_maps_exame_imagem_with_agendamento(sample_rows):
     assert out["timestamp_agendamento"] == "2026-05-21T09:00:00"
     assert out["tipo_evento"] == "Imagem"
     assert out["unidade"] == "UAC: RADIOLOGIA"
+
+
+def test_row_index_differentiates_evento_id(sample_rows):
+    """Lock the contract that row_index produces unique evento_ids for repeated codes
+    (Task 15 runner threads a counter to prevent collisions in real data)."""
+    a = map_exame_row(sample_rows[0], row_index=1)
+    b = map_exame_row(sample_rows[0], row_index=2)
+    assert a is not None and b is not None
+    assert a["evento_id"] == "E-LDL-2450336-1"
+    assert b["evento_id"] == "E-LDL-2450336-2"
+    assert a["evento_id"] != b["evento_id"]
