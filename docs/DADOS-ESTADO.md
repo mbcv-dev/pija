@@ -146,17 +146,18 @@ Prefixo do `evento_id` muda: `C-...` para CONSULTA, `PA-...` para PROCEDIMENTO (
 
 Cada linha de internação com `dthr_fim` preenchido gera **também** um evento de tipo ALTA:
 
-| Coluna fato                     | Origem CSV                   |
-| ------------------------------- | ---------------------------- |
-| `evento_id`                     | `f"A-{id_internacao}"`       |
-| `paciente_id`                   | `prontuario`                 |
-| `tipo_entidade`                 | `"ALTA"`                     |
-| `entidade_id`                   | `id_internacao`              |
-| `timestamp_principal`           | `dthr_fim`                   |
-| `timestamp_alta_administrativa` | `dthr_fim`                   |
-| `unidade`                       | `unf_descricao`              |
-| `especialidade`                 | `esp_nome_especialidade`     |
-| `tipo_evento`                   | `descricao_tipo_alta_medica` |
+| Coluna fato                     | Origem CSV                                                |
+| ------------------------------- | --------------------------------------------------------- |
+| `evento_id`                     | `f"A-{id_internacao}"`                                    |
+| `paciente_id`                   | `prontuario`                                              |
+| `tipo_entidade`                 | `"ALTA"`                                                  |
+| `entidade_id`                   | `id_internacao`                                           |
+| `timestamp_principal`           | `dthr_fim`                                                |
+| `timestamp_alta_administrativa` | `dthr_fim`                                                |
+| `unidade`                       | `unf_descricao`                                           |
+| `especialidade`                 | `esp_nome_especialidade`                                  |
+| `tipo_evento`                   | `descricao_tipo_alta_medica` (categoria do desfecho)      |
+| `situacao`                      | `descricao_tipo_alta_medica` (espelho simétrico com INTERNACAO — facilita filtros de UI por status) |
 
 Decisão: gerar evento ALTA **só se `dthr_fim` não-nulo**.
 
