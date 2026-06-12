@@ -226,7 +226,19 @@ Decisão: gerar evento ALTA **só se `dthr_fim` não-nulo**.
 
 ---
 
-## 8. Próximos passos
+## 8. Bugs detectados durante implementação
+
+Registro de bugs encontrados pelos testes de integração (Task 16) e corrigidos no commit `1b978a4`:
+
+1. **Idempotência do EXAME mapper**: O closure `_make_exame_mapper()` era instanciado uma única vez em escopo de módulo (na constante `VIEWS`). Em execuções subsequentes de `run_etl()`, o counter persistia do estado anterior — produzindo `evento_id`s diferentes para as mesmas linhas (ex.: `E-LDL-2450336-4` em vez de `E-LDL-2450336-1`). Resultado: rerun duplicava registros. **Correção:** `VIEWS` agora é construída por invocação via `_build_views()`, garantindo counter zerado a cada `run_etl()`.
+
+2. **Upsert com dicts heterogêneos**: `sqlite_insert(FatoEvento).values(batch)` exige que todos os dicts no batch tenham o mesmo conjunto de chaves. Mas INTERNACAO inclui `timestamp_alta_medica` e ALTA omite — quando ambos estavam no mesmo batch, SQLAlchemy levantava `CompileError`, abortando a view inteira. **Correção:** `_upsert_batch` agora normaliza cada dict para o conjunto completo de colunas de `FatoEvento` (preenchendo ausentes com `None`).
+
+Ambos os bugs ficaram silenciosos até o pipeline rodar end-to-end com dados representando todas as entidades — exatamente o que os testes de integração precisavam exercitar.
+
+---
+
+## 9. Próximos passos
 
 1. Executar Fase 0 (Scaffold) e Fase 1 (ETL CSV → SQLite) conforme [docs/plans/2026-05-29-fase-0-1-implementation.md](plans/2026-05-29-fase-0-1-implementation.md)
 2. Levar pendências do §7 para a reunião do dia
