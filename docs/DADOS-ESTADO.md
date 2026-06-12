@@ -238,7 +238,33 @@ Smoke test contra os 5 CSVs reais com `--sample 1000` por view, segunda execuç�
   - `vw_consultas`: read=1000, loaded=1000, mas **956 distintos** (44 colisões em `num_consulta`). Mesma natureza.
 - 💡 Implicação para F2 (KPIs): a interpretação de "1 evento = 1 linha no fato" pode estar OK, mas precisamos confirmar com HC se as duplicatas representam (a) o mesmo evento atualizado várias vezes, (b) eventos distintos com mesmo ID, ou (c) outro artefato de exportação.
 
-## 9. Bugs detectados durante implementação
+## 9. Volumes finais (Task 18 — ETL completo)
+
+ETL completo executado contra os 685 MB em **~10 minutos** (commit `eeb25ee`). Total carregado: **2.261.659 eventos** sobre **389.736 pacientes distintos**.
+
+| `tipo_entidade` | Volume final | View origem | rows_read | rejected (%) | Observação |
+|---|---:|---|---:|---:|---|
+| EXAME | 979.847 | vw_exames | 980.852 | 0,10% | OK |
+| PROCEDIMENTO | 407.805 | vw_consultas (tipo=PROC) | (parte de 766.855) | — | combinada com CONSULTA |
+| PRONTUARIO | 354.790 | vw_pacientes | 357.345 | 0,72% | maior rejection rate (~2.5k linhas) |
+| CONSULTA | 167.578 | vw_consultas (tipo=CONS) | (parte de 766.855) | 0,06% | menor que PROCEDIMENTO no dataset |
+| INTERNACAO | 162.078 | vw_internacoes | 162.182 | 0,06% | OK |
+| ALTA | 161.816 | vw_internacoes (derivada) | — | — | < INTERNACAO ✓ (algumas em curso) |
+| CIRURGIA | 27.745 | vw_cirurgias | 40.954 | 0,05% | dedup pesado (32% colidem por cirurgia_id) |
+
+### Achados que afetam o trabalho da Fase 2 (KPIs)
+
+1. **Dedup pesado de `vw_consultas` (~25%)**: 766.855 linhas no CSV → 575.383 distintos em `fato`. Confirma o achado da Task 17. Investigar se `num_consulta` é único por linha no AGHU ou se duplicatas legítimas (atendimento + procedimento linkados).
+
+2. **Dedup pesado de `vw_cirurgias` (~32%)**: 40.934 linhas carregadas → 27.745 distintos. Hipótese: múltiplos registros por cirurgia (entrada/saída sala, anestesia). Decidir antes de KPI cirúrgicos: manter última linha (atual) ou agregar.
+
+3. **EXAME cobre só ~5 meses (jan-mai 2026)**: range temporal dos exames muito menor que pacientes/consultas (que vão 2015→2026). Confirmar com HC se foi corte de exportação OU se o mapper está lendo a coluna errada. **Bloqueia KPI-05** (solicitação → realização) se for o mapper.
+
+4. **23.673 CONSULTAs com timestamp futuro** (≥ 2026-07-01 até 2027-05-25): agendamentos não realizados. KPI-03 (agendamento → realização) deve filtrar `timestamp_realizacao IS NOT NULL`.
+
+5. **Índices recomendados antes de F2**: `(paciente_id, timestamp_principal)` para KPI-01 e KPI-06 (cross-patient temporal queries). Já temos `paciente_id` indexado isoladamente e o composto `ix_fato_filtros` — pode ser suficiente; medir antes de adicionar.
+
+## 10. Bugs detectados durante implementação
 
 Registro de bugs encontrados pelos testes de integração (Task 16) e corrigidos no commit `1b978a4`:
 
