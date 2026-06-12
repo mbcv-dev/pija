@@ -877,7 +877,7 @@ def parse_br_id(value: str | None) -> str | None:
 cd backend && pytest tests/test_parsers.py -v
 ```
 
-Expected: PASS (9 testes).
+Expected: PASS (8 testes).
 
 - [ ] **Step 5: Commit**
 

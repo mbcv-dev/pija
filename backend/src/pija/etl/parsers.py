@@ -4,6 +4,10 @@ Conforme DADOS-ESTADO.md §2:
 - Datas com hora: DD/M/YYYY, HH:MM
 - Datas sem hora: DD/M/YYYY
 - IDs numéricos com `.` como separador de milhar: 1.458.992
+
+Soft-fail: as funções retornam None em qualquer falha de parsing, sem
+levantar exceção. Telemetria de rejeição (rows_rejected) é
+responsabilidade do runner ETL (Task 15), não do parser.
 """
 
 from datetime import datetime
@@ -46,7 +50,11 @@ def parse_br_date(value: str | None) -> str | None:
 def parse_br_id(value: str | None) -> str | None:
     """Remove separador de milhar ('.') de IDs numéricos.
 
-    '1.458.992' → '1458992'.  Retorna None se vazio.
+    '1.458.992' → '1458992'. Retorna None se vazio.
+
+    Permissivo por design: não valida que o resultado é numérico — confia
+    no contrato upstream do CSV. Strings inválidas (ex.: 'abc') passam
+    através e seriam rejeitadas pelos mappers downstream se necessário.
     """
     if value is None:
         return None
