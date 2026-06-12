@@ -258,7 +258,9 @@ ETL completo executado contra os 685 MB em **~10 minutos** (commit `eeb25ee`). T
 
 2. **Dedup pesado de `vw_cirurgias` (~32%)**: 40.934 linhas carregadas → 27.745 distintos. Hipótese: múltiplos registros por cirurgia (entrada/saída sala, anestesia). Decidir antes de KPI cirúrgicos: manter última linha (atual) ou agregar.
 
-3. **EXAME cobre só ~5 meses (jan-mai 2026)**: range temporal dos exames muito menor que pacientes/consultas (que vão 2015→2026). Confirmar com HC se foi corte de exportação OU se o mapper está lendo a coluna errada. **Bloqueia KPI-05** (solicitação → realização) se for o mapper.
+3. **EXAME cobre só ~5 meses (jan-mai 2026) — INVESTIGADO 2026-06-12: corte de exportação, NÃO é bug.** Varredura streaming do CSV bruto `vw_exames_anonimizado.csv` (980.852 linhas) confirmou que **100% dos `data_hora_solicitacao` estão em 2026** (jan–mai), com **zero valores vazios**. O mapper lê a coluna correta (`data_hora_solicitacao` → `timestamp_principal`) e não descarta linhas por data nula. A diferença CSV 980.852 → fato 979.847 (~1.005 linhas, 0,10%) vem dos outros guards (`paciente_prontuario`/`exame_id`/`atendimento_id` ausentes), não de filtro temporal.
+   - **Implicação para KPI-05:** NÃO está bloqueado — `data_hora_realizacao` também é 100% preenchida em 2026, então solicitação→realização é calculável. **Caveat único:** janela de apenas ~4,5 meses (sem cross-year, sem sazonalidade). Documentar essa limitação no card do KPI-05 e na UI.
+   - **Ação HC:** confirmar se o export futuro pode incluir anos anteriores de exames (continua como pendência §7, mas não bloqueia F2).
 
 4. **23.673 CONSULTAs com timestamp futuro** (≥ 2026-07-01 até 2027-05-25): agendamentos não realizados. KPI-03 (agendamento → realização) deve filtrar `timestamp_realizacao IS NOT NULL`.
 
