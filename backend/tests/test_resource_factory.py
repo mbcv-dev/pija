@@ -18,3 +18,17 @@ def test_factory_returns_aghu_when_mode_aghu(monkeypatch):
 
     res = get_resource()
     assert isinstance(res, AghuResource)
+
+
+def test_factory_uses_injected_settings(tmp_path):
+    """Locks the injection contract used by FastAPI Depends in Fase 2 endpoints."""
+    from pija.settings import Settings
+
+    custom = Settings(
+        resource_mode="csv",
+        csv_dir=str(tmp_path),
+        jwt_secret="injection-test-secret-min-32-characters",
+    )
+    res = get_resource(custom)
+    assert isinstance(res, CsvResource)
+    assert res.csv_dir.as_posix().endswith(tmp_path.name)
