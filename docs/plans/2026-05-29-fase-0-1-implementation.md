@@ -698,7 +698,10 @@ else:
 - [ ] **Step 4: Generate migration**
 
 ```bash
-cd backend && mkdir -p data && alembic revision --autogenerate -m "initial schema fato_eventos_jornada and etl_log"
+# From REPO ROOT
+mkdir -p backend/data
+export JWT_SECRET="your-long-jwt-secret-at-least-32-characters"
+alembic -c backend/alembic.ini revision --autogenerate -m "initial schema fato_eventos_jornada and etl_log"
 ```
 
 Expected: cria `backend/alembic/versions/<hash>_initial_schema_fato_eventos_jornada_and_etl_log.py`.
@@ -712,7 +715,10 @@ cd backend/alembic/versions && mv *_initial_schema_*.py 001_initial_schema.py
 - [ ] **Step 6: Apply migration**
 
 ```bash
-cd backend && alembic upgrade head
+# Run from REPO ROOT (sqlite_path resolves to ./backend/data/pija.db)
+mkdir -p backend/data
+export JWT_SECRET="your-long-jwt-secret-at-least-32-characters"
+alembic -c backend/alembic.ini upgrade head
 ```
 
 Expected: `INFO  [alembic.runtime.migration] Running upgrade  -> ...`. Cria `backend/data/pija.db`.
