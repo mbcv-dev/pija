@@ -11,6 +11,7 @@ informação diretamente do histórico de consultas contido no CSV."
 
 from pija.etl.mappers.base import FatoRow, empty_to_none, first_nonempty
 from pija.etl.parsers import parse_br_datetime, parse_br_id
+from pija.unidades import get_grupo
 
 REALIZACAO_STATUSES = {"PACIENTE ATENDIDO"}
 
@@ -59,6 +60,7 @@ def map_consulta_row(row: dict[str, str]) -> FatoRow | None:
         "timestamp_agendamento": agendamento,
         "timestamp_realizacao": realizacao,
         "unidade": empty_to_none(row.get("Unidade Funcional")),
+        "grupo": get_grupo(empty_to_none(row.get("Unidade Funcional"))),
         "especialidade": empty_to_none(row.get("especialidade")),
         "tipo_evento": empty_to_none(row.get("Condição do Atendimento")),
         "situacao": retorno,

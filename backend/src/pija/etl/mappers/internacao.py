@@ -7,6 +7,7 @@ INTERNACAO; se `dthr_fim` estiver preenchido, gera adicionalmente
 
 from pija.etl.mappers.base import FatoRow, empty_to_none
 from pija.etl.parsers import parse_br_datetime, parse_br_id
+from pija.unidades import get_grupo
 
 
 def map_internacao_row(row: dict[str, str]) -> list[FatoRow] | None:
@@ -34,6 +35,7 @@ def map_internacao_row(row: dict[str, str]) -> list[FatoRow] | None:
         "timestamp_alta_administrativa": fim,
         "timestamp_alta_medica": fim,  # proxy — não há campo separado
         "unidade": unidade,
+        "grupo": get_grupo(unidade),
         "especialidade": especialidade,
         "tipo_evento": origem,
         "situacao": tipo_alta,
@@ -50,6 +52,7 @@ def map_internacao_row(row: dict[str, str]) -> list[FatoRow] | None:
             "timestamp_principal": fim,
             "timestamp_alta_administrativa": fim,
             "unidade": unidade,
+            "grupo": get_grupo(unidade),
             "especialidade": especialidade,
             "tipo_evento": tipo_alta,
             "situacao": tipo_alta,

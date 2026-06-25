@@ -26,6 +26,7 @@ class FatoEvento(Base):
     timestamp_alta_medica: Mapped[str | None] = mapped_column(String(32), nullable=True)
     timestamp_alta_administrativa: Mapped[str | None] = mapped_column(String(32), nullable=True)
     unidade: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    grupo: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     especialidade: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     tipo_evento: Mapped[str | None] = mapped_column(String(128), nullable=True)
     situacao: Mapped[str | None] = mapped_column(String(64), nullable=True)

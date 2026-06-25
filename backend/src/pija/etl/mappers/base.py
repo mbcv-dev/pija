@@ -32,6 +32,7 @@ class FatoRow(TypedDict, total=False):
     timestamp_alta_medica: str | None
     timestamp_alta_administrativa: str | None
     unidade: str | None
+    grupo: str | None
     especialidade: str | None
     tipo_evento: str | None
     situacao: str | None

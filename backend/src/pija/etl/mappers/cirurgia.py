@@ -11,6 +11,7 @@ Diagnóstico-Terapêutico" feito no ambiente cirúrgico — outro conceito.
 
 from pija.etl.mappers.base import FatoRow, empty_to_none, first_nonempty
 from pija.etl.parsers import parse_br_datetime, parse_br_id
+from pija.unidades import get_grupo
 
 
 def map_cirurgia_row(row: dict[str, str]) -> FatoRow | None:
@@ -38,6 +39,7 @@ def map_cirurgia_row(row: dict[str, str]) -> FatoRow | None:
         "timestamp_agendamento": parse_br_datetime(row.get("Entrada na Sala")),
         "timestamp_realizacao": parse_br_datetime(row.get("data_fim_cirurgia")),
         "unidade": empty_to_none(row.get("Unidade Funcional")),
+        "grupo": get_grupo(empty_to_none(row.get("Unidade Funcional"))),
         "especialidade": empty_to_none(row.get("Especialidade")),
         "tipo_evento": tipo_evento,
         "situacao": empty_to_none(row.get("situacao")),
