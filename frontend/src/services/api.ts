@@ -1,9 +1,10 @@
 import axios from 'axios'
-import type { KpiParams, KpiResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse } from '@/types/api.types'
+import type { KpiParams, KpiResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem } from '@/types/api.types'
 import { KpiResponseSchema, GargalosResponseSchema, EventosResponseSchema } from '@/schemas/api.schemas'
 import { mockKpis } from '@/mocks/kpis.mock'
 import { mockGargalos } from '@/mocks/gargalos.mock'
 import { mockEventos } from '@/mocks/eventos.mock'
+import { mockJornada } from '@/mocks/jornada.mock'
 
 // ── Configuração ──────────────────────────────────────────────
 
@@ -113,4 +114,21 @@ export async function getEventos(params: EventosParams): Promise<EventosResponse
   }
   const { data } = await client.get<EventosResponse>('/eventos', { params })
   return EventosResponseSchema.parse(data)
+}
+
+/**
+ * Eventos cronológicos de UM paciente (tela Jornada).
+ * MOCK nesta fase. Backend real (Fase 4/6): adicionar filtro `paciente_id`
+ * ao GET /eventos (ou endpoint /jornada/{paciente_id}). Ver
+ * docs/superpowers/specs/2026-06-26-fase-7-frontend-redesign-design.md §11.
+ */
+export async function getJornada(pacienteId: string): Promise<EventoItem[]> {
+  if (USE_MOCK) {
+    await delay(450)
+    return mockJornada(pacienteId)
+  }
+  const { data } = await client.get<EventosResponse>('/eventos', {
+    params: { paciente_id: pacienteId, limit: 500 },
+  })
+  return EventosResponseSchema.parse(data).items
 }

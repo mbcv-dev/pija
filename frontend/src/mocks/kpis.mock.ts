@@ -8,6 +8,7 @@ const BASE_MEDIAS: Record<KpiCode, number> = {
   'KPI-05': 8.7,
   'KPI-06': 21.3,
   'KPI-07': 4.8,
+  'KPI-07B': 2.4, // horas (alta médica → saída efetiva)
 }
 
 const N_GLOBAL: Record<KpiCode, number> = {
@@ -16,14 +17,16 @@ const N_GLOBAL: Record<KpiCode, number> = {
   'KPI-05': 28100,
   'KPI-06': 8920,
   'KPI-07': 12300,
+  'KPI-07B': 12300,
 }
 
 const DESCRICOES: Record<KpiCode, string> = {
-  'KPI-01': 'Tempo prontuário → 1º atendimento',
+  'KPI-01': 'Tempo prontuário → 1º evento assistencial',
   'KPI-03': 'Tempo agendamento → realização (consulta)',
   'KPI-05': 'Tempo solicitação → realização (exame)',
   'KPI-06': 'Tempo última consulta → internação',
-  'KPI-07': 'Tempo de permanência na internação',
+  'KPI-07': 'Tempo de permanência no leito',
+  'KPI-07B': 'Tempo alta médica → saída do leito',
 }
 
 // ── Gerador de breakdown dinâmico por seed ────────────────────
@@ -70,7 +73,7 @@ export function mockKpis(params: KpiParams): KpiResponse {
     fator *= 0.9
   }
 
-  const allCodes: KpiCode[] = ['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07']
+  const allCodes: KpiCode[] = ['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B']
   const codes = params.kpi_codes && params.kpi_codes.length > 0
     ? params.kpi_codes
     : allCodes
@@ -79,14 +82,15 @@ export function mockKpis(params: KpiParams): KpiResponse {
   const kpis = codes.map((codigo) => {
     const baseMedia = BASE_MEDIAS[codigo] * fator
     const isKpi05NoData = codigo === 'KPI-05' && params.especialidade === 'CIRURGIA GERAL'
+    const isHoras = codigo === 'KPI-07B'
 
     return {
       codigo,
       descricao: DESCRICOES[codigo],
-      unidade_tempo: 'dias' as const,
+      unidade_tempo: (isHoras ? 'horas' : 'dias') as 'dias' | 'horas',
       media_global: isKpi05NoData ? null : +baseMedia.toFixed(1),
       n_global: isKpi05NoData ? 0 : Math.floor(N_GLOBAL[codigo] * fator),
-      breakdown: isKpi05NoData ? [] : gerarBreakdown(baseMedia, codigo, groupBy),
+      breakdown: isKpi05NoData || isHoras ? [] : gerarBreakdown(baseMedia, codigo, groupBy),
     }
   })
 

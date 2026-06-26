@@ -1,28 +1,17 @@
 <script setup lang="ts">
-import UnitSelector from '@/components/ui/UnitSelector.vue'
 import FilterBar from '@/components/ui/FilterBar.vue'
 import KpiGrid from '@/components/kpis/KpiGrid.vue'
 </script>
 
 <template>
   <div class="flex flex-col gap-6">
-    <!-- Cabeçalho da tela -->
     <div>
-      <h1 class="text-2xl font-bold text-text dark:text-text-dark">
-        Dashboard
-      </h1>
+      <h1 class="text-2xl font-bold text-text dark:text-text-dark tracking-tight">Dashboard</h1>
       <p class="text-sm text-text-muted dark:text-text-dark-muted mt-0.5">
         Tempos médios da jornada assistencial · HC-UFPE
       </p>
     </div>
-
-    <!-- Filtros globais -->
     <FilterBar />
-
-    <!-- Seletor de unidade -->
-    <UnitSelector />
-
-    <!-- Grid de KPIs -->
     <KpiGrid />
   </div>
 </template>

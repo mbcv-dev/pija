@@ -47,6 +47,8 @@ Lista crua de eventos (consultas, exames, internações etc.), com filtros e pag
 | `limit` | quantos por página (1 a 500, padrão 50) | `limit=20` |
 | `offset` | quantos pular (paginação, padrão 0) | `offset=40` |
 
+> **Pendência (Fase 7 → Fase 4/6):** a tela **Jornada** precisa buscar os eventos de **um** paciente. O contrato atual não tem filtro `paciente_id`. Para conectar a Jornada ao backend real, adicionar o filtro `paciente_id` ao `GET /eventos` (ou um endpoint `/jornada/{paciente_id}`). Hoje a Jornada roda sobre mock.
+
 **Exemplo de resposta:**
 ```json
 {

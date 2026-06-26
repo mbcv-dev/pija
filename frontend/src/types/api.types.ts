@@ -6,6 +6,7 @@
 // ── Parâmetros de filtro compartilhados ─────────────────────
 
 export interface BaseFilterParams {
+  grupo?: string
   unidade?: string
   especialidade?: string
   data_inicio?: string  // YYYY-MM-DD
@@ -14,7 +15,7 @@ export interface BaseFilterParams {
 
 // ── KPIs ─────────────────────────────────────────────────────
 
-export type KpiCode = 'KPI-01' | 'KPI-03' | 'KPI-05' | 'KPI-06' | 'KPI-07'
+export type KpiCode = 'KPI-01' | 'KPI-03' | 'KPI-05' | 'KPI-06' | 'KPI-07' | 'KPI-07B'
 export type GroupBy = 'unidade' | 'especialidade'
 
 export interface KpiParams extends BaseFilterParams {
@@ -31,7 +32,7 @@ export interface BreakdownItem {
 export interface KpiItem {
   codigo: KpiCode
   descricao: string
-  unidade_tempo: 'dias'
+  unidade_tempo: 'dias' | 'horas'
   media_global: number | null  // null = sem dados para o recorte
   n_global: number
   breakdown: BreakdownItem[]   // já vem ordenado maior → menor
@@ -101,24 +102,32 @@ export interface EventosResponse {
 
 export interface KpiMeta {
   label: string
+  /** chave de ícone para o componente Icon */
   icon: string
   aviso?: string
   nota?: string
+  /** meta em horas (só KPI-07B) */
+  metaHoras?: number
 }
 
 export const KPI_META: Record<KpiCode, KpiMeta> = {
-  'KPI-01': { label: 'Prontuário → 1º Atendimento', icon: '📋' },
-  'KPI-03': { label: 'Agendamento → Consulta',      icon: '🗓️' },
+  'KPI-01': { label: 'Prontuário → 1º evento assistencial', icon: 'clipboard' },
+  'KPI-03': { label: 'Agendamento → realização da consulta', icon: 'calendar' },
   'KPI-05': {
-    label: 'Solicitação → Exame',
-    icon: '🔬',
+    label: 'Solicitação → realização do exame',
+    icon: 'flask',
     aviso: 'Dados de exames limitados a jan–mai/2026',
   },
-  'KPI-06': { label: 'Última Consulta → Internação', icon: '🏥' },
+  'KPI-06': { label: 'Última consulta → internação', icon: 'hospital' },
   'KPI-07': {
-    label: 'Permanência na Internação',
-    icon: '🛏️',
+    label: 'Permanência no leito',
+    icon: 'bed',
     nota: 'Permanência no leito, não tempo até alta médica',
+  },
+  'KPI-07B': {
+    label: 'Alta médica → saída do leito',
+    icon: 'bed',
+    metaHoras: 4,
   },
 }
 
@@ -145,3 +154,15 @@ export const ESPECIALIDADES = [
   'OBSTETRÍCIA',
   'CIRURGIA GERAL',
 ] as const
+
+export const GRUPOS = [
+  'Ambulatorial',
+  'Internação',
+  'Análises Clínicas',
+  'Diagnóstico por Imagem',
+  'Anatomia Patológica',
+  'Procedimental',
+  'Serviços de Apoio',
+] as const
+
+export type Grupo = typeof GRUPOS[number]

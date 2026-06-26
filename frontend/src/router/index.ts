@@ -1,32 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
 import GargalosView from '@/views/GargalosView.vue'
-import EventosView from '@/views/EventosView.vue'
+import JornadaView from '@/views/JornadaView.vue'
 
 const routes = [
-  {
-    path: '/',
-    redirect: '/dashboard',
-  },
-  {
-    path: '/dashboard',
-    name: 'dashboard',
-    component: DashboardView,
-    meta: { title: 'Dashboard — PIJA' },
-  },
-  {
-    path: '/gargalos',
-    name: 'gargalos',
-    component: GargalosView,
-    meta: { title: 'Gargalos — PIJA' },
-  },
-  {
-    path: '/eventos',
-    name: 'eventos',
-    component: EventosView,
-    meta: { title: 'Eventos — PIJA' },
-  },
-  // Fase 3: { path: '/login', name: 'login', component: LoginView }
+  { path: '/', redirect: '/dashboard' },
+  { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { title: 'Dashboard — PIJA' } },
+  { path: '/gargalos', name: 'gargalos', component: GargalosView, meta: { title: 'Gargalos — PIJA' } },
+  { path: '/jornada', name: 'jornada', component: JornadaView, meta: { title: 'Jornada — PIJA' } },
+  { path: '/eventos', redirect: '/jornada' },
 ]
 
 const router = createRouter({
@@ -35,10 +17,8 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-// Atualizar title da página na navegação
 router.afterEach((to) => {
-  const title = to.meta.title as string | undefined
-  document.title = title ?? 'PIJA — Jornada Assistencial'
+  document.title = (to.meta.title as string | undefined) ?? 'PIJA — Jornada Assistencial'
 })
 
 export default router

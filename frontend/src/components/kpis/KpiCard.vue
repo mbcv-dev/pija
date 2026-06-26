@@ -1,151 +1,78 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { computed } from 'vue'
 import type { KpiItem } from '@/types/api.types'
 import { KPI_META } from '@/types/api.types'
+import { formatDuration, formatCount } from '@/lib/format'
+import { intensityLevel, intensityBarClass } from '@/lib/intensity'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import Icon from '@/components/ui/Icon.vue'
+import Tooltip from '@/components/ui/Tooltip.vue'
 import KpiBreakdownBar from './KpiBreakdownBar.vue'
 
-const props = defineProps<{
-  kpi: KpiItem
-}>()
+const props = defineProps<{ kpi: KpiItem; submetric?: KpiItem }>()
 
-// ── Count-up animation ────────────────────────────────────────
+const meta = computed(() => KPI_META[props.kpi.codigo])
+const subMeta = computed(() => (props.submetric ? KPI_META[props.submetric.codigo] : null))
 
-const displayValue = ref<number | null>(null)
-const animating    = ref(false)
-
-function animateCountUp(target: number | null): void {
-  if (target === null) {
-    displayValue.value = null
-    return
-  }
-
-  animating.value = true
-  const duration  = 600
-  const steps     = 30
-  const stepMs    = duration / steps
-  const increment = target / steps
-  let current     = 0
-  let step        = 0
-
-  const timer = setInterval(() => {
-    step++
-    current = step >= steps ? target : increment * step
-    displayValue.value = +current.toFixed(1)
-    if (step >= steps) {
-      clearInterval(timer)
-      animating.value = false
-    }
-  }, stepMs)
-}
-
-onMounted(() => animateCountUp(props.kpi.media_global))
-watch(() => props.kpi.media_global, (val) => animateCountUp(val))
-
-// ── Helpers ───────────────────────────────────────────────────
-
-const meta = KPI_META[props.kpi.codigo]
-
-function formatN(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} M`
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(0)} mil`
-  return String(n)
-}
-
-function formatMedia(v: number): string {
-  return v % 1 === 0 ? `${v}` : v.toFixed(1)
-}
+// Indicador de meta do KPI-07B (≤4h = ok). Nível de intensidade 0..4 em [0, 2*meta].
+const subBarClass = computed(() => {
+  if (!props.submetric || props.submetric.media_global === null || !subMeta.value?.metaHoras) return 'bg-primary'
+  const lvl = intensityLevel(props.submetric.media_global, 0, subMeta.value.metaHoras * 2)
+  return intensityBarClass(lvl)
+})
+const subBarRatio = computed(() => {
+  if (!props.submetric || props.submetric.media_global === null || !subMeta.value?.metaHoras) return 0
+  return Math.min(1, props.submetric.media_global / (subMeta.value.metaHoras * 2))
+})
+const subMeetsTarget = computed(() => {
+  if (!props.submetric || props.submetric.media_global === null || !subMeta.value?.metaHoras) return false
+  return props.submetric.media_global <= subMeta.value.metaHoras
+})
 </script>
 
 <template>
-  <article
-    class="rounded-2xl border border-border dark:border-border-dark
-           bg-surface dark:bg-surface-dark shadow-card
-           hover:shadow-card-hover hover:-translate-y-0.5
-           transition-all duration-300 p-5 flex flex-col gap-4 animate-fade-in"
-  >
-    <!-- Cabeçalho: código + título -->
+  <BaseCard hover class="flex flex-col gap-4 animate-fade-in">
+    <!-- Cabeçalho: ícone + título descritivo + aviso discreto -->
     <header class="flex items-start gap-3">
-      <div
-        class="flex-shrink-0 w-9 h-9 rounded-xl bg-primary/10 dark:bg-primary/20
-               flex items-center justify-center text-lg leading-none"
-      >
-        {{ meta.icon }}
-      </div>
-      <div class="min-w-0 flex-1">
-        <div class="flex items-center gap-2 flex-wrap">
-          <span
-            class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold
-                   bg-primary/10 text-primary tracking-wide"
-          >
-            {{ kpi.codigo }}
-          </span>
-          <!-- Badge de aviso KPI-05 -->
-          <span
-            v-if="meta.aviso"
-            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]
-                   bg-caution/10 text-caution"
-            :title="meta.aviso"
-          >
-            ⚠️ dados limitados
-          </span>
-        </div>
-        <h2
-          class="mt-1 text-sm font-semibold text-text dark:text-text-dark leading-snug"
-        >
-          {{ meta.label }}
-        </h2>
-      </div>
+      <span class="shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+        <Icon :name="meta.icon" :size="18" />
+      </span>
+      <h2 class="min-w-0 flex-1 text-sm font-semibold text-text dark:text-text-dark leading-snug">
+        {{ kpi.descricao }}
+      </h2>
+      <Tooltip v-if="meta.aviso || meta.nota" :text="meta.aviso ?? meta.nota ?? ''" />
     </header>
 
-    <!-- Número principal -->
+    <!-- Valor principal -->
     <div>
       <div v-if="kpi.media_global !== null" class="flex items-baseline gap-1.5">
-        <span
-          class="text-3xl font-bold text-text dark:text-text-dark tabular-nums"
-          :class="{ 'animate-count-up': animating }"
-        >
-          {{ displayValue !== null ? formatMedia(displayValue) : '—' }}
+        <span class="text-3xl font-bold tabular-nums text-text dark:text-text-dark">
+          {{ formatDuration(kpi.media_global, kpi.unidade_tempo) }}
         </span>
-        <span class="text-sm text-text-muted dark:text-text-dark-muted">dias</span>
       </div>
-      <!-- Estado sem dados -->
-      <div
-        v-else
-        class="flex items-center gap-2 py-1"
-      >
-        <span class="text-2xl font-bold text-text-faint dark:text-text-dark-muted">—</span>
-        <span class="text-xs text-text-faint dark:text-text-dark-muted italic">sem dados</span>
-      </div>
-
-      <!-- Baseado em N casos -->
-      <p class="text-xs text-text-muted dark:text-text-dark-muted mt-0.5">
-        <template v-if="kpi.n_global > 0">
-          baseado em {{ formatN(kpi.n_global) }} casos
-        </template>
-        <template v-else>
-          nenhum caso no recorte
-        </template>
+      <span v-else class="text-sm italic text-text-faint dark:text-text-dark-muted">sem dados no recorte</span>
+      <p class="text-xs text-text-muted dark:text-text-dark-muted mt-1">
+        {{ kpi.n_global > 0 ? `baseado em ${formatCount(kpi.n_global)} casos` : 'nenhum caso no recorte' }}
       </p>
     </div>
 
     <!-- Breakdown -->
-    <div v-if="kpi.breakdown.length > 0">
-      <div class="flex items-center gap-2 mb-2.5">
-        <div class="flex-1 h-px bg-border dark:bg-border-dark" />
-        <span class="text-[10px] font-semibold text-text-faint dark:text-text-dark-muted uppercase tracking-widest">
-          Breakdown
-        </span>
-        <div class="flex-1 h-px bg-border dark:bg-border-dark" />
-      </div>
-      <KpiBreakdownBar :items="kpi.breakdown" :max-items="5" />
-    </div>
+    <KpiBreakdownBar v-if="kpi.breakdown.length > 0" :items="kpi.breakdown" :max-items="5" :unit="kpi.unidade_tempo" />
 
-    <!-- Nota de rodapé KPI-07 -->
-    <p
-      v-if="meta.nota"
-      class="text-[11px] text-text-faint dark:text-text-dark-muted italic border-t border-border dark:border-border-dark pt-2"
-    >
-      ℹ️ {{ meta.nota }}
-    </p>
-  </article>
+    <!-- Sub-métrica aninhada (KPI-07B: alta médica → saída, meta 4h) -->
+    <div v-if="submetric" class="border-t border-border dark:border-border-dark pt-3">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-xs font-medium text-text-muted dark:text-text-dark-muted">{{ submetric.descricao }}</span>
+        <span class="text-sm font-semibold tabular-nums text-text dark:text-text-dark">
+          {{ formatDuration(submetric.media_global, submetric.unidade_tempo) }}
+        </span>
+      </div>
+      <div class="mt-1.5 h-2 rounded-full bg-surface-offset dark:bg-surface-dark-offset overflow-hidden">
+        <div class="h-full rounded-full transition-all duration-500" :class="subBarClass" :style="{ width: `${(subBarRatio * 100).toFixed(1)}%` }" />
+      </div>
+      <p class="mt-1 text-[11px]" :class="subMeetsTarget ? 'text-success' : 'text-warning'">
+        meta: {{ subMeta?.metaHoras }}h · {{ subMeetsTarget ? 'dentro da meta' : 'acima da meta' }}
+      </p>
+    </div>
+  </BaseCard>
 </template>

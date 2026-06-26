@@ -1,64 +1,39 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useKpiStore } from '@/stores/useKpiStore'
 import KpiCard from './KpiCard.vue'
-import SkeletonCard from '@/components/ui/SkeletonCard.vue'
-import EmptyState from '@/components/ui/EmptyState.vue'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import Skeleton from '@/components/ui/Skeleton.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
 
-const kpiStore = useKpiStore()
+const store = useKpiStore()
+
+const submetric = computed(() => store.kpis.find((k) => k.codigo === 'KPI-07B'))
+const mainKpis = computed(() => store.kpis.filter((k) => k.codigo !== 'KPI-07B'))
 
 onMounted(() => {
-  kpiStore.initWatcher()
-  if (kpiStore.kpis.length === 0 && !kpiStore.loading) {
-    void kpiStore.fetchKpis()
-  }
+  store.initWatcher()
+  void store.fetchKpis()
 })
 </script>
 
 <template>
-  <section>
-    <!-- Loading: 5 skeleton cards -->
-    <div
-      v-if="kpiStore.loading"
-      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4"
-    >
-      <SkeletonCard v-for="i in 5" :key="i" :show-breakdown="true" />
+  <div>
+    <div v-if="store.loading" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <BaseCard v-for="n in 6" :key="n" class="flex flex-col gap-4">
+        <Skeleton height="h-9" rounded="rounded-xl" />
+        <Skeleton height="h-8" />
+        <Skeleton height="h-16" />
+      </BaseCard>
     </div>
-
-    <!-- Error -->
-    <div
-      v-else-if="kpiStore.error"
-      class="rounded-2xl border border-border dark:border-border-dark bg-surface dark:bg-surface-dark"
-    >
-      <ErrorState
-        :message="kpiStore.error"
-        @retry="kpiStore.fetchKpis()"
-      />
-    </div>
-
-    <!-- Empty -->
-    <div
-      v-else-if="kpiStore.kpis.length === 0"
-      class="rounded-2xl border border-border dark:border-border-dark bg-surface dark:bg-surface-dark"
-    >
-      <EmptyState
-        title="Nenhum KPI disponível"
-        description="Não há dados de KPI para os filtros selecionados."
-        icon="📊"
-      />
-    </div>
-
-    <!-- Grid de KPIs -->
-    <div
-      v-else
-      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-    >
+    <ErrorState v-else-if="store.error" :message="store.error" @retry="store.fetchKpis()" />
+    <EmptyState v-else-if="mainKpis.length === 0" title="Sem KPIs no recorte" description="Ajuste os filtros para ver os indicadores." />
+    <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <KpiCard
-        v-for="kpi in kpiStore.kpis"
-        :key="kpi.codigo"
-        :kpi="kpi"
+        v-for="kpi in mainKpis" :key="kpi.codigo" :kpi="kpi"
+        :submetric="kpi.codigo === 'KPI-07' ? submetric : undefined"
       />
     </div>
-  </section>
+  </div>
 </template>

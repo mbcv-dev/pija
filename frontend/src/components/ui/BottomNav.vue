@@ -1,51 +1,24 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { RouterLink } from 'vue-router'
+import Icon from './Icon.vue'
 
-const route = useRoute()
-
-const navLinks = [
-  { to: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { to: '/gargalos',  label: 'Gargalos',  icon: '🔴' },
-  { to: '/eventos',   label: 'Eventos',   icon: '📋' },
+const items = [
+  { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/gargalos',  label: 'Gargalos',  icon: 'gargalos' },
+  { to: '/jornada',   label: 'Jornada',   icon: 'jornada' },
 ]
-
-function isActive(path: string): boolean {
-  return route.path.startsWith(path)
-}
 </script>
 
 <template>
-  <!-- Bottom nav bar — só visível em mobile (md:hidden) -->
-  <nav
-    class="fixed bottom-0 left-0 right-0 z-40 flex md:hidden
-           bg-surface dark:bg-surface-dark
-           border-t border-border dark:border-border-dark
-           safe-area-inset-bottom"
-    aria-label="Navegação principal"
-  >
+  <nav class="md:hidden fixed bottom-0 inset-x-0 z-30 h-16 flex items-stretch bg-surface/95 dark:bg-surface-dark/95 backdrop-blur border-t border-border dark:border-border-dark">
     <RouterLink
-      v-for="link in navLinks"
-      :key="link.to"
-      :to="link.to"
-      :id="`mobile-nav-${link.label.toLowerCase()}`"
-      class="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5
-             min-h-[56px] transition-colors duration-150"
-      :class="isActive(link.to)
-        ? 'text-primary'
-        : 'text-text-muted dark:text-text-dark-muted active:text-primary'"
+      v-for="item in items" :key="item.to" :to="item.to"
+      class="flex-1 flex flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors"
+      active-class="text-primary"
+      :class="'text-text-muted dark:text-text-dark-muted'"
     >
-      <!-- Indicador de ativo (pill acima do ícone) -->
-      <span
-        class="w-8 h-0.5 rounded-full mb-0.5 transition-all duration-200"
-        :class="isActive(link.to) ? 'bg-primary' : 'bg-transparent'"
-      />
-      <span class="text-xl leading-none">{{ link.icon }}</span>
-      <span
-        class="text-[10px] font-semibold tracking-wide mt-0.5"
-        :class="isActive(link.to) ? 'text-primary' : ''"
-      >
-        {{ link.label }}
-      </span>
+      <Icon :name="item.icon" :size="20" />
+      {{ item.label }}
     </RouterLink>
   </nav>
 </template>
