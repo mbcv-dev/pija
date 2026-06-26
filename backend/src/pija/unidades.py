@@ -16,7 +16,8 @@ GRUPO_ANATOMIA_PATOLOGICA = "Anatomia Patológica"
 GRUPO_PROCEDIMENTAL = "Procedimental"
 GRUPO_AMBULATORIAL = "Ambulatorial"
 GRUPO_INTERNACAO = "Internação"
-GRUPO_OUTROS = "Outros"  # serviços de apoio/multiprofissionais — validar classificação com o HC
+GRUPO_SERVICOS_APOIO = "Serviços de Apoio"  # serviços de apoio/multiprofissionais (decisão HC 2026-06-26)
+GRUPO_OUTROS = GRUPO_SERVICOS_APOIO  # alias retrocompatível
 
 # Mapeamento unidade → grupo
 UNIDADE_PARA_GRUPO: dict[str, str] = {

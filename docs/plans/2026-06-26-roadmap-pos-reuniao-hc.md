@@ -38,6 +38,9 @@ Estes são majoritariamente **contagens/percentuais** (não médias de tempo). C
 5. **Procedimentos**
    - Nº de cirurgias realizadas, por especialidade. → ✅ (CIRURGIA)
    - Nº de **partos** realizados. → ⚠️ depende de identificar parto (tipo de cirurgia/procedimento ou especialidade obstétrica)
+6. **Cancelamentos** (sugestão do NIR — 2026-06-26): nº de cancelamentos de consultas, exames e procedimentos/cirurgias.
+   - Exames: `situacao = 'CANCELADO'` ✅. Cirurgias/procedimentos: `cancelada = 1` / `situacao = 'CANC'` ✅.
+   - Consultas: ⚠️ `Situação da Consulta` na amostra só mostrou "MARCADA" — fazer scan completo para localizar o estado de cancelamento.
 
 ## C. Mudanças de produto (UX / front)
 
@@ -72,7 +75,7 @@ Confirmado: o PIJA mantém **seu próprio banco analítico** alimentado em lote 
 - [ ] **Spike de dados** contra os CSVs/DB reais: confirmar existência e preenchimento de — coluna de alta médica (`vw_internacoes`), tipo de consulta (`vw_consultas`), flag/identificação de UTI e parto, `data_hora_liberacao` (exames). Documentar achados em `DADOS-ESTADO.md`.
 
 ### Fase 1 — Fundação de dados (ETL / modelo)
-- [x] **Popular `grupo`** no fato — ✅ feito (2026-06-26). `get_grupo` reescrito (normaliza + mapa + regras + "Outros"); `normalizar_unidade` corrige zero-width/typo; mappers atualizados; backfill no DB real (`backend/scripts/backfill_grupo.py`). **Cobertura: 100% das linhas com unidade** (84,3% do total; resto é PRONTUARIO sem unidade). Distribuição: Análises Clínicas 896k, Ambulatorial 518k, Internação 247k, Procedimental 121k, Diagnóstico/Imagem 33k, Anatomia Patológica 12k, **Outros 80k (3,5%)**. ⚠️ Os ~20 serviços de apoio no bucket **"Outros"** (fisioterapia, nutrição, hospital-dia, urgência…) precisam de **validação de classificação com o HC**.
+- [x] **Popular `grupo`** no fato — ✅ feito (2026-06-26). `get_grupo` reescrito (normaliza + mapa + regras + "Outros"); `normalizar_unidade` corrige zero-width/typo; mappers atualizados; backfill no DB real (`backend/scripts/backfill_grupo.py`). **Cobertura: 100% das linhas com unidade** (84,3% do total; resto é PRONTUARIO sem unidade). Distribuição: Análises Clínicas 896k, Ambulatorial 518k, Internação 247k, Procedimental 121k, Diagnóstico/Imagem 33k, Anatomia Patológica 12k, **Serviços de Apoio 80k (3,5%)**. O bucket de apoio (fisioterapia, nutrição, hospital-dia, urgência…) foi nomeado **"Serviços de Apoio"** (decisão HC 2026-06-26).
 - [ ] **Capturar alta médica real** no mapper de internação (separar de saída efetiva) + re-ETL das internações.
 - [ ] Categorização de unidades por tipo (ambulatório / executor de exame / internação / UTI) consolidada a partir do `grupo`.
 - [ ] (se os campos existirem) Mapear tipo de consulta e identificação de parto no fato.

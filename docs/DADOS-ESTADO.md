@@ -245,8 +245,11 @@ Decisão: gerar evento ALTA **só se `dthr_fim` não-nulo**.
 | **`grupo` no DB real** | NULL em todas as linhas (ETL da F1 anterior à coluna). | ⚠️ **Popular** via `UNIDADE_PARA_GRUPO` (UPDATE ou re-ETL) — pré-requisito de Fase 1. |
 
 ### Pendências remanescentes
-1. **Timestamp da alta médica** — re-solicitar ao HC (bloqueia o gap obstétrico de 4h).
-2. **Consistência de prontuário em escala** — confirmar após carga completa.
+1. **Timestamp da alta médica** — o HC (2026-06-26) afirma ter **alta e saída** e vai **verificar no CSV**. No export atual só há `dthr_inicio`/`dthr_fim`; aguardando eles confirmarem onde está a alta médica (ou novo export). Desbloqueia o gap de 4h do KPI-07.
+2. **Cancelamentos** (sugestão NIR): ⚠️ confirmar o estado de cancelamento de **consultas** (amostra só trouxe "MARCADA"); exames (`CANCELADO`) e cirurgias (`cancelada=1`/`CANC`) já confirmados.
+3. **Consistência de prontuário em escala** — confirmar após carga completa.
+
+> Decisão (2026-06-26): o bucket de unidades de apoio não classificadas chama-se **"Serviços de Apoio"** (antes "Outros").
 
 ---
 
