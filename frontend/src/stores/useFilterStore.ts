@@ -9,6 +9,7 @@ import type { GroupBy } from '@/types/api.types'
 export const useFilterStore = defineStore('filter', () => {
   // ── Estado ──────────────────────────────────────────────────
   const unidade      = ref<string | null>(null)
+  const grupo        = ref<string | null>(null)
   const especialidade = ref<string | null>(null)
   const dataInicio   = ref<string | null>(null)
   const dataFim      = ref<string | null>(null)
@@ -18,6 +19,7 @@ export const useFilterStore = defineStore('filter', () => {
 
   /** Objeto de filtros prontos para enviar à API */
   const activeFilters = computed(() => ({
+    grupo:        grupo.value        ?? undefined,
     unidade:      unidade.value      ?? undefined,
     especialidade: especialidade.value ?? undefined,
     data_inicio:  dataInicio.value   ?? undefined,
@@ -28,6 +30,7 @@ export const useFilterStore = defineStore('filter', () => {
   /** Contagem de filtros ativos (excluindo group_by) */
   const activeCount = computed(() => {
     let count = 0
+    if (grupo.value)        count++
     if (unidade.value)      count++
     if (especialidade.value) count++
     if (dataInicio.value)   count++
@@ -40,6 +43,10 @@ export const useFilterStore = defineStore('filter', () => {
   /** Toggle: clicar na unidade ativa a deseleciona (volta para "Todas") */
   function setUnidade(u: string | null): void {
     unidade.value = unidade.value === u ? null : u
+  }
+
+  function setGrupo(g: string | null): void {
+    grupo.value = grupo.value === g ? null : g
   }
 
   function setEspecialidade(e: string | null): void {
@@ -60,6 +67,7 @@ export const useFilterStore = defineStore('filter', () => {
 
   function reset(): void {
     unidade.value       = null
+    grupo.value         = null
     especialidade.value = null
     dataInicio.value    = null
     dataFim.value       = null
@@ -68,6 +76,7 @@ export const useFilterStore = defineStore('filter', () => {
 
   return {
     unidade,
+    grupo,
     especialidade,
     dataInicio,
     dataFim,
@@ -75,6 +84,7 @@ export const useFilterStore = defineStore('filter', () => {
     activeFilters,
     activeCount,
     setUnidade,
+    setGrupo,
     setEspecialidade,
     setDataInicio,
     setDataFim,

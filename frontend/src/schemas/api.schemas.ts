@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 // ── Schemas compartilhados ─────────────────────────────────────
 
-const KpiCodeSchema = z.enum(['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07'])
+const KpiCodeSchema = z.enum(['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B'])
 const GroupBySchema = z.enum(['unidade', 'especialidade'])
 
 // ── KPIs ──────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ export const BreakdownItemSchema = z.object({
 export const KpiItemSchema = z.object({
   codigo: KpiCodeSchema,
   descricao: z.string(),
-  unidade_tempo: z.literal('dias'),
+  unidade_tempo: z.enum(['dias', 'horas']),
   media_global: z.number().nullable(),
   n_global: z.number().int().nonnegative(),
   breakdown: z.array(BreakdownItemSchema),
