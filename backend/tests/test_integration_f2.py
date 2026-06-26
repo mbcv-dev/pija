@@ -7,7 +7,7 @@ from pija.main import app
 
 @pytest.fixture
 async def client(async_engine):
-    """HTTP client pointing at app with fixture DB."""
+    """HTTP client pointing at app with (empty) fixture DB engine."""
     app.state.session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
@@ -31,13 +31,19 @@ async def test_kpis_retorna_200(client):
     assert r.status_code == 200
     data = r.json()
     assert len(data["kpis"]) == 5
+    assert all("breakdown" in k for k in data["kpis"])
 
 
 async def test_gargalos_retorna_200(client):
     r = await client.get("/api/v1/gargalos")
     assert r.status_code == 200
     data = r.json()
-    assert "ranking" in data
+    assert "items" in data
+
+
+async def test_kpis_kpi_codes_invalido_400(client):
+    r = await client.get("/api/v1/kpis/tempos-medios?kpi_codes=KPI-99")
+    assert r.status_code == 400
 
 
 async def test_eventos_filtro_invalido_422(client):

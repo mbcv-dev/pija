@@ -2,16 +2,18 @@ SELECT
     evento_id,
     paciente_id,
     tipo_entidade,
+    entidade_id,
     timestamp_principal,
-    grupo,
-    especialidade,
-    situacao
+    COALESCE(unidade, '')       AS unidade,
+    COALESCE(especialidade, '') AS especialidade,
+    COALESCE(tipo_evento, '')   AS tipo_evento,
+    COALESCE(situacao, '')      AS situacao
 FROM fato_eventos_jornada
 WHERE deleted_at IS NULL
-  AND (:grupo         IS NULL OR grupo         = :grupo)
+  AND (:unidade       IS NULL OR unidade       = :unidade)
   AND (:especialidade IS NULL OR especialidade = :especialidade)
   AND (:tipo_entidade IS NULL OR tipo_entidade = :tipo_entidade)
   AND (:data_inicio   IS NULL OR timestamp_principal >= :data_inicio)
   AND (:data_fim      IS NULL OR timestamp_principal <= :data_fim)
-ORDER BY timestamp_principal DESC
+ORDER BY timestamp_principal DESC, evento_id
 LIMIT :limit OFFSET :offset

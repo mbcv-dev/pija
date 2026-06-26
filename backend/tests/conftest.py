@@ -31,11 +31,15 @@ async def async_engine(tmp_path):
 
 @pytest.fixture
 async def fixture_db_session(async_engine):
-    """Session pré-populada com 15 eventos determinísticos para testes de KPI/endpoints."""
+    """Session pré-populada com 17 eventos determinísticos para testes de KPI/endpoints.
+
+    Contrato F2 alinhado ao frontend: a dimensão de agrupamento é `unidade`
+    (preenchida abaixo; `grupo` também é mantido para não perder o dado do ETL).
+    """
     factory = async_sessionmaker(async_engine, expire_on_commit=False)
 
     events = [
-        # PRONTUARIOS
+        # PRONTUARIOS (006 e 007 sem evento clínico → fora do KPI-01)
         FatoEvento(evento_id="P-001", paciente_id="001", tipo_entidade="PRONTUARIO", entidade_id="001", timestamp_principal="2024-01-01", dt_carga="2024-01-01"),
         FatoEvento(evento_id="P-002", paciente_id="002", tipo_entidade="PRONTUARIO", entidade_id="002", timestamp_principal="2024-01-01", dt_carga="2024-01-01"),
         FatoEvento(evento_id="P-003", paciente_id="003", tipo_entidade="PRONTUARIO", entidade_id="003", timestamp_principal="2024-01-01", dt_carga="2024-01-01"),
@@ -46,34 +50,43 @@ async def fixture_db_session(async_engine):
         # CONSULTAS
         FatoEvento(evento_id="C-001", paciente_id="001", tipo_entidade="CONSULTA", entidade_id="C001",
                    timestamp_principal="2024-01-10", timestamp_agendamento="2024-01-10",
-                   timestamp_realizacao="2024-01-20", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA",
+                   timestamp_realizacao="2024-01-20", unidade="CARDIOLOGIA", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA",
                    situacao="PACIENTE ATENDIDO", dt_carga="2024-01-01"),
         FatoEvento(evento_id="C-002", paciente_id="002", tipo_entidade="CONSULTA", entidade_id="C002",
                    timestamp_principal="2024-01-15", timestamp_agendamento="2024-01-15",
-                   timestamp_realizacao="2024-01-25", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA",
+                   timestamp_realizacao="2024-01-25", unidade="CARDIOLOGIA", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA",
                    situacao="PACIENTE ATENDIDO", dt_carga="2024-01-01"),
         FatoEvento(evento_id="C-003", paciente_id="003", tipo_entidade="CONSULTA", entidade_id="C003",
                    timestamp_principal="2024-01-21", timestamp_agendamento="2024-01-21",
-                   timestamp_realizacao="2024-01-30", grupo="ORTOPEDIA", especialidade="ORTOPEDIA",
+                   timestamp_realizacao="2024-01-30", unidade="ORTOPEDIA", grupo="ORTOPEDIA", especialidade="ORTOPEDIA",
                    situacao="PACIENTE ATENDIDO", dt_carga="2024-01-01"),
         FatoEvento(evento_id="C-004", paciente_id="004", tipo_entidade="CONSULTA", entidade_id="C004",
                    timestamp_principal="2024-01-08", timestamp_agendamento="2024-01-08",
-                   timestamp_realizacao="2024-01-15", grupo="ORTOPEDIA", especialidade="ORTOPEDIA",
+                   timestamp_realizacao="2024-01-15", unidade="ORTOPEDIA", grupo="ORTOPEDIA", especialidade="ORTOPEDIA",
                    situacao="PACIENTE ATENDIDO", dt_carga="2024-01-01"),
         FatoEvento(evento_id="C-005", paciente_id="005", tipo_entidade="CONSULTA", entidade_id="C005",
                    timestamp_principal="2024-01-11", timestamp_agendamento="2024-01-11",
-                   timestamp_realizacao="2024-01-21", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA",
+                   timestamp_realizacao="2024-01-21", unidade="CARDIOLOGIA", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA",
                    situacao="PACIENTE ATENDIDO", dt_carga="2024-01-01"),
         # INTERNACOES
         FatoEvento(evento_id="I-001", paciente_id="001", tipo_entidade="INTERNACAO", entidade_id="I001",
                    timestamp_principal="2024-02-05", timestamp_alta_administrativa="2024-02-10",
-                   grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA", dt_carga="2024-01-01"),
+                   unidade="CARDIOLOGIA", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA", dt_carga="2024-01-01"),
         FatoEvento(evento_id="I-002", paciente_id="002", tipo_entidade="INTERNACAO", entidade_id="I002",
                    timestamp_principal="2024-02-05", timestamp_alta_administrativa="2024-02-08",
-                   grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA", dt_carga="2024-01-01"),
+                   unidade="CARDIOLOGIA", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA", dt_carga="2024-01-01"),
         FatoEvento(evento_id="I-003", paciente_id="003", tipo_entidade="INTERNACAO", entidade_id="I003",
                    timestamp_principal="2024-02-05", timestamp_alta_administrativa="2024-02-12",
-                   grupo="ORTOPEDIA", especialidade="ORTOPEDIA", dt_carga="2024-01-01"),
+                   unidade="ORTOPEDIA", grupo="ORTOPEDIA", especialidade="ORTOPEDIA", dt_carga="2024-01-01"),
+        # EXAMES (KPI-05)
+        FatoEvento(evento_id="E-001", paciente_id="001", tipo_entidade="EXAME", entidade_id="E001",
+                   timestamp_principal="2024-03-01", timestamp_solicitacao="2024-03-01",
+                   timestamp_realizacao="2024-03-05", unidade="CARDIOLOGIA", grupo="CARDIOLOGIA", especialidade="CARDIOLOGIA",
+                   dt_carga="2024-01-01"),
+        FatoEvento(evento_id="E-002", paciente_id="003", tipo_entidade="EXAME", entidade_id="E002",
+                   timestamp_principal="2024-03-01", timestamp_solicitacao="2024-03-01",
+                   timestamp_realizacao="2024-03-08", unidade="ORTOPEDIA", grupo="ORTOPEDIA", especialidade="ORTOPEDIA",
+                   dt_carga="2024-01-01"),
     ]
 
     async with factory() as session:
