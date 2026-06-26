@@ -18,7 +18,8 @@ DEFAULT_FILE_MAP: dict[str, str] = {
     "vw_pacientes": "vw_pacientes_anonimizado.csv",
     "vw_consultas": "vw_consultas_anonimizado.csv",
     "vw_exames": "vw_exames_anonimizado.csv",
-    "vw_internacoes": "vw_internacoes_anonimizado.csv",
+    # v2: internações com dthr_alta_medica + dt_saida_paciente (nome do arquivo diz 'pacientes' mas conteúdo é internações)
+    "vw_internacoes": "vw_pacientes_anonimizado_v2.csv",
     "vw_cirurgias": "vw_cirurgias_anonimizado.csv",
 }
 
