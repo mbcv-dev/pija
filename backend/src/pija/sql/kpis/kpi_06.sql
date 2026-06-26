@@ -5,6 +5,8 @@ WITH internacoes AS (
       AND deleted_at IS NULL
       AND (:unidade       IS NULL OR unidade       = :unidade)
       AND (:especialidade IS NULL OR especialidade = :especialidade)
+      AND (:grupo IS NULL OR grupo = :grupo)
+      {grupo_scope}
       AND (:data_inicio   IS NULL OR timestamp_principal >= :data_inicio)
       AND (:data_fim      IS NULL OR timestamp_principal <= :data_fim)
 ),

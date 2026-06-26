@@ -43,10 +43,22 @@ class KpisProvider:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    def _scope_fragment(self, code: str) -> str:
+        scope = KPI_GRUPO_SCOPE.get(code) or []
+        if not scope:
+            return ""
+        col = "pd.grupo" if code == "KPI-01" else "grupo"
+        quoted = ", ".join("'" + g.replace("'", "''") + "'" for g in scope)
+        return f"AND {col} IN ({quoted})"
+
     async def compute(self, code: str, group_by: GroupBy, params: dict) -> KpiResult:
         sql_name, descricao = KPI_META[code]
         col = GROUP_COL[group_by]
-        sql = load_sql(sql_name).replace("{group_col}", col)
+        sql = (
+            load_sql(sql_name)
+            .replace("{group_col}", col)
+            .replace("{grupo_scope}", self._scope_fragment(code))
+        )
         rows = (await self._session.execute(text(sql), params)).all()
 
         breakdown: list[KpiBreakdownItem] = []
@@ -80,6 +92,7 @@ class KpisProvider:
         group_by: GroupBy,
         unidade: str | None,
         especialidade: str | None,
+        grupo: str | None,
         data_inicio: str | None,
         data_fim: str | None,
     ) -> KpisResponse:
@@ -87,6 +100,7 @@ class KpisProvider:
         params = dict(
             unidade=unidade,
             especialidade=especialidade,
+            grupo=grupo,
             data_inicio=data_inicio,
             data_fim=data_fim,
         )

@@ -14,6 +14,7 @@ async def get_kpis(
     group_by: GroupBy = Query(GroupBy.unidade, description="Dimensão do breakdown: `unidade` (default) ou `especialidade`."),
     unidade: str | None = Query(None, description="Restringe o cálculo a uma unidade funcional. Ex: `AMBULATORIO X`"),
     especialidade: str | None = Query(None, description="Restringe o cálculo a uma especialidade. Ex: `CARDIOLOGIA`"),
+    grupo: str | None = Query(None, description="Restringe a um grupo assistencial. Ex: `Ambulatorial`, `Internação`."),
     data_inicio: date | None = Query(None, description="Considera apenas eventos a partir desta data. Formato: `YYYY-MM-DD`"),
     data_fim: date | None = Query(None, description="Considera apenas eventos até esta data. Formato: `YYYY-MM-DD`"),
     session: AsyncSession = Depends(get_db),
@@ -28,6 +29,7 @@ async def get_kpis(
         group_by=group_by,
         unidade=unidade,
         especialidade=especialidade,
+        grupo=grupo,
         data_inicio=data_inicio.isoformat() if data_inicio else None,
         data_fim=data_fim.isoformat() if data_fim else None,
     )

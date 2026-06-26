@@ -9,4 +9,6 @@ WHERE deleted_at IS NULL
   AND (:especialidade IS NULL OR especialidade = :especialidade)
   AND (:data_inicio   IS NULL OR timestamp_principal >= :data_inicio)
   AND (:data_fim      IS NULL OR timestamp_principal <= :data_fim)
+  AND (:grupo IS NULL OR grupo = :grupo)
+  {grupo_scope}
 GROUP BY {group_col}

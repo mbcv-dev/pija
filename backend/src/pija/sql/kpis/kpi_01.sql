@@ -11,7 +11,7 @@ primeiro AS (
     GROUP BY paciente_id
 ),
 primeiro_dim AS (
-    SELECT f.paciente_id, MIN(f.evento_id) AS evento_id, f.unidade, f.especialidade
+    SELECT f.paciente_id, MIN(f.evento_id) AS evento_id, f.unidade, f.especialidade, f.grupo
     FROM fato_eventos_jornada f
     INNER JOIN primeiro pe
         ON f.paciente_id = pe.paciente_id
@@ -28,6 +28,8 @@ INNER JOIN primeiro_dim pd ON pd.paciente_id = p.paciente_id
 WHERE JULIANDAY(pe.dt_primeiro) >= JULIANDAY(p.dt_prontuario)
   AND (:unidade       IS NULL OR pd.unidade       = :unidade)
   AND (:especialidade IS NULL OR pd.especialidade = :especialidade)
+  AND (:grupo IS NULL OR pd.grupo = :grupo)
+  {grupo_scope}
   AND (:data_inicio   IS NULL OR pe.dt_primeiro >= :data_inicio)
   AND (:data_fim      IS NULL OR pe.dt_primeiro <= :data_fim)
 GROUP BY pd.{group_col}
