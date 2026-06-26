@@ -1,6 +1,6 @@
 # Deploy do PIJA
 
-> Estado: **frontend** indo para a Vercel (conta `matheus-vieiras-projects-203976e8`, demo com mocks). **Backend** ainda não hospedado — este documento registra as opções e a decisão pendente.
+> Estado: **frontend NO AR** na Vercel → **https://pija-alpha.vercel.app/** (conta `matheus-vieiras-projects-203976e8`, demo com mocks, público). **Backend** ainda não hospedado — este documento registra as opções e a decisão pendente.
 
 ---
 
@@ -73,7 +73,7 @@ Para colocar o backend no ar **rápido** e manter o que já funciona: **Opção 
 ---
 
 ## 5. Próximos passos sugeridos
-1. ✅ Frontend demo na Vercel (mocks).
+1. ✅ Frontend demo na Vercel (mocks) — **https://pija-alpha.vercel.app/** (projeto `pija`, conta matheus-vieira). Auto-deploy a cada push na `main`. Root Directory = `frontend`, preset Vite, Deployment Protection desligada.
 2. Escolher host do backend (recomendo Railway) e empacotar (Dockerfile + estratégia do `.db`).
 3. Configurar CORS no backend.
 4. No Vercel: `VITE_USE_MOCK=false` + `VITE_API_BASE_URL`, redeploy.
