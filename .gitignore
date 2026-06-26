@@ -28,6 +28,9 @@ backend/data/
 .env.local
 backend/.env
 
+# MCP local (config de servidor MCP específico desta máquina/projeto — não compartilhar)
+.mcp.json
+
 # IDE
 .vscode/
 .idea/
