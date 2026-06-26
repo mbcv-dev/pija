@@ -16,13 +16,13 @@ class TestEventosProvider:
         assert result.total == 17
 
     async def test_filtra_por_unidade(self, fixture_db_session):
-        result = await _list(fixture_db_session, unidade="CARDIOLOGIA")
-        # 3 consultas + 2 internacoes + 1 exame CARDIOLOGIA
-        assert result.total == 6
+        result = await _list(fixture_db_session, unidade="9º NORTE")
+        # I-001, I-002 (internações na unidade 9º NORTE)
+        assert result.total == 2
 
     async def test_filtra_por_tipo_entidade(self, fixture_db_session):
         result = await _list(fixture_db_session, tipo_entidade="CONSULTA")
-        assert result.total == 5
+        assert result.total == 6
 
     async def test_campos_nao_nulos_no_item(self, fixture_db_session):
         result = await _list(fixture_db_session, tipo_entidade="PRONTUARIO")
