@@ -29,14 +29,19 @@ def test_maps_internacao_with_alta(sample_rows):
     assert internacao["evento_id"] == "I-2408"
     assert internacao["paciente_id"] == "19249655"
     assert internacao["timestamp_principal"] == "2015-01-01T00:51:00"
+    # alta administrativa (saída física) = dt_saida_paciente
     assert internacao["timestamp_alta_administrativa"] == "2015-01-02T12:23:00"
+    # alta médica real = dthr_alta_medica (separada, com gap p/ a saída física)
+    assert internacao["timestamp_alta_medica"] == "2015-01-02T09:23:00"
     assert internacao["unidade"] == "9º NORTE"
     assert internacao["especialidade"] == "GINECOLOGIA E OBSTETRÍCIA"
     assert internacao["tipo_evento"] == "EMERGENCIA OBSTETRICA"
     assert internacao["situacao"] == "ALTA MÉDICA"
 
     assert alta["evento_id"] == "A-2408"
+    # ALTA (evento) ancorada na saída física
     assert alta["timestamp_principal"] == "2015-01-02T12:23:00"
+    assert alta["timestamp_alta_administrativa"] == "2015-01-02T12:23:00"
     assert alta["tipo_evento"] == "ALTA MÉDICA"
 
 

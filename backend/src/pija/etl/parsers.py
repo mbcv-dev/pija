@@ -30,6 +30,33 @@ def parse_br_datetime(value: str | None) -> str | None:
         return None
 
 
+_DATETIME_FORMATS = (
+    "%d/%m/%Y, %H:%M",       # BR (CSVs originais)
+    "%Y-%m-%d %H:%M:%S.%f",  # ISO com milissegundos (export v2)
+    "%Y-%m-%d %H:%M:%S",     # ISO sem milissegundos
+    "%Y-%m-%d",              # data ISO
+    "%d/%m/%Y",              # data BR
+)
+
+
+def parse_datetime(value: str | None) -> str | None:
+    """Parser flexível: tenta formatos BR e ISO.
+
+    Retorna ISO 'YYYY-MM-DDTHH:MM:SS' ou None (soft-fail).
+    """
+    if value is None:
+        return None
+    s = value.strip()
+    if not s:
+        return None
+    for fmt in _DATETIME_FORMATS:
+        try:
+            return datetime.strptime(s, fmt).strftime("%Y-%m-%dT%H:%M:%S")
+        except ValueError:
+            continue
+    return None
+
+
 def parse_br_date(value: str | None) -> str | None:
     """Converte 'DD/M/YYYY' → 'YYYY-MM-DD' (ISO 8601 date).
 

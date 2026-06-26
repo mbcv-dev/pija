@@ -25,7 +25,11 @@ KPI_META: dict[str, tuple[str, str]] = {
     "KPI-05": ("kpis/kpi_05.sql", "Solicitação → realização (exame)"),
     "KPI-06": ("kpis/kpi_06.sql", "Última consulta → internação subsequente"),
     "KPI-07": ("kpis/kpi_07.sql", "Tempo de permanência no leito"),
+    "KPI-07B": ("kpis/kpi_07b.sql", "Alta médica → saída do leito"),
 }
+
+# code → unidade de tempo das médias (default "dias")
+KPI_UNIDADE_TEMPO: dict[str, str] = {"KPI-07B": "horas"}
 
 # Recorte fixo de grupos por KPI (decisão HC 2026-06-26). Valores vêm de
 # constantes (whitelist) — nunca de entrada do usuário.
@@ -35,6 +39,7 @@ KPI_GRUPO_SCOPE: dict[str, list[str]] = {
     "KPI-05": [GRUPO_ANALISES_CLINICAS, GRUPO_DIAGNOSTICO_IMAGEM, GRUPO_ANATOMIA_PATOLOGICA],
     "KPI-06": [GRUPO_INTERNACAO],
     "KPI-07": [GRUPO_INTERNACAO],
+    "KPI-07B": [GRUPO_INTERNACAO],
 }
 ALL_KPIS: list[str] = list(KPI_META)
 
@@ -80,6 +85,7 @@ class KpisProvider:
         return KpiResult(
             codigo=code,
             descricao=descricao,
+            unidade_tempo=KPI_UNIDADE_TEMPO.get(code, "dias"),
             media_global=media_global,
             n_global=total_n,
             breakdown=breakdown,

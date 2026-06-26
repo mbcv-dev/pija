@@ -30,7 +30,7 @@ async def test_kpis_retorna_200(client):
     r = await client.get("/api/v1/kpis/tempos-medios")
     assert r.status_code == 200
     data = r.json()
-    assert len(data["kpis"]) == 5
+    assert len(data["kpis"]) == 6
     assert all("breakdown" in k for k in data["kpis"])
 
 

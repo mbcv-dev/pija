@@ -19,7 +19,8 @@ def test_csv_dir(tmp_path: Path, fixtures_dir: str) -> Path:
         "vw_pacientes_sample.csv": "vw_pacientes_anonimizado.csv",
         "vw_consultas_sample.csv": "vw_consultas_anonimizado.csv",
         "vw_exames_sample.csv": "vw_exames_anonimizado.csv",
-        "vw_internacoes_sample.csv": "vw_internacoes_anonimizado.csv",
+        # v2: nome do arquivo diz 'pacientes' mas conteúdo é internações (ver DEFAULT_FILE_MAP)
+        "vw_internacoes_sample.csv": "vw_pacientes_anonimizado_v2.csv",
         "vw_cirurgias_sample.csv": "vw_cirurgias_anonimizado.csv",
     }
     for sample_name, target_name in mapping.items():

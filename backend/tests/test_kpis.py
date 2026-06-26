@@ -19,11 +19,20 @@ async def _kpis(session, **over):
 
 
 class TestKpisProvider:
-    async def test_retorna_5_kpis(self, fixture_db_session):
+    async def test_retorna_6_kpis(self, fixture_db_session):
         kpis = await _kpis(fixture_db_session)
-        assert set(kpis) == {"KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07"}
-        for k in kpis.values():
-            assert k.unidade_tempo == "dias"
+        assert set(kpis) == {"KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B"}
+        for code, k in kpis.items():
+            expected_unit = "horas" if code == "KPI-07B" else "dias"
+            assert k.unidade_tempo == expected_unit
+
+    async def test_kpi_07b_alta_saida_horas(self, fixture_db_session):
+        k = (await _kpis(fixture_db_session))["KPI-07B"]
+        assert k.unidade_tempo == "horas"
+        assert k.media_global == pytest.approx(16.0, abs=1e-9)
+        assert k.n_global == 3
+        assert _bd(k)["9º NORTE"] == (pytest.approx(12.0), 2)
+        assert _bd(k)["10º SUL"] == (pytest.approx(24.0), 1)
 
     async def test_kpi_01(self, fixture_db_session):
         k = (await _kpis(fixture_db_session))["KPI-01"]
