@@ -245,7 +245,7 @@ Decisão: gerar evento ALTA **só se `dthr_fim` não-nulo**.
 | **`grupo` no DB real** | NULL em todas as linhas (ETL da F1 anterior à coluna). | ⚠️ **Popular** via `UNIDADE_PARA_GRUPO` (UPDATE ou re-ETL) — pré-requisito de Fase 1. |
 
 ### Pendências remanescentes
-1. **Timestamp da alta médica** — o HC (2026-06-26) afirma ter **alta e saída** e vai **verificar no CSV**. No export atual só há `dthr_inicio`/`dthr_fim`; aguardando eles confirmarem onde está a alta médica (ou novo export). Desbloqueia o gap de 4h do KPI-07.
+1. **Timestamp da alta médica** — ✅ **RESOLVIDO (2026-06-26).** O HC entregou novo export com `dthr_alta_medica` e `dt_saida_paciente` (preenchidos em 99,9%). Arquivo: `CSV-aghu/vw_pacientes_anonimizado_v2.csv` — **atenção: o nome diz "pacientes", mas o conteúdo é `vw_internacoes` v2** (mesmo schema de internações + as 2 colunas novas). Spike: 17,3% das internações têm gap saída−alta > 0 (gap médio 2,44h) → **sub-métrica do KPI-07 (alta→saída, meta 4h) agora viável**. Pendente: apontar o ETL de internações para este arquivo, remapear (`dthr_alta_medica`→`timestamp_alta_medica`, `dt_saida_paciente`→`timestamp_alta_administrativa`), re-rodar e implementar a sub-métrica.
 2. **Cancelamentos** (sugestão NIR): ⚠️ confirmar o estado de cancelamento de **consultas** (amostra só trouxe "MARCADA"); exames (`CANCELADO`) e cirurgias (`cancelada=1`/`CANC`) já confirmados.
 3. **Consistência de prontuário em escala** — confirmar após carga completa.
 
