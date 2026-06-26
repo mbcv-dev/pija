@@ -72,7 +72,7 @@ Confirmado: o PIJA mantém **seu próprio banco analítico** alimentado em lote 
 - [ ] **Spike de dados** contra os CSVs/DB reais: confirmar existência e preenchimento de — coluna de alta médica (`vw_internacoes`), tipo de consulta (`vw_consultas`), flag/identificação de UTI e parto, `data_hora_liberacao` (exames). Documentar achados em `DADOS-ESTADO.md`.
 
 ### Fase 1 — Fundação de dados (ETL / modelo)
-- [ ] **Popular `grupo`** no fato (UPDATE via `UNIDADE_PARA_GRUPO`; validar cobertura).
+- [x] **Popular `grupo`** no fato — ✅ feito (2026-06-26). `get_grupo` reescrito (normaliza + mapa + regras + "Outros"); `normalizar_unidade` corrige zero-width/typo; mappers atualizados; backfill no DB real (`backend/scripts/backfill_grupo.py`). **Cobertura: 100% das linhas com unidade** (84,3% do total; resto é PRONTUARIO sem unidade). Distribuição: Análises Clínicas 896k, Ambulatorial 518k, Internação 247k, Procedimental 121k, Diagnóstico/Imagem 33k, Anatomia Patológica 12k, **Outros 80k (3,5%)**. ⚠️ Os ~20 serviços de apoio no bucket **"Outros"** (fisioterapia, nutrição, hospital-dia, urgência…) precisam de **validação de classificação com o HC**.
 - [ ] **Capturar alta médica real** no mapper de internação (separar de saída efetiva) + re-ETL das internações.
 - [ ] Categorização de unidades por tipo (ambulatório / executor de exame / internação / UTI) consolidada a partir do `grupo`.
 - [ ] (se os campos existirem) Mapear tipo de consulta e identificação de parto no fato.

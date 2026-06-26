@@ -7,24 +7,7 @@
 
 from pija.etl.mappers.base import FatoRow, empty_to_none
 from pija.etl.parsers import parse_br_datetime, parse_br_id
-from pija.unidades import get_grupo
-
-# Correções de dados sujos conhecidos no CSV de exames:
-# - zero-width space (​) em alguns nomes de UAP
-# - typo "RESSONÂNIA" no lugar de "RESSONÂNCIA"
-_UNIDADE_FIXES: dict[str, str] = {
-    "UAP: HISTOPATOLÓGICO​":        "UAP: HISTOPATOLÓGICO",
-    "UAP: CITOLOGIA CÉRVICO-VAGINAL​": "UAP: CITOLOGIA CÉRVICO-VAGINAL",
-    "UAP: IMUNOHISTOQUÍMICA​":      "UAP: IMUNOHISTOQUÍMICA",
-    "UDI: RESSONÂNIA MAGNÉTICA":         "UDI: RESSONÂNCIA MAGNÉTICA",
-}
-
-
-def _normalize_unidade(raw: str | None) -> str | None:
-    if not raw:
-        return None
-    cleaned = raw.strip()
-    return _UNIDADE_FIXES.get(cleaned, cleaned) or None
+from pija.unidades import get_grupo, normalizar_unidade
 
 
 def map_exame_row(row: dict[str, str], *, row_index: int = 0) -> FatoRow | None:
@@ -51,8 +34,8 @@ def map_exame_row(row: dict[str, str], *, row_index: int = 0) -> FatoRow | None:
         "timestamp_agendamento": parse_br_datetime(row.get("data_hora_agendamento")),
         "timestamp_realizacao": parse_br_datetime(row.get("data_hora_realizacao")),
         "timestamp_liberacao": parse_br_datetime(row.get("data_hora_liberacao")),
-        "unidade": _normalize_unidade(row.get("unidade_executora_nome")),
-        "grupo": get_grupo(_normalize_unidade(row.get("unidade_executora_nome"))),
+        "unidade": normalizar_unidade(row.get("unidade_executora_nome")),
+        "grupo": get_grupo(row.get("unidade_executora_nome")),
         "especialidade": empty_to_none(row.get("especialidade_solicitante_nome")),
         "tipo_evento": empty_to_none(row.get("tipo_exame")),
         "situacao": empty_to_none(row.get("situacao")),
