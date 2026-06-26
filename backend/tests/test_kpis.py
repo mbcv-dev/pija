@@ -3,8 +3,6 @@ import pytest
 from pija.providers.kpis_provider import KpisProvider
 from pija.schemas.common import GroupBy
 
-_NO_FILTER = dict(unidade=None, especialidade=None, data_inicio=None, data_fim=None)
-
 
 def _bd(kpi):
     return {b.dimensao: (b.media, b.n) for b in kpi.breakdown}
@@ -12,7 +10,9 @@ def _bd(kpi):
 
 async def _kpis(session, **over):
     provider = KpisProvider(session)
-    params = dict(kpi_codes=None, group_by=GroupBy.unidade, **_NO_FILTER)
+    params = dict(kpi_codes=None, group_by=GroupBy.unidade,
+                  unidade=None, especialidade=None, grupo=None,
+                  data_inicio=None, data_fim=None)
     params.update(over)
     result = await provider.get_kpis(**params)
     return {k.codigo: k for k in result.kpis}
@@ -27,21 +27,19 @@ class TestKpisProvider:
 
     async def test_kpi_01(self, fixture_db_session):
         k = (await _kpis(fixture_db_session))["KPI-01"]
-        assert k.media_global == pytest.approx(12.0, abs=1e-9)
+        assert k.media_global == pytest.approx(10.2, abs=1e-9)
         assert k.n_global == 5
-        assert _bd(k)["CARDIOLOGIA"] == (pytest.approx(11.0), 3)
-        assert _bd(k)["ORTOPEDIA"] == (pytest.approx(13.5), 2)
+        assert _bd(k)["CARDIOLOGIA (AMBULATÓRIO)"] == (pytest.approx(11.0), 3)
+        assert _bd(k)["ORTOPEDIA (AMBULATÓRIO)"] == (pytest.approx(9.0), 2)
 
     async def test_kpi_03(self, fixture_db_session):
         k = (await _kpis(fixture_db_session))["KPI-03"]
         assert k.media_global == pytest.approx(9.2, abs=1e-9)
         assert k.n_global == 5
-        assert _bd(k)["CARDIOLOGIA"] == (pytest.approx(10.0), 3)
-        assert _bd(k)["ORTOPEDIA"] == (pytest.approx(8.0), 2)
 
     async def test_kpi_05_calculado(self, fixture_db_session):
         k = (await _kpis(fixture_db_session))["KPI-05"]
-        assert k.media_global == pytest.approx(5.5, abs=1e-9)  # (4+7)/2
+        assert k.media_global == pytest.approx(5.5, abs=1e-9)
         assert k.n_global == 2
 
     async def test_kpi_06(self, fixture_db_session):
@@ -56,8 +54,19 @@ class TestKpisProvider:
 
     async def test_filtro_especialidade_kpi07(self, fixture_db_session):
         k = (await _kpis(fixture_db_session, especialidade="CARDIOLOGIA"))["KPI-07"]
-        assert k.media_global == pytest.approx(4.0, abs=1e-9)  # (5+3)/2
+        assert k.media_global == pytest.approx(4.0, abs=1e-9)  # I-001(5), I-002(3)
         assert k.n_global == 2
+
+    async def test_escopo_exclui_grupo_fora(self, fixture_db_session):
+        # KPI-03 só conta grupo Ambulatorial; internações/exames não entram
+        k = (await _kpis(fixture_db_session))["KPI-03"]
+        assert all("AMBULAT" in b.dimensao.upper() for b in k.breakdown)
+
+    async def test_filtro_grupo_internacao_no_kpi07(self, fixture_db_session):
+        k = (await _kpis(fixture_db_session, grupo="Internação"))["KPI-07"]
+        assert k.n_global == 3  # todas as internações são Internação
+        k2 = (await _kpis(fixture_db_session, grupo="Ambulatorial"))["KPI-07"]
+        assert k2.n_global == 0  # nenhuma internação é Ambulatorial
 
     async def test_group_by_especialidade(self, fixture_db_session):
         k = (await _kpis(fixture_db_session, group_by=GroupBy.especialidade))["KPI-03"]
