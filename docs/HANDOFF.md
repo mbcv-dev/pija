@@ -8,9 +8,9 @@
 ## TL;DR
 
 - **Backend:** F0+F1 (scaffold+ETL) e **F2 (endpoints analíticos)** entregues. Os 3 endpoints (`/eventos`, `/kpis/tempos-medios`, `/gargalos`) funcionam sobre 2,26M eventos reais, alinhados ao contrato do frontend, com KPIs **escopados por tipo de unidade** e filtro por `grupo`. **~99 testes verdes.**
-- **Frontend:** Vue 3 + Vite, **no ar em https://pija-alpha.vercel.app/** (conta Vercel matheus-vieira, modo **mock**). Ainda **não conectado** ao backend.
+- **Frontend:** Vue 3 + Vite, **no ar em https://pija-alpha.vercel.app/** (conta Vercel matheus-vieira, modo **mock**). Ainda **não conectado** ao backend. **Fase 7 (repaginação) entregue:** 3 telas (Dashboard, Gargalos, Jornada/timeline), design system (tokens + primitivos), tema claro+escuro, KPIs rotulados por descrição, KPI-07B aninhado no card KPI-07, gargalos com filtro de métrica, filtros por grupo/unidade. Jornada sobre mock — precisa de `paciente_id` no backend para conectar ao real.
 - **Dados:** `grupo` populado (100% das linhas com unidade); **alta médica real integrada** (export v2) → KPI-07B (alta→saída em horas) implementado.
-- **Pendência principal de produto:** repaginar o front (Fase 7) e depois conectar back↔front com performance (banco intermediário / KPIs materializados).
+- **Pendência principal de produto:** conectar back↔front com performance (banco intermediário / KPIs materializados); adicionar `paciente_id` ao `/eventos` para a tela Jornada.
 
 ---
 
@@ -33,8 +33,8 @@
 ### Frontend (`frontend/`, Vue 3 + TS + Vite + Pinia + Tailwind + Zod + Axios)
 - **No ar:** https://pija-alpha.vercel.app/ — projeto Vercel `pija` na conta **matheus-vieiras-projects-203976e8** (Hobby). Auto-deploy a cada push na `main` (Git integration, Root Directory = `frontend`).
 - **Modo mock:** `frontend/.env.production` tem `VITE_USE_MOCK=true` → demo funciona sem backend. `src/services/api.ts` alterna mock/real por env e centraliza todo HTTP (com `paramsSerializer` p/ arrays e timeout 30s).
-- **Telas atuais:** Dashboard (KPIs), Gargalos, Eventos (tabela). Schemas Zod em `src/schemas/api.schemas.ts`, tipos em `src/types/api.types.ts`, mocks em `src/mocks/`.
-- ⚠️ **Será repaginado na Fase 7** — não invista em ajustes incrementais no front atual; o design vai ser refeito.
+- **Fase 7 entregue (repaginação completa):** 3 telas — **Dashboard** (KPIs rotulados por descrição, sem valor numérico por ora; KPI-07B aninhado no card KPI-07), **Gargalos** (ranking com filtro de métrica por KPI), **Jornada/timeline** (substituiu a tela Eventos; timeline por prontuário com intervalos entre etapas, busca por prontuário). Design system com tokens CSS + primitivos, tema claro+escuro, filtros por grupo e unidade executora. Plano em `docs/superpowers/specs/2026-06-26-fase-7-frontend-redesign-design.md`.
+- ⚠️ **Jornada ainda sobre mock** — precisa de filtro `paciente_id` no `/eventos` (ou endpoint dedicado `/jornada/{paciente_id}`) para conectar ao backend real. Ver Pendências Técnicas.
 
 ### Dados (`CSV-aghu/`, gitignored; DB `backend/data/pija.db`, gitignored ~1.1GB)
 - 2.261.659 eventos (7 tipos). `grupo` populado em 100% das linhas com unidade (Ambulatorial, Internação, 3 grupos executores de exame, Procedimental, "Serviços de Apoio" p/ os ~3,5% de apoio).
@@ -46,18 +46,16 @@
 
 ---
 
-## Próximo passo: Fase 7 — repaginação completa do front
+## Próximo passo: Fase 3/4 — conectar back↔front
 
-Quando o usuário pedir para começar:
-1. **Invocar `superpowers:brainstorming` + a skill `frontend-design`** (e `baseline-ui`) — desenhar identidade visual e telas antes de codar.
-2. Telas-alvo: **Dashboard** (KPIs), **Gargalos**, e **Jornada/timeline** (evoluir a tela de Eventos de tabela plana → linha do tempo por paciente, busca por prontuário, intervalos entre etapas).
-3. **Absorver os itens de UX já decididos pelo HC** (estavam diferidos para cá):
-   - **KPIs sem número** — mostrar só a descrição do que cada KPI mede (esconder o valor por ora).
-   - **Gargalos com filtro por métrica** (escolher qual KPI/transição; o backend já aceita `kpi_codes`).
-   - **Filtros** por `grupo` e `unidade executora` na UI (backend já suporta).
-   - KPI-07B aparece "dentro" do KPI-07 (alta→saída em horas, meta 4h).
-4. É **front-only** sobre mocks; o backend já está pronto pra alimentar tudo. Conectar de verdade é a Fase 3/4 (depois).
-5. Plano detalhado da fase em `docs/plans/2026-06-26-roadmap-pos-reuniao-hc.md` (Fase 7).
+**Fase 7 (repaginação do front) foi entregue.** As 3 telas estão no ar em modo mock.
+
+Próximas prioridades:
+1. **Adicionar `paciente_id` ao `/eventos`** (ou criar `/jornada/{paciente_id}`) para conectar a tela Jornada ao backend real.
+2. **Hospedar backend** (Railway ou similar — Vercel não comporta SQLite 1.1GB). Documentar em `docs/DEPLOY.md`.
+3. **Conectar front ao backend:** setar `VITE_USE_MOCK=false` + `VITE_API_BASE_URL` no Vercel → todas as telas passam a usar dados reais.
+4. **Materializar KPIs** em tabelas-resumo para performance (os 5 KPIs levam ~12s sobre a base cheia sem cache).
+5. Plano do roadmap geral em `docs/plans/2026-06-26-roadmap-pos-reuniao-hc.md`.
 
 ---
 
@@ -90,6 +88,7 @@ Quando o usuário pedir para começar:
 ### Técnicas (próximas fases)
 - **Fase 5 — indicadores operacionais** (contagens/%): prontuários/dia, exames por grupo/unidade, internações por especialidade/UTI, cirurgias/partos, % consultas por tipo, tempo entre consultas, **cancelamentos**. Viabilidades já levantadas no roadmap §B.
 - **Fase 3/4 — performance + conexão:** materializar KPIs/gargalos em tabelas-resumo no job de carga; hospedar backend (Railway) + CORS + `VITE_USE_MOCK=false`/`VITE_API_BASE_URL` no Vercel.
+- **Backend `paciente_id` para a Jornada (Fase 7):** a tela Jornada (timeline por prontuário) está pronta no front sobre mock; conectar ao real exige filtro `paciente_id` no `/eventos` (ou `/jornada/{paciente_id}`). Ver `docs/superpowers/specs/2026-06-26-fase-7-frontend-redesign-design.md` §11.
 - **Tempo até o laudo** (exame): `data_hora_liberacao` só ~38% preenchida — indicador parcial.
 
 ---
