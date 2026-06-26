@@ -1,36 +1,16 @@
 <script setup lang="ts">
-defineProps<{
-  icon?: string
-  title?: string
-  description?: string
-  action?: string
-}>()
-
-const emit = defineEmits<{
-  action: []
-}>()
+import Icon from './Icon.vue'
+withDefaults(defineProps<{ title: string; description?: string; icon?: string }>(), { icon: 'search' })
 </script>
 
 <template>
-  <div
-    class="flex flex-col items-center justify-center gap-3 py-16 px-6 text-center"
-  >
-    <span class="text-5xl select-none">{{ icon ?? '📭' }}</span>
-    <h3 class="text-base font-semibold text-text dark:text-text-dark">
-      {{ title ?? 'Nenhum dado encontrado' }}
-    </h3>
-    <p class="text-sm text-text-muted dark:text-text-dark-muted max-w-xs">
-      {{ description ?? 'Não há registros para os filtros selecionados.' }}
+  <div class="flex flex-col items-center justify-center text-center py-14 px-6">
+    <div class="w-12 h-12 rounded-2xl bg-surface-offset dark:bg-surface-dark-offset flex items-center justify-center text-text-faint dark:text-text-dark-muted">
+      <Icon :name="icon" :size="24" />
+    </div>
+    <p class="mt-3 text-sm font-semibold text-text dark:text-text-dark">{{ title }}</p>
+    <p v-if="description" class="mt-1 text-xs text-text-muted dark:text-text-dark-muted max-w-xs">
+      {{ description }}
     </p>
-    <button
-      v-if="action"
-      type="button"
-      class="mt-2 px-4 py-2 rounded-lg text-sm font-medium
-             bg-primary/10 text-primary hover:bg-primary/20
-             transition-colors"
-      @click="emit('action')"
-    >
-      {{ action }}
-    </button>
   </div>
 </template>
