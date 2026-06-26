@@ -101,9 +101,19 @@ Confirmado: o PIJA mantém **seu próprio banco analítico** alimentado em lote 
 ### Fase 6 — Tela de Jornada (timeline)
 - [ ] Evoluir Eventos para timeline por paciente.
 
+### Fase 7 — Repaginação completa do frontend (skill `frontend-design`)
+- [ ] Redesenhar todo o frontend do PIJA com a skill `frontend-design` (+ `baseline-ui`): identidade visual consistente, telas de Dashboard/Gargalos/Jornada polidas e de alto padrão, responsivo, acessível.
+- [ ] Absorver os itens de UX desta rodada: KPIs sem número (só descrição), gargalos com filtro de métrica, filtros grupo/unidade executora, timeline de jornada.
+- [ ] É **front-only** — pode rodar em **paralelo** à fundação de dados (Fases 1–2 backend), consumindo mocks até a conexão real (Fase 4).
+- [ ] Brainstorming de design antes (telas, fluxo, identidade) → implementação.
+
 ### Dependências
 - Fase 1 (grupo + alta médica) **gateia** Fase 2 (escopo dos KPIs e KPI-07 sub-métrica) e parte da Fase 5.
 - Fase 3 (materialização) **gateia** Fase 4 (conexão com performance aceitável).
+- Fase 7 (repaginação) é independente do backend — roda em paralelo; só a conexão real (Fase 4) precisa estar pronta para sair dos mocks.
+
+## Decisão de priorização (2026-06-26)
+Começar por: **Fase 0 (spike) → Fase 1 (fundação) → Fase 2 (KPIs)**, com a **Fase 7 (repaginação do frontend)** adicionada e podendo correr em paralelo.
 
 ---
 

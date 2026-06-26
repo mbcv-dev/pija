@@ -233,14 +233,20 @@ Decisão: gerar evento ALTA **só se `dthr_fim` não-nulo**.
 | **KPIs sem número** | Por ora mostrar só a **descrição** do que cada KPI mede. |
 | **Novos indicadores** | Lista de indicadores operacionais (contagens/percentuais) — ver roadmap seção B. |
 
-### Pendências de dado a verificar (spike — Fase 0 do roadmap)
+### Resultados do spike de dados (Fase 0 — 2026-06-26)
 
-1. **Coluna real de alta médica** em `vw_internacoes` (separada de `dthr_fim`) — HC confirmou que existe; localizar e remapear. Desbloqueia a sub-métrica do KPI-07.
-2. **`grupo` está NULL no DB real** — popular via `UNIDADE_PARA_GRUPO` (ou re-ETL). Pré-requisito do escopo dos KPIs e do filtro por grupo.
-3. **Tipo de consulta** (regulada / retorno / interconsulta) — confirmar campo em `vw_consultas` (para o % por tipo).
-4. **UTI e parto** — como identificar (unidade/grupo para UTI; tipo de cirurgia/procedimento ou especialidade para parto).
-5. **`data_hora_liberacao`** (exames) — taxa de preenchimento, para o indicador de tempo até o laudo.
-6. **Consistência de prontuário em escala**: confirmar após carga completa que `prontuario` cruza as views sem duplicatas.
+| Item | Resultado | Veredito |
+| --- | --- | --- |
+| **Alta médica (2ª data)** | `vw_internacoes` só tem **`dthr_inicio` e `dthr_fim`** — **não há** uma 2ª coluna de timestamp para a alta médica. O tipo de alta é categórico (`descricao_tipo_alta_medica`: "ALTA MÉDICA", "ALTA DA MÃE - PUÉRPERA E PERMANÊNCIA DO RECÉM-NASCIDO" 7.417, "ALTA DA MÃE - PUÉRPERA E DO RECÉM-NASCIDO" 6.143…). | ❌ **KPI-07 sub-métrica (alta→saída, 4h) NÃO é computável** com este export — falta o timestamp da alta médica. **Re-solicitar ao HC** a coluna de data/hora da alta médica (ou pegar do AGHU na Fase 5). Dá pra **identificar** os casos de permanência obstétrica pela categoria de alta, mas não medir o gap em horas. |
+| **Tipo de consulta** | `Condição do Atendimento` traz exatamente: **RETORNO** (121k), **INTERCONSULTA** (13k), **CONSULTA REGULADA** (4.4k), SESSÃO, TELEATENDIMENTO, PRIMEIRA CONSULTA… E **já está mapeado** no fato em `tipo_evento` (mapper de consulta). | ✅ Viável — % por tipo sai direto de `tipo_evento`. |
+| **UTI** | Identificável por `unf_descricao` contendo "UTI": UTI CLINICA, UTI NEONATAL, UTI ADULTO (+ inativas). | ✅ Viável via `unidade`. |
+| **Parto** | `vw_cirurgias.Procedimento Realizado` traz "OPERACAO CESARIANA…", "PARTO NORMAL…" (~7,6% da amostra). `Tipo do Procedimento` = CIRURGIA/PDT. | ✅ Viável — mas `Procedimento Realizado` **ainda não é mapeado** no fato; precisa mapear. |
+| **`data_hora_liberacao`** (exames) | Preenchida em apenas **~38%** das linhas (realização = 100%). | ⚠️ Indicador "tempo até o laudo" viável, mas só cobre ~38% — documentar a limitação. |
+| **`grupo` no DB real** | NULL em todas as linhas (ETL da F1 anterior à coluna). | ⚠️ **Popular** via `UNIDADE_PARA_GRUPO` (UPDATE ou re-ETL) — pré-requisito de Fase 1. |
+
+### Pendências remanescentes
+1. **Timestamp da alta médica** — re-solicitar ao HC (bloqueia o gap obstétrico de 4h).
+2. **Consistência de prontuário em escala** — confirmar após carga completa.
 
 ---
 
