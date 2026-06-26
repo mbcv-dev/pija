@@ -81,13 +81,14 @@ Confirmado: o PIJA mantém **seu próprio banco analítico** alimentado em lote 
 - [ ] (se os campos existirem) Mapear tipo de consulta e identificação de parto no fato.
 
 ### Fase 2 — KPIs refinados + filtros (backend + front)
-- [ ] KPI-01 renomear ("1º Evento Assistencial") + escopo ambulatório.
-- [ ] KPI-03 escopo ambulatório.
-- [ ] KPI-05 escopo executores de exame + filtro por unidade executora.
-- [ ] KPI-06 escopo internação.
-- [ ] KPI-07 = total (entrada→saída) **+ sub-métrica alta→saída** (meta 4h).
-- [ ] Filtros globais `grupo` + `unidade executora` (back + front).
-- [ ] Front: KPIs **sem número** (só descrição) + **filtro por métrica** no gargalos.
+> ✅ feito (2026-06-26, backend) — escopo por grupo, rename do KPI-01 e filtro `grupo` aplicados no backend (plano `2026-06-26-fase-2-kpi-scoping.md`). Os itens de **UX** foram diferidos para a **Fase 7** (repaginação do front).
+- [x] KPI-01 renomear ("1º Evento Assistencial") + escopo ambulatório.
+- [x] KPI-03 escopo ambulatório.
+- [x] KPI-05 escopo executores de exame + filtro por unidade executora (param `unidade` existente).
+- [x] KPI-06 escopo internação.
+- [x] KPI-07 escopo internação (entrada→saída). **Sub-métrica alta→saída (meta 4h) permanece bloqueada — aguardando dado de alta médica real do HC (Fase 1).**
+- [x] Filtro global `grupo` no backend (kpis + gargalos). Seletores de `grupo`/`unidade executora` na UI → diferidos para a Fase 7.
+- [ ] ~~Front: KPIs **sem número** (só descrição) + **filtro por métrica** no gargalos.~~ → diferido para a **Fase 7**.
 
 ### Fase 3 — Performance / banco intermediário
 - [ ] Materializar KPIs/gargalos em tabelas-resumo no job de carga.

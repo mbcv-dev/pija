@@ -25,6 +25,7 @@ class GargalosProvider:
         group_by: GroupBy,
         unidade: str | None,
         especialidade: str | None,
+        grupo: str | None,
         data_inicio: str | None,
         data_fim: str | None,
         limit: int,
@@ -33,6 +34,7 @@ class GargalosProvider:
         params = dict(
             unidade=unidade,
             especialidade=especialidade,
+            grupo=grupo,
             data_inicio=data_inicio,
             data_fim=data_fim,
         )
