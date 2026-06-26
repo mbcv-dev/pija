@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { useFilterStore } from './useFilterStore'
 import { getGargalos } from '@/services/api'
-import type { GargaloItem } from '@/types/api.types'
+import type { GargaloItem, KpiCode } from '@/types/api.types'
 
 /**
  * useGargaloStore — Estado do ranking de gargalos.
@@ -14,6 +14,7 @@ export const useGargaloStore = defineStore('gargalo', () => {
   const loading = ref(false)
   const error   = ref<string | null>(null)
   const limit   = ref(10)
+  const metricas = ref<KpiCode[]>(['KPI-03', 'KPI-05', 'KPI-06', 'KPI-07'])
 
   // ── Actions ───────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ export const useGargaloStore = defineStore('gargalo', () => {
     try {
       const response = await getGargalos({
         ...filterStore.activeFilters,
+        kpi_codes: metricas.value,
         limit: limit.value,
       })
       items.value = response.items
@@ -41,6 +43,13 @@ export const useGargaloStore = defineStore('gargalo', () => {
     void fetchGargalos()
   }
 
+  function toggleMetrica(code: KpiCode): void {
+    metricas.value = metricas.value.includes(code)
+      ? metricas.value.filter((c) => c !== code)
+      : [...metricas.value, code]
+    void fetchGargalos()
+  }
+
   function initWatcher(): void {
     const filterStore = useFilterStore()
     watch(
@@ -50,5 +59,5 @@ export const useGargaloStore = defineStore('gargalo', () => {
     )
   }
 
-  return { items, loading, error, limit, fetchGargalos, setLimit, initWatcher }
+  return { items, loading, error, limit, metricas, fetchGargalos, setLimit, toggleMetrica, initWatcher }
 })
