@@ -21,7 +21,9 @@ export const USE_MOCK = (import.meta.env.VITE_USE_MOCK as string) === 'true'
 
 const client = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
-  timeout: 15_000,
+  // 30s: o cálculo dos 5 KPIs sem filtro sobre toda a base (~2.26M eventos)
+  // leva ~12s no pior caso. Filtros por unidade/período reduzem bastante.
+  timeout: 30_000,
   headers: { 'Content-Type': 'application/json' },
   // FastAPI espera arrays como chave repetida (kpi_codes=KPI-03&kpi_codes=KPI-05),
   // não no formato bracket padrão do axios (kpi_codes[]=...). Null/undefined são omitidos.

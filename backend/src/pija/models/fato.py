@@ -43,6 +43,16 @@ Index(
     FatoEvento.timestamp_principal,
 )
 
+# Índice para a subconsulta correlacionada do KPI-06 (última consulta
+# realizada antes da internação). Sem ele, a query leva ~90s no DB real;
+# com ele, ~0,6s. Cobre o predicado (paciente_id, tipo_entidade, realizacao).
+Index(
+    "ix_fato_kpi06",
+    FatoEvento.paciente_id,
+    FatoEvento.tipo_entidade,
+    FatoEvento.timestamp_realizacao,
+)
+
 
 class EtlLog(Base):
     """Log estruturado de cada execução do ETL por view."""
