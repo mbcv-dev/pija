@@ -14,7 +14,7 @@ class EventosProvider:
     async def list_eventos(
         self,
         *,
-        grupo: str | None,
+        unidade: str | None,
         especialidade: str | None,
         tipo_entidade: str | None,
         data_inicio: str | None,
@@ -23,7 +23,7 @@ class EventosProvider:
         offset: int,
     ) -> EventosResponse:
         params = dict(
-            grupo=grupo,
+            unidade=unidade,
             especialidade=especialidade,
             tipo_entidade=tipo_entidade,
             data_inicio=data_inicio,
@@ -36,4 +36,4 @@ class EventosProvider:
             text(self._sql), {**params, "limit": limit, "offset": offset}
         )
         items = [EventoItem(**dict(r._mapping)) for r in rows]
-        return EventosResponse(total=total, limit=limit, offset=offset, items=items)
+        return EventosResponse(items=items, total=total, limit=limit, offset=offset)

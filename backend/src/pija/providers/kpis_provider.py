@@ -1,63 +1,77 @@
+"""Provider dos KPIs de tempo médio.
+
+Cada KPI SQL devolve, por dimensão (group_by), SUM(diff_dias) e COUNT(*).
+O provider divide soma/n por grupo (média do grupo) e calcula o global como
+Σsoma/Σn (exato). Cálculo temporal fica no SQL; montagem fica em Python.
+"""
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pija.db import load_sql
-from pija.schemas.kpis_schema import KpiResult, KpisResponse
+from pija.schemas.common import GROUP_COL, GroupBy
+from pija.schemas.kpis_schema import KpiBreakdownItem, KpiResult, KpisResponse
 
-_KPI_05_AVISO = "Aguardando confirmação HC sobre range temporal dos dados de exame"
-_KPI_07_AVISO = "Inclui período entre alta médica e liberação do leito (relevante em obstetrícia)"
+# code → (arquivo .sql, descrição)
+KPI_META: dict[str, tuple[str, str]] = {
+    "KPI-01": ("kpis/kpi_01.sql", "Prontuário → 1º evento"),
+    "KPI-03": ("kpis/kpi_03.sql", "Agendamento → realização (consulta)"),
+    "KPI-05": ("kpis/kpi_05.sql", "Solicitação → realização (exame)"),
+    "KPI-06": ("kpis/kpi_06.sql", "Última consulta → internação subsequente"),
+    "KPI-07": ("kpis/kpi_07.sql", "Tempo de permanência no leito"),
+}
+ALL_KPIS: list[str] = list(KPI_META)
 
 
 class KpisProvider:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def _run(self, sql: str, params: dict) -> tuple[float | None, int | None]:
-        row = await self._session.execute(text(sql), params)
-        r = row.one()
-        media = float(r.media_dias) if r.media_dias is not None else None
-        n = int(r.n) if r.n is not None else None
-        return media, n
+    async def compute(self, code: str, group_by: GroupBy, params: dict) -> KpiResult:
+        sql_name, descricao = KPI_META[code]
+        col = GROUP_COL[group_by]
+        sql = load_sql(sql_name).replace("{group_col}", col)
+        rows = (await self._session.execute(text(sql), params)).all()
+
+        breakdown: list[KpiBreakdownItem] = []
+        total_soma = 0.0
+        total_n = 0
+        for r in rows:
+            m = r._mapping
+            n = int(m["n"] or 0)
+            if n == 0:
+                continue
+            soma = float(m["soma_dias"] or 0.0)
+            total_soma += soma
+            total_n += n
+            if m["dimensao"] is not None:
+                breakdown.append(KpiBreakdownItem(dimensao=m["dimensao"], media=soma / n, n=n))
+
+        breakdown.sort(key=lambda b: (-b.media, b.dimensao))
+        media_global = (total_soma / total_n) if total_n else None
+        return KpiResult(
+            codigo=code,
+            descricao=descricao,
+            media_global=media_global,
+            n_global=total_n,
+            breakdown=breakdown,
+        )
 
     async def get_kpis(
         self,
         *,
-        grupo: str | None,
+        kpi_codes: list[str] | None,
+        group_by: GroupBy,
+        unidade: str | None,
         especialidade: str | None,
         data_inicio: str | None,
         data_fim: str | None,
     ) -> KpisResponse:
+        codes = kpi_codes or ALL_KPIS
         params = dict(
-            grupo=grupo,
+            unidade=unidade,
             especialidade=especialidade,
             data_inicio=data_inicio,
             data_fim=data_fim,
         )
-        filtros = dict(
-            grupo=grupo,
-            especialidade=especialidade,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-        )
-
-        m01, n01 = await self._run(load_sql("kpis/kpi_01.sql"), params)
-        m03, n03 = await self._run(load_sql("kpis/kpi_03.sql"), params)
-        m06, n06 = await self._run(load_sql("kpis/kpi_06.sql"), params)
-        m07, n07 = await self._run(load_sql("kpis/kpi_07.sql"), params)
-
-        return KpisResponse(
-            filtros_aplicados=filtros,
-            kpis=[
-                KpiResult(codigo="KPI-01", descricao="Prontuário → 1º evento", media_dias=m01, n=n01),
-                KpiResult(codigo="KPI-03", descricao="Agendamento → realização (consulta)", media_dias=m03, n=n03),
-                KpiResult(
-                    codigo="KPI-05",
-                    descricao="Solicitação → realização (exame)",
-                    media_dias=None,
-                    n=None,
-                    aviso=_KPI_05_AVISO,
-                ),
-                KpiResult(codigo="KPI-06", descricao="Última consulta → internação subsequente", media_dias=m06, n=n06),
-                KpiResult(codigo="KPI-07", descricao="Tempo de permanência no leito", media_dias=m07, n=n07, aviso=_KPI_07_AVISO),
-            ],
-        )
+        results = [await self.compute(code, group_by, params) for code in codes]
+        return KpisResponse(kpis=results)

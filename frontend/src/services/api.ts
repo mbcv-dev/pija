@@ -23,6 +23,22 @@ const client = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
   timeout: 15_000,
   headers: { 'Content-Type': 'application/json' },
+  // FastAPI espera arrays como chave repetida (kpi_codes=KPI-03&kpi_codes=KPI-05),
+  // não no formato bracket padrão do axios (kpi_codes[]=...). Null/undefined são omitidos.
+  paramsSerializer: {
+    serialize: (params: Record<string, unknown>) => {
+      const sp = new URLSearchParams()
+      for (const [key, value] of Object.entries(params)) {
+        if (value === undefined || value === null) continue
+        if (Array.isArray(value)) {
+          value.forEach((v) => sp.append(key, String(v)))
+        } else {
+          sp.append(key, String(value))
+        }
+      }
+      return sp.toString()
+    },
+  },
 })
 
 // ── Interceptor de request — token Auth (Fase 3) ──────────────
