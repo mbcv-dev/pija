@@ -44,7 +44,9 @@ export const useGargaloStore = defineStore('gargalo', () => {
   }
 
   function toggleMetrica(code: KpiCode): void {
-    metricas.value = metricas.value.includes(code)
+    const has = metricas.value.includes(code)
+    if (has && metricas.value.length === 1) return // mantém ao menos uma métrica
+    metricas.value = has
       ? metricas.value.filter((c) => c !== code)
       : [...metricas.value, code]
     void fetchGargalos()

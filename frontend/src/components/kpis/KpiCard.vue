@@ -20,11 +20,14 @@ const subBarClass = computed(() => {
   const lvl = intensityLevel(props.submetric.media_global, 0, subMeta.value.metaHoras * 2)
   return intensityBarClass(lvl)
 })
-const subMeetsTarget = computed(() =>
-  props.submetric?.media_global !== null && props.submetric !== undefined && subMeta.value?.metaHoras !== undefined
-    ? (props.submetric.media_global as number) <= subMeta.value.metaHoras
-    : false,
-)
+const subBarRatio = computed(() => {
+  if (!props.submetric || props.submetric.media_global === null || !subMeta.value?.metaHoras) return 0
+  return Math.min(1, props.submetric.media_global / (subMeta.value.metaHoras * 2))
+})
+const subMeetsTarget = computed(() => {
+  if (!props.submetric || props.submetric.media_global === null || !subMeta.value?.metaHoras) return false
+  return props.submetric.media_global <= subMeta.value.metaHoras
+})
 </script>
 
 <template>
@@ -65,7 +68,7 @@ const subMeetsTarget = computed(() =>
         </span>
       </div>
       <div class="mt-1.5 h-2 rounded-full bg-surface-offset dark:bg-surface-dark-offset overflow-hidden">
-        <div class="h-full rounded-full" :class="subBarClass" style="width: 60%" />
+        <div class="h-full rounded-full transition-all duration-500" :class="subBarClass" :style="{ width: `${(subBarRatio * 100).toFixed(1)}%` }" />
       </div>
       <p class="mt-1 text-[11px]" :class="subMeetsTarget ? 'text-success' : 'text-warning'">
         meta: {{ subMeta?.metaHoras }}h · {{ subMeetsTarget ? 'dentro da meta' : 'acima da meta' }}

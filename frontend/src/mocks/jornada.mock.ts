@@ -20,7 +20,7 @@ function hash(s: string): number {
 }
 
 function isoFromBase(baseMs: number, offsetDias: number): string {
-  return new Date(baseMs + offsetDias * 86_400_000).toISOString().replace('.000Z', '')
+  return new Date(baseMs + offsetDias * 86_400_000).toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 
 /** Eventos cronológicos de um paciente (mock determinístico por prontuário). */
