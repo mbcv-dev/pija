@@ -510,10 +510,10 @@ git commit -m "F2: update /eventos tests for new fixture; full suite green"
 - Modify: `docs/plans/2026-06-26-roadmap-pos-reuniao-hc.md` (marcar itens de Fase 2 backend como feitos)
 - Modify: `SPEC.md` / `docs/PLANO.md` se descreverem os KPIs sem o escopo
 
-- [ ] **Step 1: Marcar Fase 2 (backend) no roadmap**
+- [x] **Step 1: Marcar Fase 2 (backend) no roadmap**
 Marcar `[x]` os itens de escopo/rename/filtro `grupo` e anotar que os itens de UX foram para a Fase 7.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 ```bash
 git add docs/
 git commit -m "docs: mark F2 backend (KPI scoping) done; UX deferred to F7"
