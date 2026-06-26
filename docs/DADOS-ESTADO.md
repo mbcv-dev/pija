@@ -219,10 +219,28 @@ Decisão: gerar evento ALTA **só se `dthr_fim` não-nulo**.
 | Tabela de Altas separada?                                | ✅ Resolvido  | Daniel: "essa tabela não existe nem se faz necessária". Dados de alta médica e saída física estão em Internações. Mantemos ALTA derivada.                                                                                                                       |
 | Histórico/corte de retenção?                             | ✅ Decisão    | Usuário: "são views fiéis ao banco do AGHU, é com isso que devamos trabalhar". Sem corte; processamos toda a janela (2015–2026).                                                                                                                                |
 
-### Novas pendências para reunião futura
+### Resolvidas / decididas (2ª reunião HC — 2026-06-26)
 
-1. **Timestamp de alta médica separado**: as 30 colunas de `vw_internacoes` **não trazem** campo de timestamp para alta médica (só `dthr_fim` = saída física e `descricao_tipo_alta_medica` = categoria). Sem esse campo, **não é possível medir o gap obstetrícia** (24h alta médica vs 48h saída). Pedir ao HC inclusão na próxima exportação OU acesso direto à coluna no AGHU na Fase 5.
-2. **Consistência de prontuário em escala**: confirmar empiricamente após carga completa que `prontuario` cruza 100% das views sem duplicatas. Documentar discrepâncias (se houver) em novo MD.
+> Detalhe completo e plano de execução em [docs/plans/2026-06-26-roadmap-pos-reuniao-hc.md](plans/2026-06-26-roadmap-pos-reuniao-hc.md).
+
+| Tema | Decisão HC |
+| --- | --- |
+| **Exames são no mesmo dia** | Exame regulado é realizado no mesmo dia da solicitação (explica KPI-05 ≈ 0). KPI-05 mantém solicitação→realização, escopado por grupos executores; avaliar "tempo até o laudo" (`data_hora_liberacao`) como complementar. |
+| **Alta médica × saída efetiva** | Confirmado que **existem as duas datas** (alta médica e saída efetiva do leito); o gap importa (obstetrícia — mãe segue no leito com o bebê). **Meta HC: 4h.** Vira sub-métrica do KPI-07. Achar a coluna real da alta médica em `vw_internacoes` (hoje `dthr_fim` é proxy das duas). |
+| **Escopo dos KPIs por tipo de unidade** | KPI-01/03 só ambulatórios; KPI-05 só grupos executores de exame (+ filtro por unidade executora); KPI-06/07 só internação. |
+| **Filtros** | Necessário filtrar por **grupo** e por **unidade executora**. |
+| **Gargalos** | Pouco claro o que mede → adicionar **filtro por métrica**. |
+| **KPIs sem número** | Por ora mostrar só a **descrição** do que cada KPI mede. |
+| **Novos indicadores** | Lista de indicadores operacionais (contagens/percentuais) — ver roadmap seção B. |
+
+### Pendências de dado a verificar (spike — Fase 0 do roadmap)
+
+1. **Coluna real de alta médica** em `vw_internacoes` (separada de `dthr_fim`) — HC confirmou que existe; localizar e remapear. Desbloqueia a sub-métrica do KPI-07.
+2. **`grupo` está NULL no DB real** — popular via `UNIDADE_PARA_GRUPO` (ou re-ETL). Pré-requisito do escopo dos KPIs e do filtro por grupo.
+3. **Tipo de consulta** (regulada / retorno / interconsulta) — confirmar campo em `vw_consultas` (para o % por tipo).
+4. **UTI e parto** — como identificar (unidade/grupo para UTI; tipo de cirurgia/procedimento ou especialidade para parto).
+5. **`data_hora_liberacao`** (exames) — taxa de preenchimento, para o indicador de tempo até o laudo.
+6. **Consistência de prontuário em escala**: confirmar após carga completa que `prontuario` cruza as views sem duplicatas.
 
 ---
 
