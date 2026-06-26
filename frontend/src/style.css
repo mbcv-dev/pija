@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base styles ─────────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface text-text;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  /* Dark mode body */
+  [data-theme="dark"] body {
+    @apply bg-surface-dark text-text-dark;
+  }
+
+  /* Scrollbar customizada */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-offset dark:bg-surface-dark-offset;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border dark:bg-border-dark rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-faint;
+  }
+
+  /* Focus styles acessíveis */
+  :focus-visible {
+    outline: 2px solid theme('colors.primary.DEFAULT');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* ── Utilitários customizados ────────────────────────────────── */
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Dark mode via data-theme attribute */
+  [data-theme="dark"] {
+    color-scheme: dark;
+  }
+}
