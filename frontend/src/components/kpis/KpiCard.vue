@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { KpiItem } from '@/types/api.types'
 import { KPI_META } from '@/types/api.types'
 import { formatDuration, formatCount } from '@/lib/format'
@@ -8,8 +8,12 @@ import BaseCard from '@/components/ui/BaseCard.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
 import KpiBreakdownBar from './KpiBreakdownBar.vue'
+import KpiDetailModal from './KpiDetailModal.vue'
 
 const props = defineProps<{ kpi: KpiItem; submetric?: KpiItem }>()
+
+const detalheAberto = ref(false)
+const temDetalhe = computed(() => props.kpi.breakdown.length > 0)
 
 const meta = computed(() => KPI_META[props.kpi.codigo])
 const subMeta = computed(() => (props.submetric ? KPI_META[props.submetric.codigo] : null))
@@ -31,7 +35,12 @@ const subMeetsTarget = computed(() => {
 </script>
 
 <template>
-  <BaseCard hover class="flex flex-col gap-4 animate-fade-in">
+  <BaseCard
+    hover
+    class="flex flex-col gap-4 animate-fade-in"
+    :class="temDetalhe ? 'cursor-pointer' : ''"
+    @click="temDetalhe && (detalheAberto = true)"
+  >
     <!-- Cabeçalho: ícone + título descritivo + aviso discreto -->
     <header class="flex items-start gap-3">
       <span class="shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
@@ -40,7 +49,9 @@ const subMeetsTarget = computed(() => {
       <h2 class="min-w-0 flex-1 text-sm font-semibold text-text dark:text-text-dark leading-snug">
         {{ kpi.descricao }}
       </h2>
-      <Tooltip v-if="meta.aviso || meta.nota" :text="meta.aviso ?? meta.nota ?? ''" />
+      <span @click.stop>
+        <Tooltip v-if="meta.aviso || meta.nota" :text="meta.aviso ?? meta.nota ?? ''" />
+      </span>
     </header>
 
     <!-- Valor principal -->
@@ -57,7 +68,18 @@ const subMeetsTarget = computed(() => {
     </div>
 
     <!-- Breakdown -->
-    <KpiBreakdownBar v-if="kpi.breakdown.length > 0" :items="kpi.breakdown" :max-items="5" :unit="kpi.unidade_tempo" />
+    <KpiBreakdownBar v-if="temDetalhe" :items="kpi.breakdown" :max-items="5" :unit="kpi.unidade_tempo" />
+
+    <!-- Affordance de drill-down (abre lista completa: filtro + ordenação + paginação) -->
+    <button
+      v-if="temDetalhe"
+      type="button"
+      class="self-start inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-hover transition-colors"
+      @click.stop="detalheAberto = true"
+    >
+      Ver todas as {{ kpi.breakdown.length }} dimensões
+      <Icon name="chevron" :size="13" />
+    </button>
 
     <!-- Sub-métrica aninhada (KPI-07B: alta médica → saída, meta 4h) -->
     <div v-if="submetric" class="border-t border-border dark:border-border-dark pt-3">
@@ -74,5 +96,8 @@ const subMeetsTarget = computed(() => {
         meta: {{ subMeta?.metaHoras }}h · {{ subMeetsTarget ? 'dentro da meta' : 'acima da meta' }}
       </p>
     </div>
+
+    <!-- Drill-down: lista completa do breakdown (Teleport → body, não dispara o click do card) -->
+    <KpiDetailModal v-if="detalheAberto" :kpi="kpi" @close="detalheAberto = false" />
   </BaseCard>
 </template>
