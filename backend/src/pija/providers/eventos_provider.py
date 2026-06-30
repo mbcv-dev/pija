@@ -14,6 +14,7 @@ class EventosProvider:
     async def list_eventos(
         self,
         *,
+        paciente_id: str | None,
         unidade: str | None,
         especialidade: str | None,
         tipo_entidade: str | None,
@@ -23,6 +24,7 @@ class EventosProvider:
         offset: int,
     ) -> EventosResponse:
         params = dict(
+            paciente_id=paciente_id,
             unidade=unidade,
             especialidade=especialidade,
             tipo_entidade=tipo_entidade,

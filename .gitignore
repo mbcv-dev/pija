@@ -1,5 +1,6 @@
 # Dados brutos do HC (não versionar — 685 MB de dados de paciente)
 CSV-aghu/
+backend/seed-csv/
 
 # Python
 __pycache__/

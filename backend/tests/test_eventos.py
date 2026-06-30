@@ -1,6 +1,6 @@
 from pija.providers.eventos_provider import EventosProvider
 
-_BASE = dict(unidade=None, especialidade=None, tipo_entidade=None, data_inicio=None, data_fim=None)
+_BASE = dict(paciente_id=None, unidade=None, especialidade=None, tipo_entidade=None, data_inicio=None, data_fim=None)
 
 
 async def _list(session, **over):

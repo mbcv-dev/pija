@@ -30,3 +30,17 @@ def test_settings_rejects_short_jwt_secret(monkeypatch):
 
     with pytest.raises(ValidationError):
         Settings()
+
+
+def test_cors_origins_list_splits_and_trims(monkeypatch):
+    monkeypatch.setenv("CORS_ORIGINS", "https://a.com, https://b.com ,")
+    from pija.settings import Settings
+    s = Settings()
+    assert s.cors_origins_list() == ["https://a.com", "https://b.com"]
+
+
+def test_cors_origins_list_empty_when_unset(monkeypatch):
+    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    from pija.settings import Settings
+    s = Settings()
+    assert s.cors_origins_list() == []

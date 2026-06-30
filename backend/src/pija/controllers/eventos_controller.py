@@ -10,6 +10,7 @@ from pija.schemas.eventos_schema import EventosResponse
 
 
 async def list_eventos(
+    paciente_id: str | None = Query(None, description="Filtra todos os eventos de um paciente específico (número do prontuário). Usado pela Jornada do Paciente."),
     unidade: str | None = Query(None, description="Filtra por unidade funcional. Ex: `AMBULATORIO X`"),
     especialidade: str | None = Query(None, description="Filtra por especialidade médica. Ex: `CARDIOLOGIA`"),
     tipo_entidade: TipoEntidadeEnum | None = Query(None, description="Filtra por tipo de evento clínico."),
@@ -21,6 +22,7 @@ async def list_eventos(
 ) -> EventosResponse:
     provider = EventosProvider(session)
     return await provider.list_eventos(
+        paciente_id=paciente_id,
         unidade=unidade,
         especialidade=especialidade,
         tipo_entidade=tipo_entidade.value if tipo_entidade else None,

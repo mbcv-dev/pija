@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from pija.db import make_engine, make_sessionmaker
 from pija.routers.eventos_router import router as eventos_router
@@ -65,6 +66,16 @@ app = FastAPI(
     openapi_tags=_TAGS_METADATA,
     lifespan=lifespan,
 )
+
+_cors_origins = _settings.cors_origins_list()
+if _cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins,
+        allow_methods=["GET", "OPTIONS"],
+        allow_headers=["*"],
+        allow_credentials=False,
+    )
 
 app.include_router(eventos_router, prefix="/api/v1")
 app.include_router(kpis_router, prefix="/api/v1")

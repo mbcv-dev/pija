@@ -1,0 +1,9 @@
+venv/
+data/
+**/__pycache__/
+*.db
+*.sqlite
+.env
+seed-csv/
+.pytest_cache/
+tests/

@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+RUN pip install --no-cache-dir \
+    "pydantic>=2.8" "pydantic-settings>=2.4" "sqlalchemy[asyncio]>=2.0" \
+    "aiosqlite>=0.20" "pandas>=2.2" "PyYAML>=6.0"
+
+COPY src/ ./src/
+ENV PYTHONPATH=/app/src
+
+# Os 6 CSVs do HC ficam em backend/seed-csv/ (gitignored).
+# Coloque os arquivos lá antes de buildar esta imagem.
+# Build: docker build -f Dockerfile.seed -t pija-back:seed .
+# (usar .dockerignore.seed que NÃO exclui seed-csv/)
+COPY seed-csv/ /seed-csv/
+
+# Lê CSVs de /seed-csv, escreve pija.db no volume /data e termina.
+CMD ["python", "-m", "pija.etl.runner"]

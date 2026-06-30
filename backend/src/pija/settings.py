@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     # Fonte CSV (MVP)
     csv_dir: str = "./CSV-aghu"
 
+    # CORS (Fase 4) — origens permitidas, separadas por vírgula
+    cors_origins: str = ""
+
     # Fonte AGHU (Fase 5)
     aghu_dsn: str = ""
     ldap_uri: str = ""
+
+    def cors_origins_list(self) -> list[str]:
+        """Lista de origens permitidas para CORS (ignora vazios e espaços)."""
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
