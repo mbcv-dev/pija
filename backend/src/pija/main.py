@@ -51,6 +51,13 @@ _TAGS_METADATA = [
 async def lifespan(app: FastAPI):
     engine = make_engine(f"sqlite+aiosqlite:///{_settings.sqlite_path}")
     app.state.session_factory = make_sessionmaker(engine)
+    # Pré-aquece o cache do SO lendo a tabela uma vez — reduz o cold-start do
+    # 1º cálculo de KPIs (mediana faz varreduras na base sem índice).
+    try:
+        async with engine.connect() as conn:
+            await conn.exec_driver_sql("SELECT COUNT(*) FROM fato_eventos_jornada")
+    except Exception:  # noqa: BLE001 — pré-aquecimento é best-effort
+        pass
     yield
     await engine.dispose()
 

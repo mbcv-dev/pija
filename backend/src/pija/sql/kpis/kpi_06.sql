@@ -24,7 +24,5 @@ ultima_consulta AS (
     GROUP BY i.paciente_id, i.dt_internacao, i.unidade, i.especialidade
 )
 SELECT {group_col} AS dimensao,
-       SUM(JULIANDAY(dt_internacao) - JULIANDAY(dt_ultima_consulta)) AS soma_dias,
-       COUNT(*) AS n
+       JULIANDAY(dt_internacao) - JULIANDAY(dt_ultima_consulta) AS valor
 FROM ultima_consulta
-GROUP BY {group_col}

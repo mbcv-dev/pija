@@ -15,6 +15,7 @@ const kpis = ordem.map((codigo) => ({ codigo, ...KPI_META[codigo] }))
       <h1 class="text-2xl font-bold text-text dark:text-text-dark tracking-tight">Como calculamos</h1>
       <p class="text-sm text-text-muted dark:text-text-dark-muted mt-0.5">
         Metodologia de cada indicador — âncora (de → até), unidade de tempo e regras de inclusão.
+        Os tempos usam a <strong>mediana (p50)</strong>: metade dos casos fica abaixo do valor mostrado.
       </p>
     </div>
 
@@ -44,7 +45,7 @@ const kpis = ordem.map((codigo) => ({ codigo, ...KPI_META[codigo] }))
     </BaseCard>
 
     <p class="text-xs text-text-faint dark:text-text-dark-muted">
-      As médias são calculadas sobre toda a base, respeitando os filtros aplicados no Dashboard e nos Gargalos.
+      As medianas são calculadas sobre toda a base, respeitando os filtros aplicados no Dashboard e nos Gargalos.
     </p>
   </div>
 </template>

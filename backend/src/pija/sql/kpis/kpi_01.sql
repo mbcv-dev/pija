@@ -20,8 +20,7 @@ primeiro_dim AS (
     GROUP BY f.paciente_id
 )
 SELECT pd.{group_col} AS dimensao,
-       SUM(JULIANDAY(pe.dt_primeiro) - JULIANDAY(p.dt_prontuario)) AS soma_dias,
-       COUNT(*) AS n
+       JULIANDAY(pe.dt_primeiro) - JULIANDAY(p.dt_prontuario) AS valor
 FROM prontuarios p
 INNER JOIN primeiro pe ON p.paciente_id = pe.paciente_id
 INNER JOIN primeiro_dim pd ON pd.paciente_id = p.paciente_id
@@ -33,4 +32,3 @@ WHERE JULIANDAY(pe.dt_primeiro) >= JULIANDAY(p.dt_prontuario)
   {grupo_scope}
   AND (:data_inicio   IS NULL OR pe.dt_primeiro >= :data_inicio)
   AND (:data_fim      IS NULL OR pe.dt_primeiro <= :data_fim)
-GROUP BY pd.{group_col}

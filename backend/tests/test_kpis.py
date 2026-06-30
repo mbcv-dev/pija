@@ -29,21 +29,25 @@ class TestKpisProvider:
     async def test_kpi_07b_alta_saida_horas(self, fixture_db_session):
         k = (await _kpis(fixture_db_session))["KPI-07B"]
         assert k.unidade_tempo == "horas"
-        assert k.media_global == pytest.approx(16.0, abs=1e-9)
+        # mediana global (antes era média aritmética = 16.0)
+        assert k.media_global == pytest.approx(24.0, abs=1e-9)
         assert k.n_global == 3
         assert _bd(k)["9º NORTE"] == (pytest.approx(12.0), 2)
         assert _bd(k)["10º SUL"] == (pytest.approx(24.0), 1)
 
     async def test_kpi_01(self, fixture_db_session):
         k = (await _kpis(fixture_db_session))["KPI-01"]
-        assert k.media_global == pytest.approx(10.2, abs=1e-9)
+        # mediana global (antes era média aritmética = 10.2)
+        assert k.media_global == pytest.approx(10.0, abs=1e-9)
         assert k.n_global == 5
-        assert _bd(k)["CARDIOLOGIA (AMBULATÓRIO)"] == (pytest.approx(11.0), 3)
+        # medianas por dimensão (n=3 → valor central; antes médias 11.0 / 9.0)
+        assert _bd(k)["CARDIOLOGIA (AMBULATÓRIO)"] == (pytest.approx(10.0), 3)
         assert _bd(k)["ORTOPEDIA (AMBULATÓRIO)"] == (pytest.approx(9.0), 2)
 
     async def test_kpi_03(self, fixture_db_session):
         k = (await _kpis(fixture_db_session))["KPI-03"]
-        assert k.media_global == pytest.approx(9.2, abs=1e-9)
+        # mediana global (antes era média aritmética = 9.2)
+        assert k.media_global == pytest.approx(10.0, abs=1e-9)
         assert k.n_global == 5
 
     async def test_kpi_05_calculado(self, fixture_db_session):

@@ -1,6 +1,5 @@
 SELECT {group_col} AS dimensao,
-       SUM(JULIANDAY(timestamp_alta_administrativa) - JULIANDAY(timestamp_principal)) AS soma_dias,
-       COUNT(*) AS n
+       JULIANDAY(timestamp_alta_administrativa) - JULIANDAY(timestamp_principal) AS valor
 FROM fato_eventos_jornada
 WHERE deleted_at IS NULL
   AND tipo_entidade = 'INTERNACAO'
@@ -13,4 +12,3 @@ WHERE deleted_at IS NULL
   AND (:data_fim      IS NULL OR timestamp_principal <= :data_fim)
   AND (:grupo IS NULL OR grupo = :grupo)
   {grupo_scope}
-GROUP BY {group_col}

@@ -1,8 +1,10 @@
-"""Provider dos KPIs de tempo médio.
+"""Provider dos KPIs (mediana de tempo).
 
-Cada KPI SQL devolve, por dimensão (group_by), SUM(diff_dias) e COUNT(*).
-O provider divide soma/n por grupo (média do grupo) e calcula o global como
-Σsoma/Σn (exato). Cálculo temporal fica no SQL; montagem fica em Python.
+Cada KPI SQL é um "produtor de linhas": devolve (dimensao, valor) por evento,
+sem agregar. O provider envelopa esse SQL com janelas (window functions) que
+calculam, numa passagem só, a MEDIANA (p50) por dimensão (breakdown) e a
+mediana global. Mediana — não média — porque são tempos/processos com cauda
+longa; a média era inflada por poucos casos extremos.
 """
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +45,32 @@ KPI_GRUPO_SCOPE: dict[str, list[str]] = {
 }
 ALL_KPIS: list[str] = list(KPI_META)
 
+# Envelope de mediana: {base} é o produtor de linhas (dimensao, valor) do KPI.
+# Numa passagem, devolve a mediana por dimensão (tipo 'B') e a global (tipo 'G').
+# A mediana é a média do(s) elemento(s) central(is) após ordenar por `valor`.
+_MEDIAN_SQL = """
+WITH base AS (
+{base}
+),
+ranked AS (
+  SELECT dimensao, valor,
+         ROW_NUMBER() OVER (PARTITION BY dimensao ORDER BY valor) AS rn_d,
+         COUNT(*)     OVER (PARTITION BY dimensao)                AS cnt_d,
+         ROW_NUMBER() OVER (ORDER BY valor)                       AS rn_g,
+         COUNT(*)     OVER ()                                     AS cnt_g
+  FROM base
+)
+SELECT 'B' AS tipo, dimensao, AVG(valor) AS mediana, MAX(cnt_d) AS n
+FROM ranked
+WHERE rn_d IN ((cnt_d + 1) / 2, (cnt_d + 2) / 2)
+  AND dimensao IS NOT NULL AND dimensao <> ''
+GROUP BY dimensao
+UNION ALL
+SELECT 'G' AS tipo, NULL AS dimensao, AVG(valor) AS mediana, MAX(cnt_g) AS n
+FROM ranked
+WHERE rn_g IN ((cnt_g + 1) / 2, (cnt_g + 2) / 2)
+"""
+
 
 class KpisProvider:
     def __init__(self, session: AsyncSession) -> None:
@@ -59,35 +87,32 @@ class KpisProvider:
     async def compute(self, code: str, group_by: GroupBy, params: dict) -> KpiResult:
         sql_name, descricao = KPI_META[code]
         col = GROUP_COL[group_by]
-        sql = (
+        base = (
             load_sql(sql_name)
             .replace("{group_col}", col)
             .replace("{grupo_scope}", self._scope_fragment(code))
         )
-        rows = (await self._session.execute(text(sql), params)).all()
+        rows = (await self._session.execute(text(_MEDIAN_SQL.format(base=base)), params)).all()
 
         breakdown: list[KpiBreakdownItem] = []
-        total_soma = 0.0
-        total_n = 0
+        media_global: float | None = None
+        n_global = 0
         for r in rows:
             m = r._mapping
             n = int(m["n"] or 0)
-            if n == 0:
-                continue
-            soma = float(m["soma_dias"] or 0.0)
-            total_soma += soma
-            total_n += n
-            if m["dimensao"] is not None:
-                breakdown.append(KpiBreakdownItem(dimensao=m["dimensao"], media=soma / n, n=n))
+            if m["tipo"] == "G":
+                n_global = n
+                media_global = float(m["mediana"]) if (m["mediana"] is not None and n) else None
+            elif n > 0 and m["dimensao"]:
+                breakdown.append(KpiBreakdownItem(dimensao=m["dimensao"], media=float(m["mediana"]), n=n))
 
         breakdown.sort(key=lambda b: (-b.media, b.dimensao))
-        media_global = (total_soma / total_n) if total_n else None
         return KpiResult(
             codigo=code,
             descricao=descricao,
             unidade_tempo=KPI_UNIDADE_TEMPO.get(code, "dias"),
             media_global=media_global,
-            n_global=total_n,
+            n_global=n_global,
             breakdown=breakdown,
         )
 
