@@ -1,5 +1,16 @@
 # Ajustes pré-demo (01/07/2026) — decisões e plano
 
+> **✅ EXECUTADO (2026-06-30 noite) — tudo no ar e verificado em produção:**
+> - **Item 2 (INATIVOS):** excluídos da analítica (KPIs + gargalos). KPI-07 não é mais liderado por `UTI RESPIRATORIA - INATIVO`.
+> - **Item 5 (paciente exemplo):** Jornada validada em produção com `21331343` (jornada completa). IDs prontos na §5.
+> - **Item 6 (metodologia):** página `/metodologia` no ar com a fórmula de cada KPI.
+> - **Item 4 (cascata):** unidade → especialidade dependente (`HEMODIALISE` → 3 especialidades). Endpoint `/dimensoes?unidade=`.
+> - **Item 1 (mediana):** todos os KPIs de tempo usam **mediana (p50)**. Números caíram (KPI-01 636→**0,7d**, permanência 7,5→**3,5d**). Performance no Railway ~**6s** (não precisou de índices). **Achado:** vários KPIs de espera ficam ~0 → revela `agendamento`≈`realização` no AGHU (qualidade de dado pro HC).
+> - **Item 3 (ENFERMARIA):** as 11 "especialidades" que eram nome de andar (começam com dígito) viraram `ENFERMARIA - 11º NORTE`… Aplicado no `pija_demo.db` (e em `scratchpad/db_slim.py`). Padrão correto = `GLOB '[0-9]*'` (o filtro amplo por `SUL` pegava "interconSULta" das telemedicinas — falso positivo).
+>
+> Detalhes de cada decisão abaixo permanecem como referência.
+
+
 > **Data:** 2026-06-30 · **Contexto:** Fase 4 já está no ar ponta-a-ponta (front Vercel + backend Railway + dados reais). Estas são as decisões levantadas pelo usuário para executar **antes da apresentação de 01/07/2026**. Cada item traz a decisão, minha recomendação técnica e notas de implementação.
 
 ---
