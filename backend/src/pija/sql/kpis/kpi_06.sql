@@ -4,6 +4,7 @@ WITH internacoes AS (
     WHERE tipo_entidade = 'INTERNACAO'
       AND deleted_at IS NULL
       AND (:unidade       IS NULL OR unidade       = :unidade)
+      AND unidade NOT LIKE '%INATIVO%'
       AND (:especialidade IS NULL OR especialidade = :especialidade)
       AND (:grupo IS NULL OR grupo = :grupo)
       {grupo_scope}

@@ -27,6 +27,7 @@ INNER JOIN primeiro pe ON p.paciente_id = pe.paciente_id
 INNER JOIN primeiro_dim pd ON pd.paciente_id = p.paciente_id
 WHERE JULIANDAY(pe.dt_primeiro) >= JULIANDAY(p.dt_prontuario)
   AND (:unidade       IS NULL OR pd.unidade       = :unidade)
+  AND pd.unidade NOT LIKE '%INATIVO%'
   AND (:especialidade IS NULL OR pd.especialidade = :especialidade)
   AND (:grupo IS NULL OR pd.grupo = :grupo)
   {grupo_scope}

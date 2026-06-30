@@ -8,6 +8,7 @@ WHERE deleted_at IS NULL
   AND timestamp_agendamento IS NOT NULL
   AND JULIANDAY(timestamp_realizacao) >= JULIANDAY(timestamp_agendamento)
   AND (:unidade       IS NULL OR unidade       = :unidade)
+  AND unidade NOT LIKE '%INATIVO%'
   AND (:especialidade IS NULL OR especialidade = :especialidade)
   AND (:data_inicio   IS NULL OR timestamp_principal >= :data_inicio)
   AND (:data_fim      IS NULL OR timestamp_principal <= :data_fim)
