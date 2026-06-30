@@ -44,6 +44,12 @@
 
 ## 3. TAREFAS A FAZER (próximo chat) — com recomendação
 
+> **2026-06-30 (continuação):** ✅ **Tarefa A e Tarefa B concluídas** (front-only, client-side, sem mexer no backend).
+> - **Tarefa B:** `formatDuration` agora é **adaptativo por magnitude** (`< 1h → minutos`, `< 1 dia → horas`, senão `dias`). Converte a unidade-base (`unidade_tempo`) p/ horas e escolhe a melhor. `0,1 dias` vira `2,4 horas`; `0 dias` vira `0 minutos`. Todos os consumidores (`KpiCard`, `KpiBreakdownBar`, `GargaloItem`, e o novo modal) herdam automático. Testes em `format.test.ts` (14 casos verdes).
+> - **Tarefa A:** novo `KpiDetailModal.vue` (Teleport→body). Clicar no card (ou no link "Ver todas as N dimensões") abre a **lista completa** do breakdown com **busca**, **ordenação Maior/Menor tempo** e **paginação** (8/página), tudo client-side. Esc/backdrop fecham; `body` trava scroll. Verificado via Playwright (mock): abre, filtra, ordena asc/desc, pagina, fecha.
+> - **Gargalos asc/desc:** **deixado como está** (toggle real exigiria `limit/offset/ordem` no backend — reverter o top-N no client seria enganoso). Opcional pós-demo.
+> - **Falta:** validar em **produção com dados reais** (onde a paginação realmente engata, muitas dimensões) + deploy do front (`git push main` → Vercel).
+
 ### Tarefa A — Drill-down do KPI: ver todos os valores, ordenar (asc/desc), filtrar, paginar
 - **Pedido do usuário:** clicar num card de KPI abre a lista **completa** do breakdown (hoje o card mostra só **top 5**), com **filtro**, **ordenação crescente/decrescente** por tempo e **paginação**.
 - **Gargalos já é parcialmente isso:** rankeia dimensão (unidade/especialidade) por métrica, **pior→melhor**, **top-N** (`limit`, default 10). **Falta:** toggle **asc/desc**, **paginação** (hoje só top-N), e o **drill direto do card**.
