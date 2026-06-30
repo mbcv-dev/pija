@@ -5,7 +5,7 @@ defineProps<{ value: string; caption?: string; muted?: boolean }>()
 <template>
   <div>
     <p
-      class="text-3xl font-bold tabular-nums leading-none"
+      class="text-3xl font-bold font-mono tabular-nums leading-none"
       :class="muted ? 'text-text-faint dark:text-text-dark-muted' : 'text-text dark:text-text-dark'"
     >
       {{ value }}

@@ -11,7 +11,7 @@ defineProps<{
 
 <template>
   <div class="flex items-center gap-3 px-5 py-3 border-b border-border dark:border-border-dark last:border-0">
-    <span class="w-6 shrink-0 text-sm font-bold tabular-nums text-text-faint dark:text-text-dark-muted">
+    <span class="w-6 shrink-0 text-sm font-bold font-mono tabular-nums text-text-faint dark:text-text-dark-muted">
       {{ position }}
     </span>
     <div class="min-w-0 flex-1">
@@ -19,7 +19,7 @@ defineProps<{
         <span class="truncate text-sm font-medium text-text dark:text-text-dark" :title="label">
           {{ label }}
         </span>
-        <span class="shrink-0 tabular-nums text-sm font-semibold text-text dark:text-text-dark">
+        <span class="shrink-0 font-mono tabular-nums text-sm font-semibold text-text dark:text-text-dark">
           {{ value }}
         </span>
       </div>

@@ -46,7 +46,7 @@ const subMeetsTarget = computed(() => {
     <!-- Valor principal -->
     <div>
       <div v-if="kpi.media_global !== null" class="flex items-baseline gap-1.5">
-        <span class="text-3xl font-bold tabular-nums text-text dark:text-text-dark">
+        <span class="text-3xl font-bold font-mono tabular-nums text-text dark:text-text-dark">
           {{ formatDuration(kpi.media_global, kpi.unidade_tempo) }}
         </span>
       </div>
@@ -63,7 +63,7 @@ const subMeetsTarget = computed(() => {
     <div v-if="submetric" class="border-t border-border dark:border-border-dark pt-3">
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-medium text-text-muted dark:text-text-dark-muted">{{ submetric.descricao }}</span>
-        <span class="text-sm font-semibold tabular-nums text-text dark:text-text-dark">
+        <span class="text-sm font-semibold font-mono tabular-nums text-text dark:text-text-dark">
           {{ formatDuration(submetric.media_global, submetric.unidade_tempo) }}
         </span>
       </div>
