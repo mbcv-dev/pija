@@ -76,12 +76,39 @@
 
 ---
 
+## 6. (Feature) Área que explica o cálculo de cada KPI → **boa, aumenta transparência**
+
+**Ideia do usuário:** ter na UI uma área que explica **como cada KPI é calculado** (metodologia).
+
+**Por quê:** transparência com o HC — deixa claro a âncora (de qual evento até qual evento), a unidade, e as regras de inclusão/exclusão. Também ajuda a justificar números altos (ex.: o caveat do KPI-01).
+
+**Conteúdo (fórmulas reais, hoje, extraídas dos `.sql`):**
+
+| KPI | Mede | Âncora (de → até) | Unidade | Regras |
+|---|---|---|---|---|
+| **KPI-01** | Prontuário → 1º evento assistencial | abertura do prontuário (1ª data de evento `PRONTUARIO` do paciente) → 1º evento **não-prontuário** (menor data) | dias | exclui durações negativas; ⚠️ mede "1º evento presente no recorte" (ver item 1) |
+| **KPI-03** | Agendamento → realização (consulta) | `timestamp_agendamento` → `timestamp_realizacao` (eventos `CONSULTA`) | dias | exclui realização < agendamento |
+| **KPI-05** | Solicitação → realização (exame) | `timestamp_solicitacao` → `timestamp_realizacao` (eventos `EXAME`) | dias | exclui realização < solicitação |
+| **KPI-06** | Última consulta → internação subsequente | **última consulta realizada antes** da internação → data da internação | dias | só conta consultas com realização anterior à internação |
+| **KPI-07** | Permanência no leito | início da internação → alta administrativa | dias | inclui o período pós-alta médica |
+| **KPI-07B** | Alta médica → saída do leito | `alta_medica` → `alta_administrativa` | horas | meta 4h; exclui saída < alta médica |
+
+**Implementação:**
+- **Fonte da verdade:** centralizar essas definições em **um lugar só** para não divergir do cálculo. Opções: (a) estender o `KPI_META` no front com `formula`/`metodologia`; (b) um endpoint `GET /api/v1/kpis/metodologia` que devolve a descrição de cada KPI (mais "honesto", vem do backend que faz a conta). Recomendo começar por (a) no front (mais rápido p/ o demo) e migrar para (b) depois.
+- **UI:** uma página "Metodologia"/"Como calculamos" no menu, **ou** expandir o tooltip `ⓘ` que já existe nos cards do dashboard para abrir um painel com a fórmula. Reusar os primitivos já existentes (Tooltip, BaseCard).
+- Esforço baixo-médio (majoritariamente conteúdo + um componente de exibição). Sem mexer no banco.
+
+> Manter este texto **sincronizado** com qualquer mudança de cálculo (ex.: se adotar mediana no item 1, atualizar a metodologia junto).
+
+---
+
 ## Ordem sugerida para amanhã (rápido → impactante)
 
 1. **Tirar INATIVOS da analítica** (item 2) — baixo esforço, SQL + redeploy.
 2. **paciente_id de exemplo** (item 5) — só validar a tela; IDs já prontos acima.
-3. **Filtro em cascata** (item 4) — UX grande, esforço médio.
-4. **Mediana nos KPIs** (item 1) — decidir se entra; muda SQL de agregação.
-5. **Prefixo ENFERMARIA** (item 3) — se for via ETL, regerar banco (mais demorado).
+3. **Área de metodologia dos KPIs** (item 6) — conteúdo + componente, sem banco.
+4. **Filtro em cascata** (item 4) — UX grande, esforço médio.
+5. **Mediana nos KPIs** (item 1) — decidir se entra; muda SQL de agregação.
+6. **Prefixo ENFERMARIA** (item 3) — se for via ETL, regerar banco (mais demorado).
 
 > Todo redeploy de backend = `railway up --no-gitignore` desta máquina. Se mexer no banco, regerar `pija_demo.db` antes (`scratchpad/db_slim.py`).
