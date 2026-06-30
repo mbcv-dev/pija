@@ -30,3 +30,14 @@ class TestDimensoesProvider:
         assert "" not in result.unidades
         assert "" not in result.especialidades
         assert "" not in result.grupos
+
+    async def test_cascata_especialidades_por_unidade(self, fixture_db_session):
+        # Pega uma unidade real da fixture e checa que a versão em cascata
+        # devolve só especialidades daquela unidade (e grupos/unidades vazios).
+        full = await DimensoesProvider(fixture_db_session).get_dimensoes()
+        alvo = full.unidades[0]
+        scoped = await DimensoesProvider(fixture_db_session).get_dimensoes(unidade=alvo)
+        assert scoped.grupos == [] and scoped.unidades == []
+        assert len(scoped.especialidades) >= 1
+        # toda especialidade escopada também existe na lista completa
+        assert set(scoped.especialidades).issubset(set(full.especialidades))

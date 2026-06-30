@@ -122,12 +122,14 @@ export async function getEventos(params: EventosParams): Promise<EventosResponse
  * Valores reais para popular os filtros (grupo, unidade, especialidade).
  * Em modo mock, devolve as listas estáticas de exemplo.
  */
-export async function getDimensoes(): Promise<DimensoesResponse> {
+export async function getDimensoes(unidade?: string): Promise<DimensoesResponse> {
   if (USE_MOCK) {
     await delay(200)
     return { grupos: [...GRUPOS], unidades: [...UNIDADES], especialidades: [...ESPECIALIDADES] }
   }
-  const { data } = await client.get<DimensoesResponse>('/dimensoes')
+  const { data } = await client.get<DimensoesResponse>('/dimensoes', {
+    params: unidade ? { unidade } : undefined,
+  })
   return DimensoesResponseSchema.parse(data)
 }
 

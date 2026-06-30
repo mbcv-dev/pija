@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
 import { useFilterStore } from '@/stores/useFilterStore'
 import { useDimensoesStore } from '@/stores/useDimensoesStore'
 import FilterSelect from './FilterSelect.vue'
@@ -11,6 +11,16 @@ const dimensoes = useDimensoesStore()
 
 // Popula os filtros com os valores reais da base (uma vez).
 onMounted(() => dimensoes.load())
+
+// Cascata: ao trocar a unidade, limpa a especialidade e reescopa a lista
+// para mostrar só as especialidades daquela unidade.
+watch(
+  () => filter.unidade,
+  (u) => {
+    if (filter.especialidade) filter.setEspecialidade(null)
+    void dimensoes.scopeEspecialidades(u)
+  },
+)
 
 const groupByOptions = [
   { value: 'unidade', label: 'Por unidade' },
