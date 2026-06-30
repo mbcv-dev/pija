@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from pija.db import make_engine, make_sessionmaker
+from pija.routers.dimensoes_router import router as dimensoes_router
 from pija.routers.eventos_router import router as eventos_router
 from pija.routers.gargalos_router import router as gargalos_router
 from pija.routers.kpis_router import router as kpis_router
@@ -82,6 +83,7 @@ if _cors_origins or _cors_regex:
 app.include_router(eventos_router, prefix="/api/v1")
 app.include_router(kpis_router, prefix="/api/v1")
 app.include_router(gargalos_router, prefix="/api/v1")
+app.include_router(dimensoes_router, prefix="/api/v1")
 
 
 @app.get(

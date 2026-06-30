@@ -71,6 +71,12 @@ export const EventosResponseSchema = z.object({
   offset: z.number().int().nonnegative(),
 })
 
+export const DimensoesResponseSchema = z.object({
+  grupos: z.array(z.string()),
+  unidades: z.array(z.string()),
+  especialidades: z.array(z.string()),
+})
+
 // ── Tipos inferidos dos schemas ────────────────────────────────
 
 export type KpiItemValidated = z.infer<typeof KpiItemSchema>

@@ -1,6 +1,7 @@
 import axios from 'axios'
-import type { KpiParams, KpiResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem } from '@/types/api.types'
-import { KpiResponseSchema, GargalosResponseSchema, EventosResponseSchema } from '@/schemas/api.schemas'
+import type { KpiParams, KpiResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem, DimensoesResponse } from '@/types/api.types'
+import { GRUPOS, UNIDADES, ESPECIALIDADES } from '@/types/api.types'
+import { KpiResponseSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema } from '@/schemas/api.schemas'
 import { mockKpis } from '@/mocks/kpis.mock'
 import { mockGargalos } from '@/mocks/gargalos.mock'
 import { mockEventos } from '@/mocks/eventos.mock'
@@ -114,6 +115,20 @@ export async function getEventos(params: EventosParams): Promise<EventosResponse
   }
   const { data } = await client.get<EventosResponse>('/eventos', { params })
   return EventosResponseSchema.parse(data)
+}
+
+/**
+ * GET /api/v1/dimensoes
+ * Valores reais para popular os filtros (grupo, unidade, especialidade).
+ * Em modo mock, devolve as listas estáticas de exemplo.
+ */
+export async function getDimensoes(): Promise<DimensoesResponse> {
+  if (USE_MOCK) {
+    await delay(200)
+    return { grupos: [...GRUPOS], unidades: [...UNIDADES], especialidades: [...ESPECIALIDADES] }
+  }
+  const { data } = await client.get<DimensoesResponse>('/dimensoes')
+  return DimensoesResponseSchema.parse(data)
 }
 
 /**

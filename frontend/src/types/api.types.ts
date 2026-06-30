@@ -166,3 +166,10 @@ export const GRUPOS = [
 ] as const
 
 export type Grupo = typeof GRUPOS[number]
+
+/** Valores reais dos filtros, vindos do backend (GET /api/v1/dimensoes). */
+export interface DimensoesResponse {
+  grupos: string[]
+  unidades: string[]
+  especialidades: string[]
+}

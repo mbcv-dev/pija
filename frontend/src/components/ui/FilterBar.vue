@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useFilterStore } from '@/stores/useFilterStore'
-import { GRUPOS, UNIDADES, ESPECIALIDADES } from '@/types/api.types'
+import { useDimensoesStore } from '@/stores/useDimensoesStore'
 import FilterSelect from './FilterSelect.vue'
 import SegmentedControl from './SegmentedControl.vue'
 import BaseButton from './BaseButton.vue'
 
 const filter = useFilterStore()
+const dimensoes = useDimensoesStore()
+
+// Popula os filtros com os valores reais da base (uma vez).
+onMounted(() => dimensoes.load())
 
 const groupByOptions = [
   { value: 'unidade', label: 'Por unidade' },
@@ -17,17 +22,17 @@ const groupByOptions = [
   <div class="flex flex-col gap-3">
     <div class="flex flex-wrap items-end gap-3">
       <FilterSelect
-        label="Grupo" :options="GRUPOS"
+        label="Grupo" :options="dimensoes.grupos"
         :model-value="filter.grupo"
         @update:model-value="filter.setGrupo($event)"
       />
       <FilterSelect
-        label="Unidade executora" :options="UNIDADES"
+        label="Unidade executora" :options="dimensoes.unidades"
         :model-value="filter.unidade"
         @update:model-value="filter.setUnidade($event)"
       />
       <FilterSelect
-        label="Especialidade" :options="ESPECIALIDADES"
+        label="Especialidade" :options="dimensoes.especialidades"
         :model-value="filter.especialidade"
         @update:model-value="filter.setEspecialidade($event)"
       />
