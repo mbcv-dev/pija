@@ -11,5 +11,12 @@ RUN pip install --no-cache-dir \
 COPY src/ ./src/
 ENV PYTHONPATH=/app/src
 
+# Banco fica num volume persistente montado em /data (Railway: anexar volume aqui).
+# Default correto-por-padrão — não precisa setar SQLITE_PATH manualmente no painel.
+ENV SQLITE_PATH=/data/pija.db
+VOLUME ["/data"]
+
+# Obrigatórios via painel (não têm default seguro): JWT_SECRET (>=32 chars), CORS_ORIGINS.
+
 ENV PORT=8000
 CMD ["sh", "-c", "uvicorn pija.main:app --host 0.0.0.0 --port ${PORT}"]

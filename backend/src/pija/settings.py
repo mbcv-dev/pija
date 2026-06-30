@@ -31,6 +31,8 @@ class Settings(BaseSettings):
 
     # CORS (Fase 4) — origens permitidas, separadas por vírgula
     cors_origins: str = ""
+    # Regex opcional de origem (ex.: previews da Vercel: r"https://pija-.*\.vercel\.app")
+    cors_origins_regex: str = ""
 
     # Fonte AGHU (Fase 5)
     aghu_dsn: str = ""

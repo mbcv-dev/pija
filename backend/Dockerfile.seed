@@ -14,5 +14,11 @@ ENV PYTHONPATH=/app/src
 # (usar .dockerignore.seed que NÃO exclui seed-csv/)
 COPY seed-csv/ /seed-csv/
 
+# Caminhos alinhados ao runner (settings.csv_dir / settings.sqlite_path).
+# Default correto-por-padrão — não precisa setar no painel.
+ENV CSV_DIR=/seed-csv
+ENV SQLITE_PATH=/data/pija.db
+VOLUME ["/data"]
+
 # Lê CSVs de /seed-csv, escreve pija.db no volume /data e termina.
 CMD ["python", "-m", "pija.etl.runner"]
