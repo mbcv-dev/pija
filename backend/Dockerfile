@@ -11,10 +11,12 @@ RUN pip install --no-cache-dir \
 COPY src/ ./src/
 ENV PYTHONPATH=/app/src
 
-# Banco fica num volume persistente montado em /data (Railway: anexar volume aqui).
-# Default correto-por-padrão — não precisa setar SQLITE_PATH manualmente no painel.
+# Demo da apresentação (01/07/2026): banco SQLite read-only EMBUTIDO na imagem.
+# Deploy via `railway up` a partir desta máquina — o pija.db não está no Git, então
+# builds disparados pelo GitHub não teriam o arquivo. Em Fase 5 isto sai
+# (RESOURCE_MODE=aghu via VPN, sem SQLite; provavelmente outra hospedagem on-prem).
+COPY data/pija.db /data/pija.db
 ENV SQLITE_PATH=/data/pija.db
-VOLUME ["/data"]
 
 # Obrigatórios via painel (não têm default seguro): JWT_SECRET (>=32 chars), CORS_ORIGINS.
 
