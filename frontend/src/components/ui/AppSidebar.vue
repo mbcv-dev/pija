@@ -6,6 +6,7 @@ const items = [
   { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { to: '/gargalos',  label: 'Gargalos',  icon: 'gargalos' },
   { to: '/jornada',   label: 'Jornada',   icon: 'jornada' },
+  { to: '/metodologia', label: 'Metodologia', icon: 'info' },
 ]
 </script>
 

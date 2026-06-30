@@ -108,26 +108,51 @@ export interface KpiMeta {
   nota?: string
   /** meta em horas (só KPI-07B) */
   metaHoras?: number
+  /** Metodologia (página "Como calculamos") */
+  ancora?: string
+  unidadeTempo?: 'dias' | 'horas'
+  regras?: string
 }
 
 export const KPI_META: Record<KpiCode, KpiMeta> = {
-  'KPI-01': { label: 'Prontuário → 1º evento assistencial', icon: 'clipboard' },
-  'KPI-03': { label: 'Agendamento → realização da consulta', icon: 'calendar' },
-  'KPI-05': {
-    label: 'Solicitação → realização do exame',
-    icon: 'flask',
-    aviso: 'Dados de exames limitados a jan–mai/2026',
+  'KPI-01': {
+    label: 'Prontuário → 1º evento assistencial', icon: 'clipboard',
+    ancora: 'Da abertura do prontuário até o 1º evento não-prontuário do paciente (consulta, exame, internação…).',
+    unidadeTempo: 'dias',
+    regras: 'Exclui durações negativas e unidades inativas. Atenção: mede o 1º evento presente na base — se o paciente teve eventos anteriores à janela de dados, o tempo é superestimado.',
   },
-  'KPI-06': { label: 'Última consulta → internação', icon: 'hospital' },
+  'KPI-03': {
+    label: 'Agendamento → realização da consulta', icon: 'calendar',
+    ancora: 'Do agendamento da consulta até a sua realização.',
+    unidadeTempo: 'dias',
+    regras: 'Eventos do tipo CONSULTA com agendamento e realização preenchidos. Exclui realização anterior ao agendamento e unidades inativas.',
+  },
+  'KPI-05': {
+    label: 'Solicitação → realização do exame', icon: 'flask',
+    aviso: 'Dados de exames limitados a jan–mai/2026',
+    ancora: 'Da solicitação do exame até a sua realização.',
+    unidadeTempo: 'dias',
+    regras: 'Eventos do tipo EXAME com solicitação e realização preenchidos. Exclui realização anterior à solicitação e unidades inativas.',
+  },
+  'KPI-06': {
+    label: 'Última consulta → internação', icon: 'hospital',
+    ancora: 'Da última consulta realizada antes da internação até a data da internação.',
+    unidadeTempo: 'dias',
+    regras: 'Para cada internação, considera a consulta realizada mais recente anterior a ela. Exclui unidades inativas.',
+  },
   'KPI-07': {
-    label: 'Permanência no leito',
-    icon: 'bed',
+    label: 'Permanência no leito', icon: 'bed',
     nota: 'Permanência no leito, não tempo até alta médica',
+    ancora: 'Do início da internação até a alta administrativa (saída do leito).',
+    unidadeTempo: 'dias',
+    regras: 'Inclui o período entre a alta médica e a saída efetiva. Exclui alta anterior ao início e unidades inativas.',
   },
   'KPI-07B': {
-    label: 'Alta médica → saída do leito',
-    icon: 'bed',
+    label: 'Alta médica → saída do leito', icon: 'bed',
     metaHoras: 4,
+    ancora: 'Da alta médica até a saída efetiva do leito (alta administrativa).',
+    unidadeTempo: 'horas',
+    regras: 'Meta de 4 horas. Exclui saída anterior à alta médica e unidades inativas.',
   },
 }
 

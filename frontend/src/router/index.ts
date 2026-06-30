@@ -2,12 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import DashboardView from '@/views/DashboardView.vue'
 import GargalosView from '@/views/GargalosView.vue'
 import JornadaView from '@/views/JornadaView.vue'
+import MetodologiaView from '@/views/MetodologiaView.vue'
 
 const routes = [
   { path: '/', redirect: '/dashboard' },
   { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { title: 'Dashboard — PIJA' } },
   { path: '/gargalos', name: 'gargalos', component: GargalosView, meta: { title: 'Gargalos — PIJA' } },
   { path: '/jornada', name: 'jornada', component: JornadaView, meta: { title: 'Jornada — PIJA' } },
+  { path: '/metodologia', name: 'metodologia', component: MetodologiaView, meta: { title: 'Metodologia — PIJA' } },
   { path: '/eventos', redirect: '/jornada' },
 ]
 
