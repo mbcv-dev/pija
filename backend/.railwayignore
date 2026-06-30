@@ -1,6 +1,6 @@
-# Upload do `railway up`: exclui o que não vai pra imagem.
-# NÃO exclui data/pija.db — ele precisa subir (é embutido na imagem do demo).
-# Use sempre: railway up --no-gitignore  (o pija.db é gitignored)
+# Upload do `railway up --no-gitignore`: exclui o que não vai pra imagem.
+# Sobe data/pija_demo.db (enxuto, ~539MB → ~70MB comprimido); NÃO sobe o
+# pija.db completo (1.5GB), que estoura o teto de upload do Railway.
 venv/
 **/__pycache__/
 *.pyc
@@ -8,3 +8,6 @@ venv/
 .env
 seed-csv/
 tests/
+data/pija.db
+data/pija.db-wal
+data/pija.db-shm

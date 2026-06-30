@@ -1,6 +1,6 @@
 venv/
 data/*
-!data/pija.db
+!data/pija_demo.db
 **/__pycache__/
 *.sqlite
 .env
