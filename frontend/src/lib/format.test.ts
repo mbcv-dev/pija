@@ -18,8 +18,26 @@ describe('formatDuration', () => {
   it('formata horas', () => {
     expect(formatDuration(2.4, 'horas')).toBe('2,4 horas')
   })
-  it('zero é plural', () => {
-    expect(formatDuration(0, 'horas')).toBe('0 horas')
+
+  // ── Unidade adaptativa: escolhe min/horas/dias pela magnitude ──
+  it('< 1 dia (em dias) cai para horas', () => {
+    expect(formatDuration(0.1, 'dias')).toBe('2,4 horas')
+  })
+  it('< 1 hora (em dias) cai para minutos', () => {
+    expect(formatDuration(0.02, 'dias')).toBe('28,8 minutos')
+  })
+  it('< 1 hora (em horas) cai para minutos', () => {
+    expect(formatDuration(0.5, 'horas')).toBe('30 minutos')
+  })
+  it('1 minuto no singular', () => {
+    expect(formatDuration(1 / 60, 'horas')).toBe('1 minuto')
+  })
+  it('zero vira 0 minutos', () => {
+    expect(formatDuration(0, 'horas')).toBe('0 minutos')
+    expect(formatDuration(0, 'dias')).toBe('0 minutos')
+  })
+  it('valor grande em horas sobe para dias', () => {
+    expect(formatDuration(48, 'horas')).toBe('2 dias')
   })
 })
 
