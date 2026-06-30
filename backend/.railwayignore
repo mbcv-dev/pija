@@ -1,0 +1,10 @@
+# Upload do `railway up`: exclui o que não vai pra imagem.
+# NÃO exclui data/pija.db — ele precisa subir (é embutido na imagem do demo).
+# Use sempre: railway up --no-gitignore  (o pija.db é gitignored)
+venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.env
+seed-csv/
+tests/
