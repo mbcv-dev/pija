@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -47,18 +48,24 @@ _TAGS_METADATA = [
 ]
 
 
+async def _prewarm(engine) -> None:
+    # Pré-aquece o cache do SO lendo a tabela uma vez — reduz o cold-start do
+    # 1º cálculo de KPIs (mediana varre a base sem índice). Best-effort.
+    try:
+        async with engine.connect() as conn:
+            await conn.exec_driver_sql("SELECT COUNT(*) FROM fato_eventos_jornada")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     engine = make_engine(f"sqlite+aiosqlite:///{_settings.sqlite_path}")
     app.state.session_factory = make_sessionmaker(engine)
-    # Pré-aquece o cache do SO lendo a tabela uma vez — reduz o cold-start do
-    # 1º cálculo de KPIs (mediana faz varreduras na base sem índice).
-    try:
-        async with engine.connect() as conn:
-            await conn.exec_driver_sql("SELECT COUNT(*) FROM fato_eventos_jornada")
-    except Exception:  # noqa: BLE001 — pré-aquecimento é best-effort
-        pass
+    # NÃO-bloqueante: roda em background para o startup (e o healthcheck) não esperar.
+    warm_task = asyncio.create_task(_prewarm(engine))
     yield
+    warm_task.cancel()
     await engine.dispose()
 
 
