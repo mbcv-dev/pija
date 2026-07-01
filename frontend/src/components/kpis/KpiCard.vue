@@ -15,6 +15,9 @@ const props = defineProps<{ kpi: KpiItem; submetric?: KpiItem }>()
 const detalheAberto = ref(false)
 const temDetalhe = computed(() => props.kpi.breakdown.length > 0)
 
+const subDetalheAberto = ref(false)
+const temSubDetalhe = computed(() => !!props.submetric && props.submetric.breakdown.length > 0)
+
 const meta = computed(() => KPI_META[props.kpi.codigo])
 const subMeta = computed(() => (props.submetric ? KPI_META[props.submetric.codigo] : null))
 
@@ -95,7 +98,19 @@ const subMeetsTarget = computed(() => {
       <p class="mt-1 text-[11px]" :class="subMeetsTarget ? 'text-success' : 'text-warning'">
         meta: {{ subMeta?.metaHoras }}h · {{ subMeetsTarget ? 'dentro da meta' : 'acima da meta' }}
       </p>
+      <button
+        v-if="temSubDetalhe"
+        type="button"
+        class="mt-2 self-start inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-hover transition-colors"
+        @click.stop="subDetalheAberto = true"
+      >
+        Ver todas as {{ submetric!.breakdown.length }} dimensões
+        <Icon name="chevron" :size="13" />
+      </button>
     </div>
+
+    <!-- Drill-down da sub-métrica (KPI-07B) — mesma lista completa das outras KPIs -->
+    <KpiDetailModal v-if="subDetalheAberto && submetric" :kpi="submetric" @close="subDetalheAberto = false" />
 
     <!-- Drill-down: lista completa do breakdown (Teleport → body, não dispara o click do card) -->
     <KpiDetailModal v-if="detalheAberto" :kpi="kpi" @close="detalheAberto = false" />
