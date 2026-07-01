@@ -14,7 +14,9 @@ function fmtNumber(v: number): string {
  * Formata uma duração escolhendo a unidade mais legível pela magnitude.
  * `unit` é a unidade-base em que `value` vem do backend (dias ou horas).
  * < 1 h → minutos · < 1 dia → horas · senão → dias.
- * Resolve os extremos da mediana: `0,1 dias` vira `2,4 horas`; `0 dias` vira `0 minutos`.
+ * Resolve os extremos da mediana: `0,1 dias` vira `2,4 horas`.
+ * Duração real que arredonda pra zero (ex.: alta médica ≈ saída no AGHU) vira
+ * `< 1 min` em vez de `0 minutos` — mais honesto e menos parecido com bug.
  */
 export function formatDuration(value: number | null, unit: UnidadeTempo): string {
   if (value === null) return 'sem dados'
@@ -34,6 +36,7 @@ export function formatDuration(value: number | null, unit: UnidadeTempo): string
   }
 
   const rounded = Math.round(display * 10) / 10
+  if (rounded === 0) return '< 1 min'
   const palavra = rounded === 1 ? SINGULAR[key] : key
   return `${fmtNumber(rounded)} ${palavra}`
 }

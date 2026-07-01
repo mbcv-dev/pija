@@ -32,9 +32,10 @@ describe('formatDuration', () => {
   it('1 minuto no singular', () => {
     expect(formatDuration(1 / 60, 'horas')).toBe('1 minuto')
   })
-  it('zero vira 0 minutos', () => {
-    expect(formatDuration(0, 'horas')).toBe('0 minutos')
-    expect(formatDuration(0, 'dias')).toBe('0 minutos')
+  it('duração que arredonda pra zero vira "< 1 min"', () => {
+    expect(formatDuration(0, 'horas')).toBe('< 1 min')
+    expect(formatDuration(0, 'dias')).toBe('< 1 min')
+    expect(formatDuration(0.0001, 'horas')).toBe('< 1 min') // ~0,006 min → arredonda p/ 0
   })
   it('valor grande em horas sobe para dias', () => {
     expect(formatDuration(48, 'horas')).toBe('2 dias')
