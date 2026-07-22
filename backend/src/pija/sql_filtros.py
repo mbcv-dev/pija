@@ -25,6 +25,8 @@ def build_filtros(filtros: Filtros, prefix: str = "") -> tuple[str, dict[str, st
     """Devolve (fragmento_sql, params) para os campos multivalor preenchidos.
 
     `prefix` permite qualificar a coluna com o alias da query (ex.: "pd.").
+    O fragmento retornado sempre começa com "AND" — deve ser concatenado
+    APÓS pelo menos uma condição WHERE já existente na query.
     """
     fragmentos: list[str] = []
     params: dict[str, str] = {}

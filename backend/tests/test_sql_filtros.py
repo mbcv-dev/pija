@@ -1,3 +1,5 @@
+from sqlalchemy import text
+
 from pija.sql_filtros import Filtros, build_filtros
 
 
@@ -45,3 +47,22 @@ class TestBuildFiltros:
         frag, params = build_filtros(Filtros(data_inicio="2024-01-01", data_fim="2024-02-01"))
         assert frag == ""
         assert params == {}
+
+
+class TestBuildFiltrosExecucao:
+    """Prova que o fragmento gerado é SQL válido e executável (não só string correta)."""
+
+    async def test_fragmento_gerado_e_sql_valido_e_executavel(self, fixture_db_session):
+        frag, params = build_filtros(
+            Filtros(unidade=["CARDIOLOGIA (AMBULATÓRIO)"], grupo=["Ambulatorial"])
+        )
+        sql = f"SELECT COUNT(*) FROM fato_eventos_jornada WHERE deleted_at IS NULL {frag}"
+        total = (await fixture_db_session.execute(text(sql), params)).scalar()
+        # fixture_db_session tem 4 eventos CONSULTA com essa unidade+grupo (C-001, C-002, C-005, C-006)
+        assert total == 4
+
+    async def test_sem_filtros_fragmento_vazio_nao_quebra_a_query(self, fixture_db_session):
+        frag, params = build_filtros(Filtros())
+        sql = f"SELECT COUNT(*) FROM fato_eventos_jornada WHERE deleted_at IS NULL {frag}"
+        total = (await fixture_db_session.execute(text(sql), params)).scalar()
+        assert total > 0
