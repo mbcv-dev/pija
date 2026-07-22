@@ -2,19 +2,26 @@ import pytest
 
 from pija.providers.kpis_provider import KpisProvider
 from pija.schemas.common import GroupBy
+from pija.sql_filtros import Filtros
 
 
 def _bd(kpi):
     return {b.dimensao: (b.media, b.n) for b in kpi.breakdown}
 
 
-async def _kpis(session, **over):
+async def _kpis(session, *, unidade=None, especialidade=None, grupo=None,
+                 data_inicio=None, data_fim=None, **over):
     provider = KpisProvider(session)
-    params = dict(kpi_codes=None, group_by=GroupBy.unidade,
-                  unidade=None, especialidade=None, grupo=None,
-                  data_inicio=None, data_fim=None)
+    params = dict(kpi_codes=None, group_by=GroupBy.unidade)
     params.update(over)
-    result = await provider.get_kpis(**params)
+    filtros = Filtros(
+        unidade=[unidade] if unidade else None,
+        especialidade=[especialidade] if especialidade else None,
+        grupo=[grupo] if grupo else None,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+    )
+    result = await provider.get_kpis(filtros=filtros, **params)
     return {k.codigo: k for k in result.kpis}
 
 

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pija.db import load_sql
 from pija.schemas.common import GROUP_COL, GroupBy
 from pija.schemas.kpis_schema import KpiBreakdownItem, KpiResult, KpisResponse
+from pija.sql_filtros import Filtros, build_filtros
 from pija.unidades import (
     GRUPO_AMBULATORIAL,
     GRUPO_ANALISES_CLINICAS,
@@ -84,14 +85,23 @@ class KpisProvider:
         quoted = ", ".join("'" + g.replace("'", "''") + "'" for g in scope)
         return f"AND {col} IN ({quoted})"
 
-    async def compute(self, code: str, group_by: GroupBy, params: dict) -> KpiResult:
+    async def compute(self, code: str, group_by: GroupBy, filtros: Filtros) -> KpiResult:
         sql_name, descricao = KPI_META[code]
         col = GROUP_COL[group_by]
+        # KPI-01 qualifica as colunas de dimensão com o alias `pd.`.
+        prefix = "pd." if code == "KPI-01" else ""
+        frag, fparams = build_filtros(filtros, prefix=prefix)
         base = (
             load_sql(sql_name)
             .replace("{group_col}", col)
             .replace("{grupo_scope}", self._scope_fragment(code))
+            .replace("{filtros}", frag)
         )
+        params = {
+            **fparams,
+            "data_inicio": filtros.data_inicio,
+            "data_fim": filtros.data_fim,
+        }
         rows = (await self._session.execute(text(_MEDIAN_SQL.format(base=base)), params)).all()
 
         breakdown: list[KpiBreakdownItem] = []
@@ -121,19 +131,8 @@ class KpisProvider:
         *,
         kpi_codes: list[str] | None,
         group_by: GroupBy,
-        unidade: str | None,
-        especialidade: str | None,
-        grupo: str | None,
-        data_inicio: str | None,
-        data_fim: str | None,
+        filtros: Filtros,
     ) -> KpisResponse:
         codes = kpi_codes or ALL_KPIS
-        params = dict(
-            unidade=unidade,
-            especialidade=especialidade,
-            grupo=grupo,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-        )
-        results = [await self.compute(code, group_by, params) for code in codes]
+        results = [await self.compute(code, group_by, filtros) for code in codes]
         return KpisResponse(kpis=results)

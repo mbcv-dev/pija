@@ -7,9 +7,7 @@ WHERE deleted_at IS NULL
   AND timestamp_alta_medica IS NOT NULL
   AND JULIANDAY(timestamp_alta_administrativa) >= JULIANDAY(timestamp_alta_medica)
   AND unidade NOT LIKE '%INATIVO%'
-  AND (:unidade       IS NULL OR unidade       = :unidade)
-  AND (:especialidade IS NULL OR especialidade = :especialidade)
-  AND (:grupo         IS NULL OR grupo         = :grupo)
+  {filtros}
   AND (:data_inicio   IS NULL OR timestamp_principal >= :data_inicio)
   AND (:data_fim      IS NULL OR timestamp_principal <= :data_fim)
   {grupo_scope}

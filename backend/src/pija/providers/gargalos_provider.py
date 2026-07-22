@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pija.providers.kpis_provider import KpisProvider
 from pija.schemas.common import GroupBy
 from pija.schemas.gargalos_schema import GargaloItem, GargalosResponse
+from pija.sql_filtros import Filtros
 
 # Transições com dimensão clara (KPI-01 só entra se pedido explicitamente).
 DEFAULT_GARGALO_CODES = ["KPI-03", "KPI-05", "KPI-06", "KPI-07"]
@@ -31,16 +32,18 @@ class GargalosProvider:
         limit: int,
     ) -> GargalosResponse:
         codes = kpi_codes or DEFAULT_GARGALO_CODES
-        params = dict(
-            unidade=unidade,
-            especialidade=especialidade,
-            grupo=grupo,
+        # Interface externa deste provider ainda é escalar (Task 3 migra para multivalor);
+        # internamente adapta para o Filtros multivalor exigido por KpisProvider.compute.
+        filtros = Filtros(
+            unidade=[unidade] if unidade else None,
+            especialidade=[especialidade] if especialidade else None,
+            grupo=[grupo] if grupo else None,
             data_inicio=data_inicio,
             data_fim=data_fim,
         )
         items: list[GargaloItem] = []
         for code in codes:
-            result = await self._kpis.compute(code, group_by, params)
+            result = await self._kpis.compute(code, group_by, filtros)
             for b in result.breakdown:
                 items.append(
                     GargaloItem(

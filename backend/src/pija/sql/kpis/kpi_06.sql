@@ -3,10 +3,8 @@ WITH internacoes AS (
     FROM fato_eventos_jornada
     WHERE tipo_entidade = 'INTERNACAO'
       AND deleted_at IS NULL
-      AND (:unidade       IS NULL OR unidade       = :unidade)
       AND unidade NOT LIKE '%INATIVO%'
-      AND (:especialidade IS NULL OR especialidade = :especialidade)
-      AND (:grupo IS NULL OR grupo = :grupo)
+      {filtros}
       {grupo_scope}
       AND (:data_inicio   IS NULL OR timestamp_principal >= :data_inicio)
       AND (:data_fim      IS NULL OR timestamp_principal <= :data_fim)

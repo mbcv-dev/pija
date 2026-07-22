@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from pija.models.fato import FatoEvento
 from pija.providers.kpis_provider import KpisProvider
 from pija.schemas.common import GroupBy
+from pija.sql_filtros import Filtros
 
 
 async def test_kpi07_exclui_unidade_inativa(async_engine):
@@ -23,8 +24,7 @@ async def test_kpi07_exclui_unidade_inativa(async_engine):
         ])
         await session.commit()
 
-        params = dict(unidade=None, especialidade=None, grupo=None, data_inicio=None, data_fim=None)
-        result = await KpisProvider(session).compute("KPI-07", GroupBy.unidade, params)
+        result = await KpisProvider(session).compute("KPI-07", GroupBy.unidade, Filtros())
 
         dims = [b.dimensao for b in result.breakdown]
         assert "ALA TESTE - INATIVO" not in dims
