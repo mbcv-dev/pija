@@ -46,6 +46,10 @@ KPI_GRUPO_SCOPE: dict[str, list[str]] = {
 }
 ALL_KPIS: list[str] = list(KPI_META)
 
+# Alias que qualifica as colunas de dimensão, por KPI (vazio = sem alias).
+# Fonte única — evita divergência entre _scope_fragment e compute().
+KPI_DIM_PREFIX: dict[str, str] = {"KPI-01": "pd."}
+
 # Envelope de mediana: {base} é o produtor de linhas (dimensao, valor) do KPI.
 # Numa passagem, devolve a mediana por dimensão (tipo 'B') e a global (tipo 'G').
 # A mediana é a média do(s) elemento(s) central(is) após ordenar por `valor`.
@@ -81,15 +85,14 @@ class KpisProvider:
         scope = KPI_GRUPO_SCOPE.get(code) or []
         if not scope:
             return ""
-        col = "pd.grupo" if code == "KPI-01" else "grupo"
+        col = f"{KPI_DIM_PREFIX.get(code, '')}grupo"
         quoted = ", ".join("'" + g.replace("'", "''") + "'" for g in scope)
         return f"AND {col} IN ({quoted})"
 
     async def compute(self, code: str, group_by: GroupBy, filtros: Filtros) -> KpiResult:
         sql_name, descricao = KPI_META[code]
         col = GROUP_COL[group_by]
-        # KPI-01 qualifica as colunas de dimensão com o alias `pd.`.
-        prefix = "pd." if code == "KPI-01" else ""
+        prefix = KPI_DIM_PREFIX.get(code, "")
         frag, fparams = build_filtros(filtros, prefix=prefix)
         base = (
             load_sql(sql_name)
