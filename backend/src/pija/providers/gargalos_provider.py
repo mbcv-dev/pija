@@ -24,23 +24,10 @@ class GargalosProvider:
         *,
         kpi_codes: list[str] | None,
         group_by: GroupBy,
-        unidade: str | None,
-        especialidade: str | None,
-        grupo: str | None,
-        data_inicio: str | None,
-        data_fim: str | None,
+        filtros: Filtros,
         limit: int,
     ) -> GargalosResponse:
         codes = kpi_codes or DEFAULT_GARGALO_CODES
-        # Interface externa deste provider ainda é escalar (Task 3 migra para multivalor);
-        # internamente adapta para o Filtros multivalor exigido por KpisProvider.compute.
-        filtros = Filtros(
-            unidade=[unidade] if unidade else None,
-            especialidade=[especialidade] if especialidade else None,
-            grupo=[grupo] if grupo else None,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-        )
         items: list[GargaloItem] = []
         for code in codes:
             result = await self._kpis.compute(code, group_by, filtros)

@@ -2,13 +2,13 @@ import pytest
 
 from pija.providers.gargalos_provider import GargalosProvider
 from pija.schemas.common import GroupBy
+from pija.sql_filtros import Filtros
 
 
-async def _gargalos(session, **over):
+async def _gargalos(session, filtros=None, **over):
     provider = GargalosProvider(session)
     params = dict(kpi_codes=None, group_by=GroupBy.unidade,
-                  unidade=None, especialidade=None, grupo=None,
-                  data_inicio=None, data_fim=None, limit=10)
+                  filtros=filtros or Filtros(), limit=10)
     params.update(over)
     return await provider.get_gargalos(**params)
 
