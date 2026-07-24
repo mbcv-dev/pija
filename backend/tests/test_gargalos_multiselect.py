@@ -1,8 +1,20 @@
 import pytest
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from pija.main import app
 from pija.providers.gargalos_provider import GargalosProvider
 from pija.schemas.common import GroupBy
 from pija.sql_filtros import Filtros
+
+
+@pytest.fixture
+async def client(async_engine, fixture_db_session):
+    """HTTP client (ASGI/TestClient) apontando para o mesmo engine populado
+    usado por `fixture_db_session` — permite exercitar a rota real /gargalos."""
+    app.state.session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
 
 
 class TestGargalosMultiselect:
@@ -23,7 +35,7 @@ class TestGargalosMultiselect:
         duas = await p.get_gargalos(
             kpi_codes=None, group_by=GroupBy.unidade, filtros=Filtros(unidade=[a, b]), limit=100
         )
-        assert set(i.dimensao for i in duas.items) <= {a, b}
+        assert set(i.dimensao for i in duas.items) == {a, b}
 
     async def test_filtro_unidade_unica_equivale_ao_comportamento_escalar_antigo(self, fixture_db_session):
         p = GargalosProvider(fixture_db_session)
@@ -48,3 +60,30 @@ class TestGargalosMultiselect:
         got_a = [(i.transicao, i.dimensao, round(i.media, 2)) for i in sem_filtro.items]
         got_b = [(i.transicao, i.dimensao, round(i.media, 2)) for i in lista_vazia.items]
         assert got_a == got_b
+
+    # --- Teste HTTP: prova que a rota real decodifica ?unidade=A&unidade=B em list[str] ---
+
+    async def test_http_get_gargalos_aceita_unidade_repetida_e_restringe(self, client):
+        # "9º NORTE" (KPI-06 13.5, KPI-07 4.0) e "CARDIOLOGIA (AMBULATÓRIO)" (KPI-03 10.0)
+        # são dimensões reais do ranking sem filtro (ver test_ranking_completo_determinista).
+        r_um = await client.get(
+            "/api/v1/gargalos", params=[("unidade", "9º NORTE")]
+        )
+        r_dois = await client.get(
+            "/api/v1/gargalos",
+            params=[
+                ("unidade", "9º NORTE"),
+                ("unidade", "CARDIOLOGIA (AMBULATÓRIO)"),
+            ],
+        )
+        assert r_um.status_code == 200
+        assert r_dois.status_code == 200
+
+        itens_um = r_um.json()["items"]
+        itens_dois = r_dois.json()["items"]
+
+        assert {i["dimensao"] for i in itens_um} == {"9º NORTE"}
+        assert len(itens_um) == 2
+
+        assert {i["dimensao"] for i in itens_dois} == {"9º NORTE", "CARDIOLOGIA (AMBULATÓRIO)"}
+        assert len(itens_dois) > len(itens_um)
