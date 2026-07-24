@@ -1,19 +1,17 @@
--- Valores distintos para popular os filtros do frontend (grupo, unidade, especialidade).
--- A linha de unidade vem anotada com seu grupo (para agrupar no filtro do front).
--- Exclui unidades inativas (sufixo "INATIVO") do AGHU. Ordenado por tipo e valor.
-SELECT 'grupo' AS tipo, grupo AS valor, NULL AS grupo_da_unidade
-FROM fato_eventos_jornada
-WHERE deleted_at IS NULL AND grupo IS NOT NULL AND grupo != ''
-GROUP BY grupo
-UNION ALL
+-- Escopo em cascata por GRUPO: unidades daquele(s) grupo(s) e suas especialidades.
+-- O placeholder de filtros e preenchido pelo provider com uma clausula AND grupo IN (lista).
+-- Atencao -- nao usar exemplos de bind param prefixados por dois-pontos nestes comentarios,
+-- pois o scanner de bind params do SQLAlchemy os conta mesmo dentro de comentarios SQL.
 SELECT 'unidade' AS tipo, unidade AS valor, grupo AS grupo_da_unidade
 FROM fato_eventos_jornada
 WHERE deleted_at IS NULL AND unidade IS NOT NULL AND unidade != ''
   AND unidade NOT LIKE '%INATIVO%'
+  {filtros}
 GROUP BY unidade
 UNION ALL
 SELECT 'especialidade' AS tipo, especialidade AS valor, NULL AS grupo_da_unidade
 FROM fato_eventos_jornada
 WHERE deleted_at IS NULL AND especialidade IS NOT NULL AND especialidade != ''
+  {filtros}
 GROUP BY especialidade
 ORDER BY tipo, valor
