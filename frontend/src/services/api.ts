@@ -119,17 +119,26 @@ export async function getEventos(params: EventosParams): Promise<EventosResponse
 
 /**
  * GET /api/v1/dimensoes
- * Valores reais para popular os filtros (grupo, unidade, especialidade).
+ * Sem params: listas completas. Com `grupo`/`unidade`: listas escopadas (cascata).
  * Em modo mock, devolve as listas estáticas de exemplo.
  */
-export async function getDimensoes(unidade?: string): Promise<DimensoesResponse> {
+export async function getDimensoes(
+  params: { grupo?: string[]; unidade?: string[] } = {},
+): Promise<DimensoesResponse> {
   if (USE_MOCK) {
     await delay(200)
-    return { grupos: [...GRUPOS], unidades: [...UNIDADES], especialidades: [...ESPECIALIDADES] }
+    // No mock, todas as unidades pertencem ao grupo "Ambulatorial".
+    const unidades = UNIDADES.map((u) => ({ valor: u, grupo: 'Ambulatorial' }))
+    const escopadas = params.grupo?.length
+      ? unidades.filter((u) => params.grupo!.includes(u.grupo))
+      : unidades
+    return {
+      grupos: [...GRUPOS],
+      unidades: escopadas,
+      especialidades: [...ESPECIALIDADES],
+    }
   }
-  const { data } = await client.get<DimensoesResponse>('/dimensoes', {
-    params: unidade ? { unidade } : undefined,
-  })
+  const { data } = await client.get<DimensoesResponse>('/dimensoes', { params })
   return DimensoesResponseSchema.parse(data)
 }
 

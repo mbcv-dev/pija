@@ -192,9 +192,15 @@ export const GRUPOS = [
 
 export type Grupo = typeof GRUPOS[number]
 
+/** Unidade anotada com o grupo assistencial ao qual pertence. */
+export interface UnidadeDim {
+  valor: string
+  grupo: string | null
+}
+
 /** Valores reais dos filtros, vindos do backend (GET /api/v1/dimensoes). */
 export interface DimensoesResponse {
   grupos: string[]
-  unidades: string[]
+  unidades: UnidadeDim[]
   especialidades: string[]
 }

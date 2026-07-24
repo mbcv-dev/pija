@@ -71,9 +71,14 @@ export const EventosResponseSchema = z.object({
   offset: z.number().int().nonnegative(),
 })
 
+export const UnidadeDimSchema = z.object({
+  valor: z.string(),
+  grupo: z.string().nullable(),
+})
+
 export const DimensoesResponseSchema = z.object({
   grupos: z.array(z.string()),
-  unidades: z.array(z.string()),
+  unidades: z.array(UnidadeDimSchema),
   especialidades: z.array(z.string()),
 })
 
