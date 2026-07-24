@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useCiclicidadeStore } from '@/stores/useCiclicidadeStore'
 import FilterBar from '@/components/ui/FilterBar.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import TransitionMatrix from '@/components/ciclicidade/TransitionMatrix.vue'
+import TransitionGraph from '@/components/ciclicidade/TransitionGraph.vue'
+
+type Modo = 'grafo' | 'matriz'
 
 const store = useCiclicidadeStore()
+const modo = ref<Modo>('grafo')
+const opcoes: { value: Modo; label: string }[] = [
+  { value: 'grafo', label: 'Grafo' },
+  { value: 'matriz', label: 'Matriz' },
+]
 
 onMounted(() => {
   store.initWatcher()
@@ -25,6 +34,13 @@ onMounted(() => {
       </p>
     </div>
     <FilterBar />
+    <div class="flex justify-end">
+      <SegmentedControl
+        :model-value="modo"
+        :options="opcoes"
+        @update:model-value="modo = $event as Modo"
+      />
+    </div>
     <BaseCard>
       <Skeleton v-if="store.loading" height="h-64" />
       <ErrorState v-else-if="store.error" :message="store.error" @retry="store.fetch" />
@@ -33,6 +49,7 @@ onMounted(() => {
         title="Sem transições"
         description="Nenhuma transição encontrada para esta coorte."
       />
+      <TransitionGraph v-else-if="modo === 'grafo'" :nos="store.nos" :transicoes="store.transicoes" />
       <TransitionMatrix v-else :nos="store.nos" :transicoes="store.transicoes" />
     </BaseCard>
   </div>

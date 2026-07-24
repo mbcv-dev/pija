@@ -72,7 +72,7 @@ const edges = computed<Edge[]>(() => {
 </script>
 
 <template>
-  <svg :viewBox="`0 0 ${W} ${H}`" class="w-full max-w-md mx-auto text-primary" role="img" aria-label="Grafo de transições entre etapas">
+  <svg :viewBox="`0 0 ${W} ${H}`" class="w-full max-w-md mx-auto text-primary dark:text-accent" role="img" aria-label="Grafo de transições entre etapas">
     <defs>
       <marker id="cic-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0L10 5L0 10z" fill="currentColor" />
@@ -80,9 +80,10 @@ const edges = computed<Edge[]>(() => {
     </defs>
 
     <!-- Arestas -->
-    <g fill="none" stroke="currentColor" opacity="0.55">
+    <g fill="none" stroke="currentColor">
       <path
         v-for="e in edges" :key="e.key" data-edge
+        class="cic-edge"
         :d="e.d" :stroke-width="e.w" marker-end="url(#cic-arrow)"
       >
         <title>{{ e.title }}</title>
@@ -92,7 +93,7 @@ const edges = computed<Edge[]>(() => {
     <!-- Nós -->
     <g>
       <g v-for="t in tipos" :key="t" data-node :transform="`translate(${pos.get(t)!.x}, ${pos.get(t)!.y})`">
-        <circle r="22" class="fill-surface dark:fill-surface-dark" stroke="currentColor" stroke-width="1.5" />
+        <circle r="22" class="fill-surface-2 dark:fill-surface-dark-2" stroke="currentColor" stroke-width="1.75" />
         <text text-anchor="middle" dy="0.32em" class="fill-text dark:fill-text-dark" font-size="8" font-weight="600">
           {{ t.slice(0, 5) }}
         </text>
@@ -100,3 +101,14 @@ const edges = computed<Edge[]>(() => {
     </g>
   </svg>
 </template>
+
+<style scoped>
+/* Camada de hover: destaca a aresta sob o cursor (o resto recua via opacidade do grupo). */
+.cic-edge {
+  opacity: 0.65;
+  transition: opacity 0.12s ease;
+}
+.cic-edge:hover {
+  opacity: 1;
+}
+</style>
