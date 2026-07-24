@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useJornadaStore } from '@/stores/useJornadaStore'
 import { elapsedLabel } from '@/lib/timeline'
-import type { TipoEntidade } from '@/types/api.types'
+import { getCiclicidade } from '@/services/api'
+import type { TipoEntidade, CiclicidadeResponse } from '@/types/api.types'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Icon from '@/components/ui/Icon.vue'
@@ -12,9 +13,25 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import TimelineItem from '@/components/ui/TimelineItem.vue'
 import TimelineConnector from '@/components/ui/TimelineConnector.vue'
+import TransitionGraph from '@/components/ciclicidade/TransitionGraph.vue'
 
 const store = useJornadaStore()
 const input = ref('')
+
+const ciclo = ref<CiclicidadeResponse | null>(null)
+
+watch(
+  () => store.pacienteId,
+  async (id) => {
+    ciclo.value = null
+    if (!id) return
+    try {
+      ciclo.value = await getCiclicidade({ paciente_id: id })
+    } catch {
+      ciclo.value = null // silencioso: a timeline continua sendo o principal
+    }
+  },
+)
 
 const TIPOS: TipoEntidade[] = ['CONSULTA', 'EXAME', 'INTERNACAO', 'CIRURGIA', 'PROCEDIMENTO', 'ALTA', 'PRONTUARIO']
 
@@ -68,6 +85,12 @@ function submit(): void {
           <Badge :tone="store.tipoFiltro === t ? 'brand' : 'neutral'">{{ t }}</Badge>
         </button>
       </div>
+
+      <!-- Mini-grafo de transições do paciente (guarda: ≥ 2 transições) -->
+      <BaseCard v-if="ciclo && ciclo.transicoes.length >= 2">
+        <p class="text-xs text-text-muted dark:text-text-dark-muted mb-2">Fluxo de transições deste paciente</p>
+        <TransitionGraph :nos="ciclo.nos" :transicoes="ciclo.transicoes" />
+      </BaseCard>
 
       <!-- Timeline -->
       <BaseCard>
