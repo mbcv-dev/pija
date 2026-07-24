@@ -66,7 +66,9 @@ Cria `backend/src/pija/sql/ciclicidade/transicoes.sql` com:
 -- Transições evento -> próximo evento, por paciente, na coorte filtrada.
 -- Semântica de coorte: o filtro define QUAIS pacientes entram; contam-se TODAS
 -- as transições desses pacientes (mesmo eventos fora do filtro).
--- {filtros} é injetado por sql_filtros.build_filtros (começa com "AND").
+-- O marcador de filtros (na cláusula abaixo) é injetado por sql_filtros.build_filtros (começa com "AND").
+-- IMPORTANTE: não escreva o token de placeholder literal em comentários — o provider faz
+-- str.replace do marcador em TODO o arquivo e um token no comentário vira bindparam duplicado.
 WITH coorte AS (
     SELECT DISTINCT paciente_id
     FROM fato_eventos_jornada
@@ -219,8 +221,8 @@ class TestCiclicidadeAgregado:
             filtros=Filtros(), paciente_id=None
         )
         nos = {n.tipo: (n.total_entradas, n.total_saidas) for n in resp.nos}
-        # CONSULTA: entradas=5 (de PRONTUARIO), saídas=3 (para INTERNACAO)
-        assert nos["CONSULTA"] == (5, 3)
+        # CONSULTA: entradas=6 (5 de PRONTUARIO + 1 de INTERNACAO), saídas=3 (para INTERNACAO)
+        assert nos["CONSULTA"] == (6, 3)
         # INTERNACAO: entradas=3+1=4 (de CONSULTA e EXAME), saídas=1 (para CONSULTA)
         assert nos["INTERNACAO"] == (4, 1)
         assert nos["PRONTUARIO"] == (0, 5)
