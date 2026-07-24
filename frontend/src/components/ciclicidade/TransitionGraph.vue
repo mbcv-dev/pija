@@ -74,7 +74,10 @@ const edges = computed<Edge[]>(() => {
 <template>
   <svg :viewBox="`0 0 ${W} ${H}`" class="w-full max-w-md mx-auto text-primary dark:text-accent" role="img" aria-label="Grafo de transições entre etapas">
     <defs>
-      <marker id="cic-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <!-- markerUnits=userSpaceOnUse: seta com tamanho FIXO, independente do stroke-width.
+           Sem isso, a aresta de maior volume (stroke grosso) ganharia uma ponta gigante,
+           pois o padrão markerUnits=strokeWidth escala o marker pela espessura. -->
+      <marker id="cic-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
         <path d="M0 0L10 5L0 10z" fill="currentColor" />
       </marker>
     </defs>
