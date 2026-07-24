@@ -21,6 +21,8 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // Component tests (mount) precisam de DOM; libs/stores continuam em node.
+    environmentMatchGlobs: [['src/components/**', 'jsdom']],
     include: ['src/**/*.test.ts'],
   },
 })

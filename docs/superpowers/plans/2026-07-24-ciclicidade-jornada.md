@@ -915,6 +915,12 @@ git add frontend/src/components/ciclicidade/TransitionMatrix.vue frontend/src/co
 git commit -m "feat(ciclicidade): componente TransitionMatrix (heatmap origem x destino)"
 ```
 
+> **Nota de execução (2026-07-24):** Task 7 é o primeiro teste de componente do repo (`mount()`). A infra ainda não existia, então foi necessário:
+> - instalar `@vue/test-utils@^2.4` + `jsdom@^25` como devDeps;
+> - em `vite.config.ts`, adicionar `test.environmentMatchGlobs: [['src/components/**', 'jsdom']]` para que apenas os testes de componente rodem em DOM (libs/stores continuam em `node`);
+> - no teste, anotar o tipo do fixture (`const props: { nos: NoItem[]; transicoes: TransicaoItem[] }`) — sem isso, os literais de `tipo`/`origem`/`destino` alargam para `string` e `vue-tsc` reprova (`TipoEntidade`). Assertions inalteradas.
+> As mesmas dependências/config já cobrem o `mount()` da Task 9 (TransitionGraph).
+
 ---
 
 ## Task 8: View + rota + navegação (matriz no ar)
