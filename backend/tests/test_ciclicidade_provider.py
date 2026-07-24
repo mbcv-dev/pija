@@ -65,6 +65,22 @@ class TestCiclicidadeAgregado:
             ("INTERNACAO", "CONSULTA"): 1,
         }
 
+    async def test_data_seleciona_coorte_nao_janela_de_transicoes(self, fixture_db_session):
+        # data_inicio seleciona a COORTE (pacientes com ≥1 evento em/após a data),
+        # não uma janela sobre as transições contadas. Pacientes com evento
+        # >= 2024-02-01: 001, 002, 003, 008, 009. Contam-se TODAS as transições
+        # da história completa deles — inclusive PRONTUARIO→CONSULTA (jan/2024),
+        # que precede o limite de data.
+        resp = await CiclicidadeProvider(fixture_db_session).get_transicoes(
+            filtros=Filtros(data_inicio="2024-02-01"), paciente_id=None
+        )
+        assert _pares(resp) == {
+            ("PRONTUARIO", "CONSULTA"): 3,   # 001, 002, 003
+            ("CONSULTA", "INTERNACAO"): 3,   # 001, 002, 003
+            ("INTERNACAO", "CONSULTA"): 1,   # 001 (I-001 → C-006)
+            ("EXAME", "INTERNACAO"): 1,      # 009 (E-002 → I-006)
+        }
+
 
 class TestCiclicidadeCasos:
     async def _session(self, async_engine, eventos):
@@ -114,3 +130,26 @@ class TestCiclicidadeCasos:
         async with factory() as s:
             resp = await CiclicidadeProvider(s).get_transicoes(filtros=Filtros(), paciente_id=None)
         assert resp.transicoes == []  # evento vivo sozinho não gera transição
+
+    async def test_n_conta_apenas_gaps_nao_nulos(self, async_engine):
+        # `n` = COUNT(gap_s), ou seja, transições com gap temporal computável.
+        # Como timestamp_principal é NOT NULL no modelo, todo gap entre eventos
+        # consecutivos é não-nulo — logo n == volume sempre vale hoje (não há
+        # como construir um gap nulo sem violar a constraint NOT NULL). Este
+        # teste fixa a invariante n == volume no caminho feliz e garante que o
+        # tempo médio é computado.
+        eventos = [
+            FatoEvento(evento_id="d1", paciente_id="W", tipo_entidade="CONSULTA", entidade_id="1",
+                       timestamp_principal="2024-01-01", dt_carga="2024-01-01"),
+            FatoEvento(evento_id="d2", paciente_id="W", tipo_entidade="EXAME", entidade_id="2",
+                       timestamp_principal="2024-01-05", dt_carga="2024-01-01"),
+        ]
+        factory = await self._session(async_engine, eventos)
+        async with factory() as s:
+            resp = await CiclicidadeProvider(s).get_transicoes(filtros=Filtros(), paciente_id=None)
+        assert len(resp.transicoes) == 1
+        t = resp.transicoes[0]
+        assert (t.origem, t.destino) == ("CONSULTA", "EXAME")
+        assert t.n == t.volume == 1
+        assert t.tempo_medio_s is not None
+        assert t.tempo_medio_s == pytest.approx(4 * 86400.0, abs=1e-6)  # 2024-01-01 → 2024-01-05

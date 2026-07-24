@@ -1,6 +1,12 @@
 -- Transições evento -> próximo evento, por paciente, na coorte filtrada.
 -- Semântica de coorte: o filtro define QUAIS pacientes entram; contam-se TODAS
 -- as transições desses pacientes (mesmo eventos fora do filtro).
+-- Ao contrário das queries de KPI/gargalos, esta NÃO exclui unidades INATIVO:
+-- é um mapa de fluxo da jornada inteira, e excluir eventos com unidade NULL
+-- (PRONTUARIO/ALTA) descartaria arestas centrais do fluxo.
+-- Os limites de data (data_inicio/data_fim) selecionam a COORTE (paciente com
+-- >=1 evento na janela), NÃO uma janela sobre as transições contadas — contam-se
+-- as transições de toda a história do paciente da coorte.
 -- O marcador de filtros (na cláusula abaixo) é injetado por sql_filtros.build_filtros (começa com "AND").
 WITH coorte AS (
     SELECT DISTINCT paciente_id
