@@ -204,3 +204,33 @@ export interface DimensoesResponse {
   unidades: UnidadeDim[]
   especialidades: string[]
 }
+
+// ── Ciclicidade ────────────────────────────────────────────────
+
+export interface CiclicidadeParams {
+  paciente_id?: string
+  grupo?: string[]
+  unidade?: string[]
+  especialidade?: string[]
+  data_inicio?: string
+  data_fim?: string
+}
+
+export interface TransicaoItem {
+  origem: TipoEntidade
+  destino: TipoEntidade
+  volume: number
+  tempo_medio_s: number | null
+  n: number
+}
+
+export interface NoItem {
+  tipo: TipoEntidade
+  total_entradas: number
+  total_saidas: number
+}
+
+export interface CiclicidadeResponse {
+  nos: NoItem[]
+  transicoes: TransicaoItem[]
+}

@@ -1,7 +1,7 @@
 import axios from 'axios'
-import type { KpiParams, KpiResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem, DimensoesResponse } from '@/types/api.types'
+import type { KpiParams, KpiResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem, DimensoesResponse, CiclicidadeParams, CiclicidadeResponse } from '@/types/api.types'
 import { GRUPOS, UNIDADES, ESPECIALIDADES } from '@/types/api.types'
-import { KpiResponseSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema } from '@/schemas/api.schemas'
+import { KpiResponseSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema, CiclicidadeResponseSchema } from '@/schemas/api.schemas'
 import { mockKpis } from '@/mocks/kpis.mock'
 import { mockGargalos } from '@/mocks/gargalos.mock'
 import { mockEventos } from '@/mocks/eventos.mock'
@@ -157,4 +157,30 @@ export async function getJornada(pacienteId: string): Promise<EventoItem[]> {
     params: { paciente_id: pacienteId, limit: 500 },
   })
   return EventosResponseSchema.parse(data).items
+}
+
+/**
+ * GET /api/v1/ciclicidade/transicoes
+ * Fluxo agregado de transições entre etapas (coorte) ou de um paciente (paciente_id).
+ */
+export async function getCiclicidade(params: CiclicidadeParams = {}): Promise<CiclicidadeResponse> {
+  if (USE_MOCK) {
+    await delay(400)
+    return {
+      nos: [
+        { tipo: 'PRONTUARIO', total_entradas: 0, total_saidas: 5 },
+        { tipo: 'CONSULTA', total_entradas: 5, total_saidas: 3 },
+        { tipo: 'EXAME', total_entradas: 0, total_saidas: 1 },
+        { tipo: 'INTERNACAO', total_entradas: 4, total_saidas: 1 },
+      ],
+      transicoes: [
+        { origem: 'PRONTUARIO', destino: 'CONSULTA', volume: 5, tempo_medio_s: 777600, n: 5 },
+        { origem: 'CONSULTA', destino: 'INTERNACAO', volume: 3, tempo_medio_s: 2160000, n: 3 },
+        { origem: 'INTERNACAO', destino: 'CONSULTA', volume: 1, tempo_medio_s: 4838400, n: 1 },
+        { origem: 'EXAME', destino: 'INTERNACAO', volume: 1, tempo_medio_s: 777600, n: 1 },
+      ],
+    }
+  }
+  const { data } = await client.get<CiclicidadeResponse>('/ciclicidade/transicoes', { params })
+  return CiclicidadeResponseSchema.parse(data)
 }

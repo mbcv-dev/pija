@@ -82,6 +82,27 @@ export const DimensoesResponseSchema = z.object({
   especialidades: z.array(z.string()),
 })
 
+// ── Ciclicidade ────────────────────────────────────────────────
+
+export const TransicaoItemSchema = z.object({
+  origem: TipoEntidadeSchema,
+  destino: TipoEntidadeSchema,
+  volume: z.number().int().nonnegative(),
+  tempo_medio_s: z.number().nullable(),
+  n: z.number().int().nonnegative(),
+})
+
+export const NoItemSchema = z.object({
+  tipo: TipoEntidadeSchema,
+  total_entradas: z.number().int().nonnegative(),
+  total_saidas: z.number().int().nonnegative(),
+})
+
+export const CiclicidadeResponseSchema = z.object({
+  nos: z.array(NoItemSchema),
+  transicoes: z.array(TransicaoItemSchema),
+})
+
 // ── Tipos inferidos dos schemas ────────────────────────────────
 
 export type KpiItemValidated = z.infer<typeof KpiItemSchema>
