@@ -49,8 +49,9 @@ export function mockGargalos(params: GargaloParams): GargalosResponse {
   let todos = buildAllGargalos(groupBy)
 
   // Filtrar por unidade/especialidade se fornecido
-  if (params.unidade && groupBy === 'unidade') {
-    todos = todos.filter((g) => g.dimensao === params.unidade)
+  const unidadeSel = params.unidade?.[0]
+  if (unidadeSel && groupBy === 'unidade') {
+    todos = todos.filter((g) => params.unidade!.includes(g.dimensao))
     // Se filtrado por unidade específica, mostrar todos os KPIs dessa unidade
     if (todos.length === 0) {
       // Fallback: gerar dados para essa unidade
@@ -61,7 +62,7 @@ export function mockGargalos(params: GargaloParams): GargalosResponse {
         { code: 'KPI-07', mediaBase: 4.8  },
       ]
       todos = transicoes.map(({ code, mediaBase }, i) => ({
-        dimensao: params.unidade!,
+        dimensao: unidadeSel,
         transicao: code,
         mediaBase: +(mediaBase * (0.7 + i * 0.05)).toFixed(1),
         nBase: 800 + i * 200,
@@ -69,8 +70,8 @@ export function mockGargalos(params: GargaloParams): GargalosResponse {
     }
   }
 
-  if (params.especialidade && groupBy === 'especialidade') {
-    todos = todos.filter((g) => g.dimensao === params.especialidade)
+  if (params.especialidade && params.especialidade.length > 0 && groupBy === 'especialidade') {
+    todos = todos.filter((g) => params.especialidade!.includes(g.dimensao))
   }
 
   // Filtrar por kpi_codes se fornecido

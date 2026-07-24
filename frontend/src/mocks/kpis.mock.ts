@@ -65,11 +65,12 @@ export function mockKpis(params: KpiParams): KpiResponse {
 
   // Fator de ajuste por unidade (simula filtragem real)
   let fator = 1.0
-  if (params.unidade) {
-    const unidadeIndex = UNIDADES.indexOf(params.unidade as typeof UNIDADES[number])
+  const unidadeSel = params.unidade?.[0]
+  if (unidadeSel) {
+    const unidadeIndex = UNIDADES.indexOf(unidadeSel as typeof UNIDADES[number])
     fator = 0.65 + (unidadeIndex >= 0 ? unidadeIndex : 2) * 0.08
   }
-  if (params.especialidade) {
+  if (params.especialidade && params.especialidade.length > 0) {
     fator *= 0.9
   }
 
@@ -81,7 +82,7 @@ export function mockKpis(params: KpiParams): KpiResponse {
   // Simular null para KPI-05 quando filtrado por especialidade específica sem dados
   const kpis = codes.map((codigo) => {
     const baseMedia = BASE_MEDIAS[codigo] * fator
-    const isKpi05NoData = codigo === 'KPI-05' && params.especialidade === 'CIRURGIA GERAL'
+    const isKpi05NoData = codigo === 'KPI-05' && !!params.especialidade?.includes('CIRURGIA GERAL')
     const isHoras = codigo === 'KPI-07B'
 
     return {

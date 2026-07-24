@@ -81,13 +81,13 @@ export function mockEventos(params: EventosParams): EventosResponse {
   }
 
   // Filtrar por unidade
-  if (params.unidade) {
-    filtered = filtered.filter((e) => e.unidade === params.unidade)
+  if (params.unidade && params.unidade.length > 0) {
+    filtered = filtered.filter((e) => params.unidade!.includes(e.unidade))
   }
 
   // Filtrar por especialidade
-  if (params.especialidade) {
-    filtered = filtered.filter((e) => e.especialidade === params.especialidade)
+  if (params.especialidade && params.especialidade.length > 0) {
+    filtered = filtered.filter((e) => params.especialidade!.includes(e.especialidade))
   }
 
   // Filtrar por data_inicio
