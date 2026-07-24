@@ -12,14 +12,14 @@ A PIJA adota o **Framework Full-Stack para dados hospitalares** definido pela di
 A camada de origem é abstraída pelo adapter **`Resource`**, com duas implementações trocadas por env `RESOURCE_MODE`:
 
 - **MVP — `CsvResource`**: CSVs exportados pelo HC-UFPE das 7 views
-- **Pós-MVP / Fase 5 — `AghuResource`**: Oracle do AGHU via VPN HC-UFPE (`python-oracledb`)
+- **Pós-MVP / Fase 5 — `AghuResource`**: **PostgreSQL** do AGHU (`psycopg`/`asyncpg`), numa VM na rede do HC-UFPE (ver [docs/superpowers/plans/2026-07-24-aghu-integracao-referencia.md](docs/superpowers/plans/2026-07-24-aghu-integracao-referencia.md))
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                    FONTES DE DADOS                            │
 │                                                               │
 │  MVP:    CSVs exportados das 7 views  ->  CsvResource        │
-│  Fase 5: AGHU Oracle (read-only views) -> AghuResource       │
+│  Fase 5: AGHU PostgreSQL (read-only)   -> AghuResource       │
 │                                                               │
 │  Adapter selecionado por env: RESOURCE_MODE=csv|aghu         │
 └──────────────────────┬───────────────────────────────────────┘
@@ -62,7 +62,7 @@ A camada de origem é abstraída pelo adapter **`Resource`**, com duas implement
 | Persistência local | **SQLAlchemy 2.0 Async + Alembic** | Tabelas internas: `fato_eventos_jornada`, `etl_log`, `audit_log`, `users` |
 | Banco local | **SQLite** | Repositório local — **nunca PostgreSQL local** |
 | Fonte (MVP) | **`CsvResource`** (pandas + SQLite staging) | Lê CSVs grandes em streaming chunked |
-| Fonte (Fase 5) | **`AghuResource`** (`python-oracledb`) | Pool de conexão read-only com Oracle do AGHU via VPN HC |
+| Fonte (Fase 5) | **`AghuResource`** (`psycopg`/`asyncpg`) | Pool read-only com o **PostgreSQL** do AGHU (schema `agh.*`), numa VM na rede do HC |
 | Acesso analítico | **SQL nativo** via arquivos `.sql` externos | Mesmas queries rodam em ambos os modos do `Resource` |
 | ETL | **pandas** (`read_csv(chunksize=...)`) + SQLite | Streaming-first; upsert batched; modo `--sample N` |
 
@@ -105,7 +105,7 @@ Todas as funcionalidades que consomem dados de origem devem seguir este fluxo se
         ↓
 [2] Resources (Adapter: CsvResource | AghuResource)
     MVP: leitura de CSVs grandes em streaming via CsvResource.
-    F5:  pool de conexão com Oracle do AGHU via AghuResource.
+    F5:  pool de conexão com o PostgreSQL do AGHU via AghuResource (ETL bounded por período).
         ↓
 [3] Providers
     Execução do SQL (contra SQLite local) e retorno de dicionários brutos.
@@ -152,7 +152,7 @@ pija/
 │   ├── resources/                # Adapter de origem (MVP=CSV, F5=AGHU)
 │   │   ├── base_resource.py      # Protocol iter_rows(view) -> Iterator
 │   │   ├── csv_resource.py       # MVP — pandas chunked
-│   │   ├── aghu_resource.py      # Fase 5 — python-oracledb (stub no MVP)
+│   │   ├── aghu_resource.py      # Fase 5 — psycopg/asyncpg, PostgreSQL (stub no MVP)
 │   │   └── resource_factory.py   # DI por RESOURCE_MODE
 │   ├── sql/                      # SQL nativo
 │   │   ├── extract/              # 1 .sql por entidade (extração para SQLite)
@@ -253,9 +253,9 @@ pija/
 | Decisão | Status | Impacto |
 |---|---|---|
 | Recebimento dos CSVs exportados das 7 views | A confirmar (HC entregará) | Bloqueia testes do ETL com dados reais |
-| Tipo de banco do AGHU (assumido Oracle) | A confirmar | Driver `python-oracledb` na Fase 5 |
-| Liberação de VPN + acesso read-only ao AGHU | A liberar | Gate da Fase 5 (cutover) |
-| Ambiente de deploy no HC | A definir | Configuração do servidor único (FastAPI) |
-| Janela de consulta ao AGHU permitida | A definir | Agendamento e frequência do ETL na Fase 5 |
+| Tipo de banco do AGHU | ✅ **Resolvido (2026-07-24): PostgreSQL** | Driver `psycopg`/`asyncpg` na Fase 5 |
+| Liberação de VPN + acesso read-only ao AGHU | ✅ **Resolvido:** VM na rede do HC (quem tem VPN acessa) | Gate da Fase 5 destravado |
+| Ambiente de deploy no HC | ✅ **Resolvido:** VM provisionada pelo HC; eles fazem o deploy e commitam containerização (não mexem no código) | — |
+| Janela de consulta ao AGHU permitida | ⚠️ **CRÍTICO:** leitura **sempre bounded por período** — sem recorte, varre milhões de linhas e sobrecarrega o AGHU (aviso do HC) | ETL/consultas nunca varrem tudo; período obrigatório |
 | Campos opcionais disponíveis nas views | A confirmar | KPIs dependentes de timestamps |
 | Política LGPD aplicável | A confirmar | Retenção, anonimização, gestão de consentimento |

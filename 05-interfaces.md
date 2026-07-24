@@ -12,7 +12,7 @@ A camada de dados de origem usa o adapter **`Resource`** (selecionado por env `R
 | Modo | Quando | Implementação |
 |:---|:---|:---|
 | `csv` (default MVP) | **MVP — Fases 0 a 4** | `CsvResource` — lê CSVs exportados das 7 views (pandas chunked, streaming) |
-| `aghu` | **Cutover — Fase 5** | `AghuResource` — pool `python-oracledb` contra views Oracle do AGHU, via VPN HC-UFPE |
+| `aghu` | **Cutover — Fase 5** | `AghuResource` — pool `psycopg`/`asyncpg` contra o **PostgreSQL** do AGHU (schema `agh.*`), numa VM dentro da rede do HC-UFPE |
 
 ### 1.1 Modo `csv` (MVP)
 
@@ -28,8 +28,8 @@ A camada de dados de origem usa o adapter **`Resource`** (selecionado por env `R
 
 | Atributo | Descrição |
 |:---|:---|
-| **Tipo** | Oracle (read-only via views SQL) |
-| **Driver** | `python-oracledb` |
+| **Tipo** | **PostgreSQL** (read-only; tabelas/views no schema `agh.*`) — confirmado com o HC 2026-07-24 |
+| **Driver** | `psycopg` (v3) ou `asyncpg` — ver [docs/superpowers/plans/2026-07-24-aghu-integracao-referencia.md](docs/superpowers/plans/2026-07-24-aghu-integracao-referencia.md) |
 | **Modo de acesso** | Somente leitura (`SELECT` nas views `vw_*`) |
 | **Gerenciamento** | Pool de conexão dentro do `AghuResource` |
 | **Autenticação** | Usuário de serviço com `GRANT SELECT` restrito às views |
