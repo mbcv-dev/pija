@@ -1,7 +1,7 @@
 -- Transições evento -> próximo evento, por paciente, na coorte filtrada.
 -- Semântica de coorte: o filtro define QUAIS pacientes entram; contam-se TODAS
 -- as transições desses pacientes (mesmo eventos fora do filtro).
--- {filtros} é injetado por sql_filtros.build_filtros (começa com "AND").
+-- O marcador de filtros (na cláusula abaixo) é injetado por sql_filtros.build_filtros (começa com "AND").
 WITH coorte AS (
     SELECT DISTINCT paciente_id
     FROM fato_eventos_jornada
