@@ -8,6 +8,7 @@ from pija.db import make_engine, make_sessionmaker
 from pija.routers.dimensoes_router import router as dimensoes_router
 from pija.routers.eventos_router import router as eventos_router
 from pija.routers.gargalos_router import router as gargalos_router
+from pija.routers.ciclicidade_router import router as ciclicidade_router
 from pija.routers.kpis_router import router as kpis_router
 from pija.settings import Settings
 
@@ -40,6 +41,10 @@ _TAGS_METADATA = [
     {
         "name": "gargalos",
         "description": "Ranking de unidades e especialidades com maior tempo médio de espera entre eventos.",
+    },
+    {
+        "name": "ciclicidade",
+        "description": "Fluxo de transições entre etapas da jornada — agregado (coorte) e individual.",
     },
     {
         "name": "infra",
@@ -97,6 +102,7 @@ if _cors_origins or _cors_regex:
 app.include_router(eventos_router, prefix="/api/v1")
 app.include_router(kpis_router, prefix="/api/v1")
 app.include_router(gargalos_router, prefix="/api/v1")
+app.include_router(ciclicidade_router, prefix="/api/v1")
 app.include_router(dimensoes_router, prefix="/api/v1")
 
 
