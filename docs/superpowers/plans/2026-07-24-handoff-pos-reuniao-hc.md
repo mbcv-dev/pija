@@ -70,6 +70,11 @@
 > subagent-driven-development**. Foi assim que os filtros foram feitos.
 
 ### 4.1. Ciclicidade da jornada — **prioridade máxima / maior diferencial**
+> **Status (2026-07-24): IMPLEMENTADA — em PR #2** (`feat/ciclicidade-jornada`). Endpoint `GET /api/v1/ciclicidade/transicoes`
+> (coorte, auto-laços, volume + tempo) + tela `/ciclicidade` (grafo SVG ⇄ matriz) + mini-grafo na Jornada individual.
+> Backend 160 testes / frontend 41 testes verdes. Spec: [../specs/2026-07-24-ciclicidade-jornada-design.md](../specs/2026-07-24-ciclicidade-jornada-design.md) ·
+> Plano: [2026-07-24-ciclicidade-jornada.md](2026-07-24-ciclicidade-jornada.md). Falta: verificação manual no browser + merge.
+
 - **Insight-chave da reunião:** NÃO é só a jornada de **um paciente**. Precisa ter também a visão do
   **todo — o fluxo agregado da jornada de toda a população** (as idas e vindas no geral). São **dois escopos**:
   - **(a) Individual:** a jornada de um `paciente_id` com seus retornos/reinternações (evolui a tela Jornada atual).
