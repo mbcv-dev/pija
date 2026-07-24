@@ -109,8 +109,12 @@
 
 ## 6. Pendências / itens em aberto
 
-- **Enviar o banco pro HC** (ou CSVs + ETL) — o `.db` é gitignored (ver §2).
-- **Corrigir premissa Oracle → PostgreSQL** nos docs e no `AghuResource` (ver §3).
+- ~~**Enviar o banco pro HC** (ou CSVs + ETL) — o `.db` é gitignored (ver §2).~~ ✅ **Decidido (2026-07-24):**
+  mandar o `pija_demo.db` pronto (Opção A) + documentar ETL como reprodução — ver
+  [2026-07-24-entrega-banco-hc.md](2026-07-24-entrega-banco-hc.md). Falta só combinar o canal de transferência com o HC.
+- ~~**Corrigir premissa Oracle → PostgreSQL** nos docs e no `AghuResource`~~ ✅ **Feito (2026-07-24):** propagado
+  para SPEC, 02-requisitos, README, PLANO, `05-interfaces`, `06-arquitetura`, `CLAUDE.md`, o stub `aghu_resource.py`
+  e `test_resource_factory.py` (DSN `postgresql://`). Restam só menções em planos datados (registros históricos).
 - **Confirmar lista completa de Internação** com o HC (o docx só trouxe "8º SUL"; classificação já funciona por
   padrão de nome).
 - **Refinar KPI-01** (âncora: só prontuários abertos na janela).
