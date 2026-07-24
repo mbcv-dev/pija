@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pija.db import load_sql
 from pija.schemas.eventos_schema import EventoItem, EventosResponse
+from pija.sql_filtros import Filtros, build_filtros
 
 
 class EventosProvider:
@@ -15,27 +16,25 @@ class EventosProvider:
         self,
         *,
         paciente_id: str | None,
-        unidade: str | None,
-        especialidade: str | None,
         tipo_entidade: str | None,
-        data_inicio: str | None,
-        data_fim: str | None,
+        filtros: Filtros,
         limit: int,
         offset: int,
     ) -> EventosResponse:
-        params = dict(
-            paciente_id=paciente_id,
-            unidade=unidade,
-            especialidade=especialidade,
-            tipo_entidade=tipo_entidade,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-        )
-        count_row = await self._session.execute(text(self._count_sql), params)
-        total = count_row.scalar() or 0
+        frag, fparams = build_filtros(filtros)
+        params = {
+            **fparams,
+            "paciente_id": paciente_id,
+            "tipo_entidade": tipo_entidade,
+            "data_inicio": filtros.data_inicio,
+            "data_fim": filtros.data_fim,
+        }
+        count_sql = self._count_sql.replace("{filtros}", frag)
+        total = (await self._session.execute(text(count_sql), params)).scalar() or 0
 
+        sql = self._sql.replace("{filtros}", frag)
         rows = await self._session.execute(
-            text(self._sql), {**params, "limit": limit, "offset": offset}
+            text(sql), {**params, "limit": limit, "offset": offset}
         )
         items = [EventoItem(**dict(r._mapping)) for r in rows]
         return EventosResponse(items=items, total=total, limit=limit, offset=offset)

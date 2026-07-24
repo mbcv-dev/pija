@@ -7,12 +7,14 @@ from pija.db import get_db
 from pija.providers.eventos_provider import EventosProvider
 from pija.schemas.common import TipoEntidadeEnum
 from pija.schemas.eventos_schema import EventosResponse
+from pija.sql_filtros import Filtros
 
 
 async def list_eventos(
     paciente_id: str | None = Query(None, description="Filtra todos os eventos de um paciente específico (número do prontuário). Usado pela Jornada do Paciente."),
-    unidade: str | None = Query(None, description="Filtra por unidade funcional. Ex: `AMBULATORIO X`"),
-    especialidade: str | None = Query(None, description="Filtra por especialidade médica. Ex: `CARDIOLOGIA`"),
+    unidade: list[str] | None = Query(None, description="Filtra por uma ou mais unidades (repita o parâmetro)."),
+    especialidade: list[str] | None = Query(None, description="Filtra por uma ou mais especialidades (repita o parâmetro)."),
+    grupo: list[str] | None = Query(None, description="Filtra por um ou mais grupos assistenciais (repita o parâmetro)."),
     tipo_entidade: TipoEntidadeEnum | None = Query(None, description="Filtra por tipo de evento clínico."),
     data_inicio: date | None = Query(None, description="Data de início do recorte temporal (inclusiva). Formato: `YYYY-MM-DD`"),
     data_fim: date | None = Query(None, description="Data de fim do recorte temporal (inclusiva). Formato: `YYYY-MM-DD`"),
@@ -21,13 +23,17 @@ async def list_eventos(
     session: AsyncSession = Depends(get_db),
 ) -> EventosResponse:
     provider = EventosProvider(session)
-    return await provider.list_eventos(
-        paciente_id=paciente_id,
+    filtros = Filtros(
         unidade=unidade,
         especialidade=especialidade,
-        tipo_entidade=tipo_entidade.value if tipo_entidade else None,
+        grupo=grupo,
         data_inicio=data_inicio.isoformat() if data_inicio else None,
         data_fim=data_fim.isoformat() if data_fim else None,
+    )
+    return await provider.list_eventos(
+        paciente_id=paciente_id,
+        tipo_entidade=tipo_entidade.value if tipo_entidade else None,
+        filtros=filtros,
         limit=limit,
         offset=offset,
     )

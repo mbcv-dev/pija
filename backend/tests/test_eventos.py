@@ -1,13 +1,28 @@
 from pija.providers.eventos_provider import EventosProvider
+from pija.sql_filtros import Filtros
 
 _BASE = dict(paciente_id=None, unidade=None, especialidade=None, tipo_entidade=None, data_inicio=None, data_fim=None)
+_FILTROS_FIELDS = ("unidade", "especialidade", "grupo", "data_inicio", "data_fim")
 
 
 async def _list(session, **over):
     provider = EventosProvider(session)
     params = dict(_BASE, limit=100, offset=0)
     params.update(over)
-    return await provider.list_eventos(**params)
+    # unidade/especialidade continuam aceitos como valor único aqui (compat com os
+    # testes existentes) e são empacotados em lista para o novo contrato Filtros.
+    filtros_kwargs = {}
+    for campo in _FILTROS_FIELDS:
+        valor = params.pop(campo, None)
+        if campo in ("unidade", "especialidade", "grupo") and valor is not None and not isinstance(valor, list):
+            valor = [valor]
+        filtros_kwargs[campo] = valor
+    return await provider.list_eventos(
+        paciente_id=params.pop("paciente_id"),
+        tipo_entidade=params.pop("tipo_entidade"),
+        filtros=Filtros(**filtros_kwargs),
+        **params,
+    )
 
 
 class TestEventosProvider:
