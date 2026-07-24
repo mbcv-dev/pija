@@ -30,13 +30,15 @@ export const useDimensoesStore = defineStore('dimensoes', () => {
     }
   }
 
-  /** Cascata: escopa as especialidades pela unidade (ou restaura a lista completa). */
-  async function scopeEspecialidades(unidade: string | null): Promise<void> {
-    if (!unidade) {
+  /** Cascata: escopa as especialidades pelas unidades selecionadas.
+   *  INTERINO: a API ainda aceita uma unidade só; com 2+ selecionadas,
+   *  mantém a lista completa. Vira escopo real por lista no Task 9. */
+  async function scopeEspecialidades(unidade: string[]): Promise<void> {
+    if (unidade.length !== 1) {
       especialidades.value = especialidadesFull.value
       return
     }
-    const d = await getDimensoes(unidade)
+    const d = await getDimensoes(unidade[0])
     especialidades.value = d.especialidades
   }
 

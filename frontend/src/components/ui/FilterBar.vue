@@ -17,9 +17,10 @@ onMounted(() => dimensoes.load())
 watch(
   () => filter.unidade,
   (u) => {
-    if (filter.especialidade) filter.setEspecialidade(null)
+    if (filter.especialidade.length) filter.setEspecialidades([])
     void dimensoes.scopeEspecialidades(u)
   },
+  { deep: true },
 )
 
 const groupByOptions = [
@@ -34,17 +35,17 @@ const groupByOptions = [
       <FilterSelect
         label="Grupo" :options="dimensoes.grupos"
         :model-value="filter.grupo"
-        @update:model-value="filter.setGrupo($event)"
+        @update:model-value="filter.setGrupos($event)"
       />
       <FilterSelect
         label="Unidade executora" :options="dimensoes.unidades"
         :model-value="filter.unidade"
-        @update:model-value="filter.setUnidade($event)"
+        @update:model-value="filter.setUnidades($event)"
       />
       <FilterSelect
         label="Especialidade" :options="dimensoes.especialidades"
         :model-value="filter.especialidade"
-        @update:model-value="filter.setEspecialidade($event)"
+        @update:model-value="filter.setEspecialidades($event)"
       />
       <label class="flex flex-col gap-1 text-xs">
         <span class="font-medium text-text-muted dark:text-text-dark-muted">De</span>
