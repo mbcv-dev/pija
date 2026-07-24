@@ -23,3 +23,16 @@ describe('agruparUnidades', () => {
     expect(agruparUnidades([])).toEqual([])
   })
 })
+
+describe('agruparUnidades — estabilidade', () => {
+  it('não mistura opções entre grupos com nomes parecidos', () => {
+    const r = agruparUnidades([
+      { valor: 'A1', grupo: 'Ambulatorial' },
+      { valor: 'B1', grupo: 'Ambulatório' },
+      { valor: 'A2', grupo: 'Ambulatorial' },
+    ])
+    expect(r.map((b) => b.label)).toEqual(['Ambulatorial', 'Ambulatório'])
+    expect(r[0].options).toEqual(['A1', 'A2'])
+    expect(r[1].options).toEqual(['B1'])
+  })
+})
