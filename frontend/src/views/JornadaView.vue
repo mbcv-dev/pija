@@ -26,9 +26,16 @@ watch(
     ciclo.value = null
     if (!id) return
     try {
-      ciclo.value = await getCiclicidade({ paciente_id: id })
-    } catch {
-      ciclo.value = null // silencioso: a timeline continua sendo o principal
+      const data = await getCiclicidade({ paciente_id: id })
+      // Guarda contra resposta fora de ordem: se o paciente mudou enquanto a
+      // requisição estava em voo, descarta este resultado (senão o mini-grafo
+      // de um paciente ficaria sobre a timeline de outro).
+      if (store.pacienteId !== id) return
+      ciclo.value = data
+    } catch (e) {
+      // Silencioso: a timeline continua sendo o principal. Breadcrumb p/ debug.
+      console.debug('mini-grafo de ciclicidade indisponível', e)
+      ciclo.value = null
     }
   },
 )
