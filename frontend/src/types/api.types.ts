@@ -6,9 +6,9 @@
 // ── Parâmetros de filtro compartilhados ─────────────────────
 
 export interface BaseFilterParams {
-  grupo?: string
-  unidade?: string
-  especialidade?: string
+  grupo?: string[]
+  unidade?: string[]
+  especialidade?: string[]
   data_inicio?: string  // YYYY-MM-DD
   data_fim?: string     // YYYY-MM-DD
 }
