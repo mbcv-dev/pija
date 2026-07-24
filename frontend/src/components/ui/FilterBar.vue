@@ -12,8 +12,18 @@ const dimensoes = useDimensoesStore()
 // Popula os filtros com os valores reais da base (uma vez).
 onMounted(() => dimensoes.load())
 
-// Cascata: ao trocar a unidade, limpa a especialidade e reescopa a lista
-// para mostrar só as especialidades daquela unidade.
+// Cascata nível 1: ao trocar o Grupo, limpa os filhos e reescopa unidade+especialidade.
+watch(
+  () => filter.grupo,
+  (g) => {
+    if (filter.unidade.length) filter.setUnidades([])
+    if (filter.especialidade.length) filter.setEspecialidades([])
+    void dimensoes.scopeByGrupo(g)
+  },
+  { deep: true },
+)
+
+// Cascata nível 2: ao trocar a Unidade, limpa a especialidade e reescopa a lista.
 watch(
   () => filter.unidade,
   (u) => {
@@ -38,7 +48,9 @@ const groupByOptions = [
         @update:model-value="filter.setGrupos($event)"
       />
       <FilterSelect
-        label="Unidade executora" :options="dimensoes.unidades"
+        label="Unidade executora"
+        :options="dimensoes.unidadesValores"
+        :groups="dimensoes.unidadesAgrupadas"
         :model-value="filter.unidade"
         @update:model-value="filter.setUnidades($event)"
       />
