@@ -45,7 +45,7 @@ Plataforma analítica que consome views do AGHU (sistema hospitalar) para respon
 - SQLAlchemy 2.0 **Async** + aiosqlite + Alembic
 - pandas (apenas para ETL — leitura streaming chunked)
 - PyJWT + bcrypt + python-ldap (Fase 5)
-- python-oracledb (Fase 5 apenas)
+- psycopg / asyncpg (Fase 5 apenas — AGHU é **PostgreSQL**, confirmado com o HC 2026-07-24; ver docs/superpowers/plans/2026-07-24-aghu-integracao-referencia.md)
 - pytest + pytest-asyncio + httpx
 
 ### Frontend (Fase 4 — ainda não iniciada)
