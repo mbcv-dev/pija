@@ -69,7 +69,7 @@ A proposta de solução completa (template preenchido) está disponível em:
 
 | Componente | MVP | Cutover (Fase 5) |
 |---|---|---|
-| Fonte de dados | **CSVs exportados das 7 views** (HC entrega) | AGHU Oracle via VPN (`python-oracledb`) |
+| Fonte de dados | **CSVs exportados das 7 views** (HC entrega) | AGHU **PostgreSQL** (`psycopg`/`asyncpg`), VM na rede do HC |
 | Adapter de origem | `CsvResource` (pandas chunked) | `AghuResource` (pool de conexão) |
 | Pipeline ETL | Streaming batched, idempotente, modo `--sample N` | Mesmo runner, troca `RESOURCE_MODE=aghu` |
 | Banco local | SQLite + SQLAlchemy 2.0 Async + Alembic | SQLite |
@@ -88,7 +88,7 @@ A proposta de solução completa (template preenchido) está disponível em:
 - [ ] Consistência do `paciente_id` entre módulos
 - [ ] Liberação de VPN e acesso read-only ao AGHU (gate da Fase 5)
 - [ ] Política de retenção de dados e regras LGPD aplicáveis
-- [ ] Confirmação do driver Oracle e DSN do AGHU
+- [x] ~~Confirmação do driver e DSN do AGHU~~ — **Resolvido (2026-07-24): PostgreSQL**, `psycopg`/`asyncpg`
 
 ---
 

@@ -13,7 +13,7 @@ def test_factory_returns_csv_when_mode_csv(monkeypatch, tmp_path):
 
 def test_factory_returns_aghu_when_mode_aghu(monkeypatch):
     monkeypatch.setenv("RESOURCE_MODE", "aghu")
-    monkeypatch.setenv("AGHU_DSN", "oracle://stub")
+    monkeypatch.setenv("AGHU_DSN", "postgresql://stub")
     monkeypatch.setenv("JWT_SECRET", "test-secret-not-for-production-min-32-chars")
 
     res = get_resource()

@@ -13,7 +13,7 @@ Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvo
 ### Estratégia de dados em duas etapas
 
 1. **MVP (Fases 0–4)** — desenvolvimento e validação contra **CSVs reais exportados das views do AGHU** (entregues pelo HC).
-2. **Cutover (Fase 5)** — quando a VPN do HC for liberada, o adapter `Resource` troca de `CsvResource` para `AghuResource` (`python-oracledb`) sem alterar Providers, Controllers ou Routers.
+2. **Cutover (Fase 5)** — numa VM dentro da rede do HC (que alcança o AGHU), o adapter `Resource` troca de `CsvResource` para `AghuResource` (`psycopg`/`asyncpg` contra o **PostgreSQL** do AGHU) sem alterar Providers, Controllers ou Routers.
 
 ### Objetivos do MVP
 
@@ -55,7 +55,7 @@ Este documento é a **ÚNICA fonte de verdade** para a orquestração do desenvo
 ## 3. Guardrails — Escopo Positivo (O que DEVE ser feito)
 
 - Seguir o fluxo obrigatório: `.sql → Resources → Providers → Controllers → Routers`
-- Usar **SQL nativo** (arquivos `.sql`) para consultas analíticas — vale tanto para `CsvResource` (staging local) quanto para `AghuResource` (Oracle)
+- Usar **SQL nativo** (arquivos `.sql`) para consultas analíticas — vale tanto para `CsvResource` (staging local) quanto para `AghuResource` (PostgreSQL)
 - Usar **SQLAlchemy 2.0 Async** apenas para tabelas internas (`fato_eventos_jornada`, `etl_log`, `audit_log`, `users` interim)
 - Usar **SQLite** como banco local — nunca PostgreSQL local
 - Isolar toda comunicação HTTP do frontend em `src/services/api.ts`
@@ -137,7 +137,7 @@ Detalhamento por fase, gates e skills Claude Code: [`docs/PLANO.md`](docs/PLANO.
 
 ### Fase 5 — Cutover HC (Pós-MVP, gated externamente)
 
-- [ ] **T5-1** Implementar `AghuResource` real (`python-oracledb`, pool) — substitui o stub
+- [ ] **T5-1** Implementar `AghuResource` real (`psycopg`/`asyncpg`, pool) — substitui o stub
 - [ ] **T5-2** Validar `.sql` da Fase 1 contra as 7 views reais; ajustar se necessário
 - [ ] **T5-3** Validar volumes ETL contra `SELECT COUNT(*)` direto nas views
 - [ ] **T5-4** Substituir `local_auth` por `ldap_auth` (`python-ldap` contra AD HC) — env-only swap
@@ -168,4 +168,4 @@ Detalhamento por fase, gates e skills Claude Code: [`docs/PLANO.md`](docs/PLANO.
 - [ ] Consistência do `paciente_id` entre módulos
 - [ ] Liberação de VPN + acesso read-only ao AGHU (gate da Fase 5)
 - [ ] Política de retenção de dados e regras LGPD aplicáveis
-- [ ] Confirmação do driver Oracle (`python-oracledb`) e DSN
+- [x] ~~Confirmação do driver e DSN~~ — **Resolvido (2026-07-24): AGHU é PostgreSQL**, driver `psycopg`/`asyncpg` (ver [docs/superpowers/plans/2026-07-24-aghu-integracao-referencia.md](docs/superpowers/plans/2026-07-24-aghu-integracao-referencia.md))

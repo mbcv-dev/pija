@@ -17,7 +17,7 @@
 | RF003 | Identificação de Gargalos | Ranquear etapas da jornada por tempo médio de espera | Essencial | ✅ MVP |
 | RF004 | Análise de Fluxos Predominantes | Agrupar e exibir sequências de eventos por frequência e proporção | Alta | ⏸ Pós-MVP |
 | RF005 | Painel de Prontuários Inertes | Identificar prontuários sem eventos subsequentes | Alta | ⏸ Pós-MVP |
-| RF006 | Pipeline de Extração de Dados | **MVP:** ETL **CSV → SQLite** via `CsvResource` (streaming chunked). **Pós-MVP (Fase 5):** ETL **AGHU views → SQLite** via `AghuResource` (`python-oracledb` + VPN HC). | Essencial | ✅ MVP (CSV) |
+| RF006 | Pipeline de Extração de Dados | **MVP:** ETL **CSV → SQLite** via `CsvResource` (streaming chunked). **Pós-MVP (Fase 5):** ETL **AGHU views → SQLite** via `AghuResource` (`psycopg`/`asyncpg` contra o PostgreSQL do AGHU, VM na rede do HC). | Essencial | ✅ MVP (CSV) |
 | RF007 | Linha do Tempo Cronológica por Paciente | Endpoint `/api/v1/jornada/{paciente_id}` e tela com a linha do tempo do paciente | Média | ⏸ Pós-MVP |
 | RF008 | Integração LEC | Indicadores da Lista de Espera Cirúrgica (volume, permanência por especialidade) | Média | ⏸ Pós-MVP |
 
@@ -103,5 +103,5 @@
 - **Context (MVP)**: HC-UFPE entrega CSVs grandes exportados das 7 views; banco SQLite local inicializado com schema via Alembic.
 - **Action (MVP)**: Implementar `etl_runner.py` que itera pelas 7 entidades, lê CSVs via `CsvResource` (`pandas.read_csv(chunksize=50_000)`), transforma (tipagem, nulos, geração de `evento_id`), valida cada linha com Pydantic v2 (linhas inválidas → soft-fail no log) e faz **upsert batched** no SQLite via SQLAlchemy por `(entidade_id, tipo_entidade)`.
 - **Result (MVP)**: SQLite atualizado, idempotente; log de execução em `etl_log` com `started_at`, `finished_at`, `view_name`, `rows_read`, `rows_loaded`, `rows_rejected`, `errors`.
-- **Cutover (Fase 5 — Pós-MVP)**: trocar `CsvResource` por `AghuResource` (`python-oracledb`, pool) via env `RESOURCE_MODE=aghu`. Providers e `.sql` não mudam.
+- **Cutover (Fase 5 — Pós-MVP)**: trocar `CsvResource` por `AghuResource` (`psycopg`/`asyncpg`, pool) via env `RESOURCE_MODE=aghu`. Providers e `.sql` não mudam.
 - **Evaluation**: `pytest tests/test_etl_runner.py` — sample CSV de teste; validar contagens, idempotência (rerun não duplica) e soft-fail (linha inválida não trava o pipeline).

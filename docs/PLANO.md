@@ -26,7 +26,7 @@ class BaseResource(Protocol):
 ```
 
 - **MVP**: `CsvResource` lê arquivos de `CSV_DIR/<view>.csv`
-- **Fase 5**: `AghuResource` abre cursor Oracle contra `vw_<view>`
+- **Fase 5**: `AghuResource` abre cursor PostgreSQL (`psycopg`/`asyncpg`) contra `vw_<view>` (schema `agh.*`)
 - `resource_factory.get_resource()` retorna a impl correta via env `RESOURCE_MODE`
 - Providers, controllers, routers e o `etl_runner` **não sabem** qual adapter está ativo
 
@@ -252,14 +252,14 @@ Todas as skills citadas já estão disponíveis no ambiente — nada para instal
 
 **Pré-condições (gates externos):**
 - [ ] HC-UFPE libera VPN + credencial de serviço com `GRANT SELECT` nas 7 views
-- [ ] HC-UFPE confirma DSN Oracle e estrutura final das views
+- [x] ~~HC-UFPE confirma DSN Oracle~~ — **Resolvido (2026-07-24): PostgreSQL** (`psycopg`/`asyncpg`); confirmar estrutura final das views contra o banco real
 - [ ] HC-UFPE define ambiente de deploy
 
 ### Tasks
 
 | ID | Descrição | Saída concreta |
 |---|---|---|
-| T5-1 | `AghuResource` real | Substituir stub por impl `python-oracledb` com pool de conexão; manter contrato `BaseResource` |
+| T5-1 | `AghuResource` real | Substituir stub por impl `psycopg`/`asyncpg` (PostgreSQL) com pool de conexão; manter contrato `BaseResource` |
 | T5-2 | Validar `.sql` de extração | Rodar contra views reais; ajustar nomes de colunas se divergirem |
 | T5-3 | Validar volumes | `etl_runner` em produção → comparar `etl_log.rows_loaded` com `SELECT COUNT(*) FROM vw_*` direto |
 | T5-4 | `ldap_auth.py` | `python-ldap` contra AD HC; substitui `local_auth` via env switch |
