@@ -49,7 +49,18 @@
 
 ---
 
-## 6. Requisito de dados: classificação de EXAMES nos filtros — **obrigatório**
+## 6. Requisito de dados: classificação de EXAMES nos filtros — **obrigatório** ✅ CONCLUÍDO
+
+> **Status (2026-07-24):** ✅ **Entregue** na branch `feature/filtros-multiselect`
+> (spec [2026-07-06-filtros-exames-multiselect-design.md](../specs/2026-07-06-filtros-exames-multiselect-design.md),
+> plano [2026-07-06-filtros-exames-multiselect.md](2026-07-06-filtros-exames-multiselect.md)).
+> A classificação (que já existia no backend via `unidades.py`) agora aparece nos filtros: **multiseleção**
+> em Grupo/Unidade/Especialidade, **cascata** Grupo→Unidade→Especialidade e **agrupamento** das unidades por
+> Grupo (optgroups). Verificado ponta-a-ponta com o backend real: selecionar "Diagnóstico por Imagem" escopa a
+> Unidade para os 8 executores UDI. Backend 147 testes / frontend 35 testes verdes; 11 tasks com revisão dupla.
+> **Falta ainda** confirmar a lista completa de Internação com o HC (pendência abaixo) e o merge/deploy.
+
+
 
 > Fonte canônica: `docs/classificacao-exames/Exames - classificação.docx`.
 > **Isso tem que estar no sistema, nos filtros, bem separado** (por Grupo → Executores).
