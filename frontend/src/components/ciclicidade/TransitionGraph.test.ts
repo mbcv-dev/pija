@@ -28,3 +28,42 @@ describe('TransitionGraph', () => {
     expect(w.findAll('[data-edge]')).toHaveLength(3)
   })
 })
+
+// Fixture maior (14 transições, 7 nós) para exercitar top-N e filtro por clique.
+const T = (origem: string, destino: string, volume: number): TransicaoItem =>
+  ({ origem, destino, volume, tempo_medio_s: 86400, n: volume } as TransicaoItem)
+
+const bigNos: NoItem[] = (
+  ['PRONTUARIO', 'CONSULTA', 'PROCEDIMENTO', 'EXAME', 'INTERNACAO', 'CIRURGIA', 'ALTA'] as const
+).map((tipo) => ({ tipo, total_entradas: 10, total_saidas: 10 }))
+
+const bigTransicoes: TransicaoItem[] = [
+  T('PRONTUARIO', 'CONSULTA', 100),
+  T('PRONTUARIO', 'EXAME', 90),
+  T('ALTA', 'PRONTUARIO', 5), // 3ª incidente de PRONTUARIO
+  T('CONSULTA', 'EXAME', 80),
+  T('CONSULTA', 'INTERNACAO', 70),
+  T('EXAME', 'EXAME', 60),
+  T('EXAME', 'CONSULTA', 55),
+  T('PROCEDIMENTO', 'EXAME', 50),
+  T('INTERNACAO', 'ALTA', 45),
+  T('CIRURGIA', 'ALTA', 40),
+  T('ALTA', 'CONSULTA', 35),
+  T('PROCEDIMENTO', 'PROCEDIMENTO', 30),
+  T('CONSULTA', 'CONSULTA', 25),
+  T('INTERNACAO', 'CONSULTA', 20),
+]
+
+describe('TransitionGraph — top-N e filtro por clique', () => {
+  it('por padrão mostra apenas as 10 transições mais fortes quando há muitas', () => {
+    const w = mount(TransitionGraph, { props: { nos: bigNos, transicoes: bigTransicoes } })
+    expect(w.findAll('[data-edge]')).toHaveLength(10)
+  })
+
+  it('clicar num nó filtra o grafo às transições incidentes a ele', async () => {
+    const w = mount(TransitionGraph, { props: { nos: bigNos, transicoes: bigTransicoes } })
+    // Nós na ordem canônica: índice 0 = PRONTUARIO. Ele participa de 3 transições.
+    await w.findAll('[data-node]')[0].trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(3)
+  })
+})

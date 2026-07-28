@@ -180,3 +180,29 @@ dark/light, acessibilidade).
 | Query lenta na coorte grande | Índice `(paciente_id, timestamp_principal)` já existe; medir; considerar índice só se preciso |
 | `julianday` sobre ts inválido | `tempo_medio_s = None` degrada suave; volume não depende do tempo |
 | Grafo poluído com 7 nós + auto-laços | Layout fixo + espessura por volume; matriz como leitura alternativa |
+
+---
+
+## 10. Revisão de design do grafo agregado (2026-07-27, pós-verificação no browser)
+
+Na verificação com dados reais (demo DB ~2,26M eventos), a v1 do `TransitionGraph` ficou **pequena, pouco
+informativa e sem interação**. Redesenhado com a skill `frontend-design` (como craft de dataviz **dentro** do
+design system do PIJA — sem estética nova que destoe). Decisões:
+
+- **Escala logarítmica** na espessura das arestas e no raio dos nós — os volumes variam de ~5 a ~926k; escala
+  linear achatava tudo. Log diferencia os fluxos dominantes.
+- **Realce da ciclicidade (o insight):** avanços em **cyan**, **retornos e auto-laços em âmbar** (`caution`).
+  "Retorno" = destino anterior à origem na ordem canônica, ou auto-laço. Os ciclos saltam à vista.
+- **Rótulos com volume + dias** nas arestas visíveis (pílula legível em dark/light) — pedido explícito do usuário.
+- **Controle top-N** (slider) mostrando só as transições mais fortes (default 10) — evita o "hairball" de 49 arestas.
+- **Clique filtra ao contexto** (decisão do usuário): clicar num nó reduz ao ego-fluxo dele (todas as suas
+  transições, apaga o resto); clicar numa aresta isola a transição; chip "limpar" reseta.
+- **Zoom (scroll) + pan (arrastar)** com "repor zoom".
+- **Layout elíptico** (viewBox largo) para ocupar a largura do card; auto-laços maiores (cubic) para os volumes
+  dominantes (EXAME→EXAME) lerem como os mais grossos.
+- Fundo/nós via classes Tailwind `dark:` (não CSS custom) para respeitar o tema; seta de tamanho fixo
+  (`markerUnits=userSpaceOnUse`, `context-stroke` para herdar a cor da aresta).
+- A **matriz** permanece como leitura tabular acessível e alternativa ao grafo (toggle).
+
+Verificado no browser (agregado + individual) com dados reais. Testes de componente cobrem render, top-N e
+filtro por clique.
