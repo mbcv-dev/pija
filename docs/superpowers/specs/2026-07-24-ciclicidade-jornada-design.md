@@ -206,3 +206,15 @@ design system do PIJA — sem estética nova que destoe). Decisões:
 
 Verificado no browser (agregado + individual) com dados reais. Testes de componente cobrem render, top-N e
 filtro por clique.
+
+### 10.1 Ordem cronológica no grafo individual (2026-07-27)
+
+Feedback: no mini-grafo do paciente dava pra ver a ciclicidade, mas **não a ordem** dos eventos. O agregado
+perde a ordem (agrega por par origem→destino), então o mini-grafo passou a ser derivado direto da **timeline**
+(`store.eventos`, já cronológica) em vez do endpoint agregado:
+
+- Cada transição carrega `ordem` = o passo cronológico (1, 2, 3…); a aresta mostra um **selo numerado** (cyan =
+  avanço, âmbar = retorno) com o tempo do passo abaixo. Dá pra **traçar a sequência** e ver os ciclos juntos.
+- `TransitionGraph` aceita `ordem` opcional por aresta e `escopo="paciente"`; no individual o top-N é desativado
+  (todo volume é 1). O agregado segue com a pílula volume·dias, inalterado.
+- O mini-grafo não chama mais `getCiclicidade` (remove uma ida à rede); tudo vem de `store.eventos`.

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useJornadaStore } from '@/stores/useJornadaStore'
 import { elapsedLabel } from '@/lib/timeline'
-import { getCiclicidade } from '@/services/api'
-import type { TipoEntidade, CiclicidadeResponse } from '@/types/api.types'
+import type { TipoEntidade, NoItem, TransicaoItem } from '@/types/api.types'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import Icon from '@/components/ui/Icon.vue'
@@ -18,27 +17,32 @@ import TransitionGraph from '@/components/ciclicidade/TransitionGraph.vue'
 const store = useJornadaStore()
 const input = ref('')
 
-const ciclo = ref<CiclicidadeResponse | null>(null)
-
-watch(
-  () => store.pacienteId,
-  async (id) => {
-    ciclo.value = null
-    if (!id) return
-    try {
-      const data = await getCiclicidade({ paciente_id: id })
-      // Guarda contra resposta fora de ordem: se o paciente mudou enquanto a
-      // requisição estava em voo, descarta este resultado (senão o mini-grafo
-      // de um paciente ficaria sobre a timeline de outro).
-      if (store.pacienteId !== id) return
-      ciclo.value = data
-    } catch (e) {
-      // Silencioso: a timeline continua sendo o principal. Breadcrumb p/ debug.
-      console.debug('mini-grafo de ciclicidade indisponível', e)
-      ciclo.value = null
-    }
-  },
-)
+// Mini-grafo do paciente: sequência ORDENADA de transições derivada da própria
+// timeline (store.eventos já vem em ordem cronológica). Diferente do agregado, aqui
+// cada transição carrega `ordem` = o passo cronológico, para se ler a sequência no grafo.
+const ciclo = computed<{ nos: NoItem[]; transicoes: (TransicaoItem & { ordem: number })[] }>(() => {
+  const evs = store.eventos
+  const transicoes: (TransicaoItem & { ordem: number })[] = []
+  const entradas: Record<string, number> = {}
+  const saidas: Record<string, number> = {}
+  for (let i = 1; i < evs.length; i++) {
+    const origem = evs[i - 1].tipo_entidade
+    const destino = evs[i].tipo_entidade
+    const t0 = Date.parse(evs[i - 1].timestamp_principal)
+    const t1 = Date.parse(evs[i].timestamp_principal)
+    const tempo = Number.isNaN(t0) || Number.isNaN(t1) ? null : Math.max(0, (t1 - t0) / 1000)
+    transicoes.push({ origem, destino, volume: 1, tempo_medio_s: tempo, n: 1, ordem: i })
+    saidas[origem] = (saidas[origem] ?? 0) + 1
+    entradas[destino] = (entradas[destino] ?? 0) + 1
+  }
+  const tipos = new Set<string>([...Object.keys(entradas), ...Object.keys(saidas)])
+  const nos: NoItem[] = [...tipos].map((tipo) => ({
+    tipo: tipo as TipoEntidade,
+    total_entradas: entradas[tipo] ?? 0,
+    total_saidas: saidas[tipo] ?? 0,
+  }))
+  return { nos, transicoes }
+})
 
 const TIPOS: TipoEntidade[] = ['CONSULTA', 'EXAME', 'INTERNACAO', 'CIRURGIA', 'PROCEDIMENTO', 'ALTA', 'PRONTUARIO']
 
@@ -94,9 +98,11 @@ function submit(): void {
       </div>
 
       <!-- Mini-grafo de transições do paciente (guarda: ≥ 2 transições) -->
-      <BaseCard v-if="ciclo && ciclo.transicoes.length >= 2">
-        <p class="text-xs text-text-muted dark:text-text-dark-muted mb-2">Fluxo de transições deste paciente</p>
-        <TransitionGraph :nos="ciclo.nos" :transicoes="ciclo.transicoes" />
+      <BaseCard v-if="ciclo.transicoes.length >= 2">
+        <p class="text-xs text-text-muted dark:text-text-dark-muted mb-2">
+          Fluxo de transições deste paciente · <span class="text-text dark:text-text-dark font-medium">os números indicam a ordem dos eventos</span>
+        </p>
+        <TransitionGraph :nos="ciclo.nos" :transicoes="ciclo.transicoes" escopo="paciente" />
       </BaseCard>
 
       <!-- Timeline -->

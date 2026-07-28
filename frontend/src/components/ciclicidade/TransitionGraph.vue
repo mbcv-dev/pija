@@ -2,8 +2,11 @@
 import { ref, computed } from 'vue'
 import type { NoItem, TransicaoItem } from '@/types/api.types'
 
+// No escopo individual cada transição carrega `ordem` (o passo cronológico).
+type EntradaTransicao = TransicaoItem & { ordem?: number }
+
 const props = withDefaults(
-  defineProps<{ nos: NoItem[]; transicoes: TransicaoItem[]; escopo?: 'agregado' | 'paciente' }>(),
+  defineProps<{ nos: NoItem[]; transicoes: EntradaTransicao[]; escopo?: 'agregado' | 'paciente' }>(),
   { escopo: 'agregado' },
 )
 
@@ -83,7 +86,8 @@ function fmtTempo(s: number | null): string {
 }
 
 // ── Controle top-N (só quando há muitas transições) ──
-const temControles = computed(() => props.transicoes.length > 12)
+// Top-N só faz sentido no agregado (no individual todo volume é 1 e a ordem é o que importa).
+const temControles = computed(() => props.escopo === 'agregado' && props.transicoes.length > 12)
 const topN = ref(Math.min(10, props.transicoes.length))
 const ordenadas = computed(() => [...props.transicoes].sort((a, b) => b.volume - a.volume))
 
@@ -111,7 +115,7 @@ const transicoesVisiveis = computed(() => {
 
 interface Edge {
   key: string; d: string; w: number; ret: boolean; self: boolean
-  lx: number; ly: number; label: string; title: string; t: TransicaoItem
+  lx: number; ly: number; label: string; tempoLabel: string; ordem?: number; title: string; t: EntradaTransicao
 }
 
 const edges = computed<Edge[]>(() => {
@@ -122,7 +126,10 @@ const edges = computed<Edge[]>(() => {
     if (!a || !b) continue
     const ret = retorno(t)
     const label = `${fmtVol(t.volume)} · ${fmtTempo(t.tempo_medio_s)}`
-    const title = `${PLENO[t.origem]} → ${PLENO[t.destino]}: ${t.volume.toLocaleString('pt-BR')} transições · tempo médio ${fmtTempo(t.tempo_medio_s)}`
+    const tempoLabel = fmtTempo(t.tempo_medio_s)
+    const title = t.ordem != null
+      ? `Passo ${t.ordem}: ${PLENO[t.origem]} → ${PLENO[t.destino]} · ${tempoLabel}`
+      : `${PLENO[t.origem]} → ${PLENO[t.destino]}: ${t.volume.toLocaleString('pt-BR')} transições · tempo médio ${tempoLabel}`
     if (t.origem === t.destino) {
       // Laço maior e arredondado (cubic) saindo/voltando pela borda do nó, apontando pra fora.
       const ox = a.x - CX, oy = a.y - CY
@@ -137,8 +144,8 @@ const edges = computed<Edge[]>(() => {
       const c1x = a.x + ux * loop + px * spread, c1y = a.y + uy * loop + py * spread
       const c2x = a.x + ux * loop - px * spread, c2y = a.y + uy * loop - py * spread
       const d = `M ${s1x} ${s1y} C ${c1x} ${c1y} ${c2x} ${c2y} ${s2x} ${s2y}`
-      out.push({ key: `${t.origem}-self`, d, w: largura(t.volume), ret: true, self: true,
-        lx: a.x + ux * (loop + 20), ly: a.y + uy * (loop + 20), label, title, t })
+      out.push({ key: `${t.origem}-self-${t.ordem ?? ''}`, d, w: largura(t.volume), ret: true, self: true,
+        lx: a.x + ux * (loop + 20), ly: a.y + uy * (loop + 20), label, tempoLabel, ordem: t.ordem, title, t })
     } else {
       const nx = -(b.y - a.y), ny = b.x - a.x
       const nlen = Math.hypot(nx, ny) || 1
@@ -147,8 +154,8 @@ const edges = computed<Edge[]>(() => {
       const cx = mx + (nx / nlen) * bend, cy = my + (ny / nlen) * bend
       const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`
       // ponto médio da quadrática (t=0.5) = (A + 2C + B) / 4
-      out.push({ key: `${t.origem}-${t.destino}`, d, w: largura(t.volume), ret, self: false,
-        lx: (a.x + 2 * cx + b.x) / 4, ly: (a.y + 2 * cy + b.y) / 4, label, title, t })
+      out.push({ key: `${t.origem}-${t.destino}-${t.ordem ?? ''}`, d, w: largura(t.volume), ret, self: false,
+        lx: (a.x + 2 * cx + b.x) / 4, ly: (a.y + 2 * cy + b.y) / 4, label, tempoLabel, ordem: t.ordem, title, t })
     }
   }
   return out
@@ -271,17 +278,34 @@ function larguraPilula(label: string) { return label.length * 7.2 + 14 }
           </g>
         </g>
 
-        <!-- Rótulos das arestas (volume · dias) -->
+        <!-- Rótulos das arestas -->
         <g class="pointer-events-none">
           <g v-for="e in edges" :key="`lbl-${e.key}`" :transform="`translate(${e.lx} ${e.ly})`">
-            <rect
-              :x="-larguraPilula(e.label) / 2" y="-11" :width="larguraPilula(e.label)" height="22" rx="11"
-              class="fill-surface dark:fill-surface-dark" stroke="currentColor"
-              :class="e.ret ? 'text-caution/40' : 'text-primary/30 dark:text-accent/30'"
-              stroke-width="1"
-            />
-            <text text-anchor="middle" dy="0.34em" font-size="13" font-weight="600"
-                  class="tabular-nums fill-text dark:fill-text-dark">{{ e.label }}</text>
+            <!-- Individual: selo com o PASSO (ordem cronológica) + tempo abaixo. -->
+            <template v-if="e.ordem != null">
+              <g transform="translate(0 -13)">
+                <circle r="15" stroke="#fff" stroke-width="1.5"
+                        :class="e.ret ? 'fill-caution' : 'fill-primary dark:fill-accent'" />
+                <text text-anchor="middle" dy="0.34em" font-size="15" font-weight="800" fill="#fff">{{ e.ordem }}</text>
+              </g>
+              <g transform="translate(0 15)">
+                <rect :x="-larguraPilula(e.tempoLabel) / 2" y="-9" :width="larguraPilula(e.tempoLabel)" height="18" rx="9"
+                      class="fill-surface dark:fill-surface-dark" />
+                <text text-anchor="middle" dy="0.34em" font-size="11"
+                      class="tabular-nums fill-text-muted dark:fill-text-dark-muted">{{ e.tempoLabel }}</text>
+              </g>
+            </template>
+            <!-- Agregado: pílula volume · dias. -->
+            <template v-else>
+              <rect
+                :x="-larguraPilula(e.label) / 2" y="-11" :width="larguraPilula(e.label)" height="22" rx="11"
+                class="fill-surface dark:fill-surface-dark" stroke="currentColor"
+                :class="e.ret ? 'text-caution/40' : 'text-primary/30 dark:text-accent/30'"
+                stroke-width="1"
+              />
+              <text text-anchor="middle" dy="0.34em" font-size="13" font-weight="600"
+                    class="tabular-nums fill-text dark:fill-text-dark">{{ e.label }}</text>
+            </template>
           </g>
         </g>
 
