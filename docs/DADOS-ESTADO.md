@@ -303,6 +303,23 @@ Registro de bugs encontrados pelos testes de integração (Task 16) e corrigidos
 
 Ambos os bugs ficaram silenciosos até o pipeline rodar end-to-end com dados representando todas as entidades — exatamente o que os testes de integração precisavam exercitar.
 
+## 11. Semântica dos números da Ciclicidade (investigação 2026-07-30, pós-reunião HC)
+
+Investigação na base real (`pija_demo.db`, 2.264.504 eventos) para responder "o que significam os números do grafo":
+
+1. **1 linha em `fato_eventos_jornada` = 1 evento.** Por `tipo_entidade`: EXAME 979.847 · PROCEDIMENTO 407.805 ·
+   PRONTUARIO 354.790 · CONSULTA 167.578 · INTERNACAO 163.484 · ALTA 163.255 · CIRURGIA 27.745.
+2. **Para EXAME, 1 linha = 1 *item* de exame** — o ETL usa `exame_id` = código do exame (ex.: LDL), não um id único
+   por linha. Um painel laboratorial (hemograma + glicose + LDL…) solicitado de uma vez vira várias linhas com o
+   mesmo horário de solicitação.
+3. **O número na aresta do grafo = nº de TRANSIÇÕES** (pares evento→próximo-evento consecutivos por paciente),
+   não o total de eventos.
+4. **EXAME→EXAME = ~926k com tempo médio ~1h é em boa parte artefato do item 2**: itens do mesmo pedido, minutos
+   entre si, contam cada um como uma transição.
+
+**Decisão (travada com o usuário em 2026-07-30):** manter o comportamento e **explicar** na UI (Metodologia +
+nota na tela de Ciclicidade). Não colapsar itens de exame no ETL por ora.
+
 ---
 
 ## 9. Próximos passos
