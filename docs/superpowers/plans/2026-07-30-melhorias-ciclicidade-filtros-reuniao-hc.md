@@ -71,6 +71,33 @@ Investigação na base real (`pija_demo.db`, 2.264.504 eventos):
 - Manter a cascata atual (Grupo→Unidade→Especialidade) coerente com a nova ordem.
 - Verificar no browser: escolher "REUMATOLOGIA" → subtipos (INFUSAO, LUPUS, INFILTRAÇÃO…) aparecem; aplica coorte.
 
+### G. Grafo — escolher explicitamente **quais** transições aparecem (pedido pós-entrega, 2026-07-30)
+
+- **Arquivo:** `TransitionGraph.vue`.
+- **Motivo:** o controle da frente B só responde "quantas" (top-N) e "em que ordem". O pedido é poder **escolher
+  quais** transições aparecem, de forma bem didática.
+- **Decisão:** o controle "Quais transições você quer ver?" passa a ter **dois modos**:
+  1. **"As principais"** (default) — o comportamento da frente B (quantidade + ordenar por), inalterado.
+  2. **"Escolher"** — seleção explícita, com quatro elementos didáticos:
+     - **Atalhos que ensinam o vocabulário do grafo:** `Todas`, `Só avanços`, `Só retornos`, `Só repetições`.
+       Cada atalho **preenche a seleção** (não é um segundo filtro paralelo — evita dois estados concorrentes
+       e mantém uma única fonte de verdade).
+     - **Seletor `Transições`** reusando o `FilterSelect` da barra de filtros, agrupado por tipo de movimento e
+       com cada item rotulado `Consulta → Procedimento · 60,9k · 33d` — volume e tempo à vista para a escolha
+       ser informada.
+     - **Chips do que está escolhido**, com ✕ para remover uma a uma: a escolha fica visível sem abrir o seletor.
+     - **Contador** "mostrando X de Y transições".
+  - Ao entrar no modo "Escolher", a seleção é **semeada com o que já estava visível** — você vê o mesmo grafo e
+    ajusta a partir dele, em vez de começar do zero.
+  - Seleção vazia mostra o aviso "Nenhuma transição escolhida" em vez de um grafo vazio silencioso.
+- **Três tipos de movimento** (predicados): **avanço** (destino depois na ordem canônica), **retorno** (destino
+  antes) e **repetição** (origem = destino). As cores seguem a legenda atual — repetição pinta como
+  "retorno / ciclo".
+- Disponível só no escopo **agregado** (no individual a ordem cronológica é o que importa). O limite para exibir o
+  controle caiu de "> 12 transições" para "> 3": com poucas transições o top-N é inútil, mas **escolher** não é.
+- Trocar a coorte (filtros) pode invalidar a escolha inteira; nesse caso o grafo **volta a semear** com as
+  principais da coorte nova em vez de ficar vazio parecendo bug.
+
 ### F. Metodologia — explicar os números (ponto 3)
 - **Arquivos:** `frontend/src/views/MetodologiaView.vue` (+ um tooltip/nota curta na `CiclicidadeView`).
 - Texto curto e honesto: "cada linha é um evento; para exames, cada **item** conta como um evento (um pedido
@@ -137,3 +164,39 @@ cd frontend; npx vitest run; npm run type-check
 
 **Contexto de dados já apurado** (não re-investigar): ver §0. `especialidade` = `BASE - SUBTIPO` (dividir no `" - "`
 ou `" ("`); a seta do grafo conta **transições**, não eventos; EXAME→EXAME infla por item de exame.
+
+---
+
+## 7. Registro de execução (2026-07-30)
+
+**Status: todas as frentes (F, A, D, B, C, E) implementadas e verificadas** — vitest 78/78, vue-tsc limpo,
+pytest 160/160, browser (agregado + individual, temas claro e escuro, backend real).
+
+### Decisões de implementação tomadas durante a execução
+
+**Grafo (A/C/D) — `TransitionGraph.vue`:**
+- A causa das setas "invisíveis": as arestas terminavam no **centro** do nó e a ponta ficava embaixo do círculo.
+  Correção: aparar a curva na borda do nó (origem e destino).
+- `context-stroke` no `<marker>` não herda a cor da aresta de forma confiável no Chromium → **dois markers**
+  (um por cor, avanço/retorno) com classes de fill explícitas.
+- Seta adicional no **meio** de cada aresta (t≈0,28 da Bézier), escalada pela espessura.
+- Sobreposição: curvatura sempre **à esquerda do sentido de percurso** (A→B e B→A caem em lados opostos da
+  corda), variação determinística por par (hash), desvio iterativo de nós intermediários, curvatura extra por
+  **repetição** do mesmo par (grafo individual) e laços maiores por repetição de auto-laço.
+- Rótulos: passe de de-overlap (tenta posições ao longo da curva) + clamp no viewBox (resolveu o rótulo do
+  auto-laço do Proced. cortado na borda).
+
+**Filtros (E) — decisões travadas em código (`frontend/src/lib/dimensoes.ts`):**
+1. Subtipo com `" ("`: **sem** parênteses (`CARDIOLOGIA (ECO)` → base `CARDIOLOGIA`, subtipo `ECO`).
+2. Só o **primeiro** separador divide (`NEFROLOGIA - PRE - TRANSPLANTE` → subtipo `PRE - TRANSPLANTE`);
+   hífen sem espaços (`PRE-NATAL`) não separa.
+3. Subtipos selecionados restringem **apenas a própria base**; base selecionada sem subtipos marcados expande
+   para todos os seus valores brutos. O filtro enviado à API continua sendo a lista de valores BRUTOS
+   (contrato backend intacto, zero mudança de SQL).
+4. **Base é trimada** no split: a base real do HC tem `ALERGIA  - LACTENTE SIBILANTE` (dois espaços), que sem
+   trim virava uma segunda base "ALERGIA" duplicada no select (achado do teste em browser).
+5. O select de Subtipo usa o **valor bruto** como value (label = subtipo) pra evitar ambiguidade entre bases
+   com subtipos homônimos.
+
+**Ressalva registrada:** `toggleEspecialidade` (ação legada do `useFilterStore`) altera só os valores brutos sem
+sincronizar base/subtipo — nenhum consumidor da UI nova a usa hoje.
