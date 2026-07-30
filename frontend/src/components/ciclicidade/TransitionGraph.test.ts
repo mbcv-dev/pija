@@ -67,3 +67,97 @@ describe('TransitionGraph — top-N e filtro por clique', () => {
     expect(w.findAll('[data-edge]')).toHaveLength(3)
   })
 })
+
+// Fixture acima tem 7 avanços, 4 retornos e 3 repetições (auto-laços).
+describe('TransitionGraph — modo "Escolher" (quais transições aparecem)', () => {
+  const montar = () => mount(TransitionGraph, { props: { nos: bigNos, transicoes: bigTransicoes } })
+  const entrarNoModoEscolher = async (w: ReturnType<typeof montar>) => {
+    await w.get('[data-modo="escolher"]').trigger('click')
+    return w
+  }
+
+  it('oferece o modo de escolha no escopo agregado', () => {
+    expect(montar().find('[data-modo="escolher"]').exists()).toBe(true)
+  })
+
+  it('não oferece o modo de escolha no escopo paciente', () => {
+    const w = mount(TransitionGraph, {
+      props: { nos: bigNos, transicoes: bigTransicoes, escopo: 'paciente' },
+    })
+    expect(w.find('[data-modo="escolher"]').exists()).toBe(false)
+  })
+
+  it('ao entrar no modo, mantém as transições que já estavam visíveis', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    expect(w.findAll('[data-edge]')).toHaveLength(10)
+    expect(w.findAll('[data-chip]')).toHaveLength(10)
+  })
+
+  it('atalho "Só repetições" deixa apenas os auto-laços', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.get('[data-preset="repeticoes"]').trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(3)
+  })
+
+  it('atalho "Só retornos" exclui avanços e repetições', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.get('[data-preset="retornos"]').trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(4)
+  })
+
+  it('atalho "Só avanços" deixa apenas quem segue na ordem da jornada', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.get('[data-preset="avancos"]').trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(7)
+  })
+
+  it('atalho "Todas" mostra a base inteira', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.get('[data-preset="todas"]').trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(bigTransicoes.length)
+  })
+
+  it('remover um chip tira aquela transição do grafo', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.findAll('[data-chip]')[0].trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(9)
+    expect(w.findAll('[data-chip]')).toHaveLength(9)
+  })
+
+  it('seleção vazia avisa em vez de mostrar um grafo vazio calado', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.get('[data-preset="nenhuma"]').trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(0)
+    expect(w.get('[data-vazio]').text()).toContain('Nenhuma transição escolhida')
+  })
+
+  it('fica disponível também em coortes pequenas (há o que escolher)', () => {
+    const w = mount(TransitionGraph, {
+      props: { nos: bigNos, transicoes: bigTransicoes.slice(0, 5) },
+    })
+    expect(w.find('[data-modo="escolher"]').exists()).toBe(true)
+  })
+
+  it('conta o que está sendo mostrado em relação ao total', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.get('[data-preset="repeticoes"]').trigger('click')
+    expect(w.get('[data-contador]').text()).toContain('3 de 14')
+  })
+
+  it('trocar a coorte sem nenhuma escolhida sobrevivente volta a semear', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.get('[data-preset="repeticoes"]').trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(3)
+    // Nova coorte (filtro aplicado) sem nenhum auto-laço: em vez de um grafo
+    // vazio que parece bug, volta a mostrar as principais da coorte nova.
+    await w.setProps({ transicoes: bigTransicoes.filter((t) => t.origem !== t.destino) })
+    expect(w.findAll('[data-edge]').length).toBeGreaterThan(0)
+  })
+
+  it('voltar para "As principais" restaura o corte automático', async () => {
+    const w = await entrarNoModoEscolher(montar())
+    await w.get('[data-preset="repeticoes"]').trigger('click')
+    await w.get('[data-modo="principais"]').trigger('click')
+    expect(w.findAll('[data-edge]')).toHaveLength(10)
+  })
+})
