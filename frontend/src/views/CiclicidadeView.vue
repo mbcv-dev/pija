@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useCiclicidadeStore } from '@/stores/useCiclicidadeStore'
+import Icon from '@/components/ui/Icon.vue'
 import FilterBar from '@/components/ui/FilterBar.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
@@ -52,5 +54,13 @@ onMounted(() => {
       <TransitionGraph v-else-if="modo === 'grafo'" :nos="store.nos" :transicoes="store.transicoes" />
       <TransitionMatrix v-else :nos="store.nos" :transicoes="store.transicoes" />
     </BaseCard>
+    <p class="flex items-start gap-1.5 text-xs text-text-muted dark:text-text-dark-muted -mt-2">
+      <Icon name="info" :size="14" class="shrink-0 mt-[1px]" />
+      <span>
+        O número na seta conta <strong>transições</strong> (idas de uma etapa à seguinte), não eventos. Para exames,
+        cada item do pedido conta como um evento — por isso Exame → Exame aparece alto, com tempo curto.
+        <RouterLink to="/metodologia" class="text-primary dark:text-accent hover:underline">Ver metodologia</RouterLink>
+      </span>
+    </p>
   </div>
 </template>
