@@ -7,6 +7,12 @@
 
 ---
 
+> **ATUALIZAÇÃO (2026-07-28) — decisão final: transferência direta pra VM.** Confirmou-se que o repositório
+> `mbcv-dev/pija` é **PÚBLICO**; portanto o banco (jornada real de pacientes) **não** vai pro GitHub (nem como
+> release/LFS — seria exposição pública de dado de saúde, risco LGPD, irreversível). O `.db` é entregue por
+> **canal privado direto pra VM** (que está dentro da rede do HC). Comprimido: **67 MB** (`.gz`). Instruções
+> completas de deploy em **[../../DEPLOY-HC.md](../../DEPLOY-HC.md)**.
+
 ## 0. Restrição que enquadra tudo
 
 Qualquer que seja o caminho, **algo grande viaja fora do git**:
