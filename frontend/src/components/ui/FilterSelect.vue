@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 
+/** Opção simples (value = label) ou com rótulo próprio (ex.: subtipo exibido sem a base). */
+export type OpcaoFiltro = string | { value: string; label: string }
+
 const props = withDefaults(defineProps<{
   modelValue: string[]
-  options: readonly string[]
+  options: readonly OpcaoFiltro[]
   label: string
   placeholder?: string
   /** Quando informado, renderiza as opções sob cabeçalhos (optgroup). */
-  groups?: readonly { label: string; options: readonly string[] }[]
+  groups?: readonly { label: string; options: readonly OpcaoFiltro[] }[]
 }>(), { placeholder: 'Todas' })
 
 const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>()
@@ -15,16 +18,31 @@ const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>()
 const aberto = ref(false)
 const raiz = ref<HTMLElement | null>(null)
 
-const resumo = computed(() => {
-  if (props.modelValue.length === 0) return props.placeholder
-  if (props.modelValue.length === 1) return props.modelValue[0]
-  return `${props.modelValue.length} selecionados`
-})
+function normalizar(opt: OpcaoFiltro): { value: string; label: string } {
+  return typeof opt === 'string' ? { value: opt, label: opt } : opt
+}
 
 // Sem `groups`, trata tudo como um único bloco sem cabeçalho.
 const blocos = computed(() =>
-  props.groups ?? [{ label: '', options: props.options }],
+  (props.groups ?? [{ label: '', options: props.options }])
+    .map((b) => ({ label: b.label, options: b.options.map(normalizar) })),
 )
+
+// value → label, para o resumo exibir o rótulo (não o valor bruto).
+const rotulos = computed(() => {
+  const m = new Map<string, string>()
+  for (const b of blocos.value) for (const o of b.options) m.set(o.value, o.label)
+  return m
+})
+
+const resumo = computed(() => {
+  if (props.modelValue.length === 0) return props.placeholder
+  if (props.modelValue.length === 1) {
+    const v = props.modelValue[0]
+    return rotulos.value.get(v) ?? v
+  }
+  return `${props.modelValue.length} selecionados`
+})
 
 function alternar(valor: string): void {
   const atual = props.modelValue
@@ -74,15 +92,15 @@ onUnmounted(() => document.removeEventListener('click', onClickFora))
           {{ bloco.label }}
         </div>
         <label
-          v-for="opt in bloco.options" :key="opt"
+          v-for="opt in bloco.options" :key="opt.value"
           class="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-surface-offset dark:hover:bg-surface-dark-offset"
         >
           <input
             type="checkbox" class="rounded border-border"
-            :checked="modelValue.includes(opt)"
-            @change="alternar(opt)"
+            :checked="modelValue.includes(opt.value)"
+            @change="alternar(opt.value)"
           />
-          <span class="text-sm text-text dark:text-text-dark">{{ opt }}</span>
+          <span class="text-sm text-text dark:text-text-dark">{{ opt.label }}</span>
         </label>
       </template>
     </div>

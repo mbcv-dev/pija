@@ -53,3 +53,61 @@ describe('useFilterStore (multiseleção)', () => {
     expect(s.groupBy).toBe('especialidade')
   })
 })
+
+describe('useFilterStore (especialidade base + subtipo)', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+
+  it('começa sem seleção de base nem subtipo', () => {
+    const s = useFilterStore()
+    expect(s.especialidadeBase).toEqual([])
+    expect(s.especialidadeSubtipo).toEqual([])
+  })
+
+  it('setEspecialidadeSelecao guarda a seleção e o filtro expandido (valores brutos)', () => {
+    const s = useFilterStore()
+    s.setEspecialidadeSelecao(
+      ['REUMATOLOGIA'],
+      [],
+      ['REUMATOLOGIA', 'REUMATOLOGIA - INFUSAO', 'REUMATOLOGIA - LUPUS'],
+    )
+    expect(s.especialidadeBase).toEqual(['REUMATOLOGIA'])
+    expect(s.especialidadeSubtipo).toEqual([])
+    // Contrato da API intacto: `especialidade` continua a lista de valores BRUTOS.
+    expect(s.activeFilters.especialidade).toEqual([
+      'REUMATOLOGIA', 'REUMATOLOGIA - INFUSAO', 'REUMATOLOGIA - LUPUS',
+    ])
+  })
+
+  it('subtipo restringe o filtro aos valores brutos escolhidos', () => {
+    const s = useFilterStore()
+    s.setEspecialidadeSelecao(
+      ['REUMATOLOGIA'], ['REUMATOLOGIA - LUPUS'], ['REUMATOLOGIA - LUPUS'],
+    )
+    expect(s.especialidadeSubtipo).toEqual(['REUMATOLOGIA - LUPUS'])
+    expect(s.activeFilters.especialidade).toEqual(['REUMATOLOGIA - LUPUS'])
+  })
+
+  it('seleção de base conta como 1 filtro ativo', () => {
+    const s = useFilterStore()
+    s.setEspecialidadeSelecao(['REUMATOLOGIA'], [], ['REUMATOLOGIA'])
+    expect(s.activeCount).toBe(1)
+  })
+
+  it('setEspecialidades([]) (cascata) também limpa base e subtipo', () => {
+    const s = useFilterStore()
+    s.setEspecialidadeSelecao(['REUMATOLOGIA'], ['REUMATOLOGIA - LUPUS'], ['REUMATOLOGIA - LUPUS'])
+    s.setEspecialidades([])
+    expect(s.especialidade).toEqual([])
+    expect(s.especialidadeBase).toEqual([])
+    expect(s.especialidadeSubtipo).toEqual([])
+  })
+
+  it('reset limpa base e subtipo', () => {
+    const s = useFilterStore()
+    s.setEspecialidadeSelecao(['REUMATOLOGIA'], ['REUMATOLOGIA - LUPUS'], ['REUMATOLOGIA - LUPUS'])
+    s.reset()
+    expect(s.especialidade).toEqual([])
+    expect(s.especialidadeBase).toEqual([])
+    expect(s.especialidadeSubtipo).toEqual([])
+  })
+})

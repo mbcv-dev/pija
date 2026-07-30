@@ -11,7 +11,12 @@ export const useFilterStore = defineStore('filter', () => {
   // ── Estado ──────────────────────────────────────────────────
   const unidade       = ref<string[]>([])
   const grupo         = ref<string[]>([])
+  /** Valores BRUTOS de especialidade enviados à API (expansão de base+subtipo). */
   const especialidade = ref<string[]>([])
+  /** Seleção de UI: bases de especialidade (trecho antes de " - " ou " ("). */
+  const especialidadeBase = ref<string[]>([])
+  /** Seleção de UI: subtipos, guardados como valores BRUTOS (não ambíguos). */
+  const especialidadeSubtipo = ref<string[]>([])
   const dataInicio    = ref<string | null>(null)
   const dataFim       = ref<string | null>(null)
   const groupBy       = ref<GroupBy>('unidade')
@@ -49,9 +54,26 @@ export const useFilterStore = defineStore('filter', () => {
   const toggleGrupo         = (g: string) => toggle(grupo, g)
   const toggleEspecialidade = (e: string) => toggle(especialidade, e)
 
-  const setUnidades       = (l: string[]) => { unidade.value = l }
-  const setGrupos         = (l: string[]) => { grupo.value = l }
-  const setEspecialidades = (l: string[]) => { especialidade.value = l }
+  const setUnidades = (l: string[]) => { unidade.value = l }
+  const setGrupos   = (l: string[]) => { grupo.value = l }
+
+  /** Define os valores brutos diretamente (ex.: cascata limpando com []) — descarta a seleção base/subtipo. */
+  const setEspecialidades = (l: string[]) => {
+    especialidade.value = l
+    especialidadeBase.value = []
+    especialidadeSubtipo.value = []
+  }
+
+  /**
+   * Define a seleção base+subtipo da UI junto com a expansão em valores brutos
+   * (calculada pelo chamador via `expandirEspecialidades`). Mantém o contrato
+   * da API: só `especialidade` (brutos) entra em `activeFilters`.
+   */
+  function setEspecialidadeSelecao(bases: string[], subtipos: string[], valoresBrutos: string[]): void {
+    especialidadeBase.value = bases
+    especialidadeSubtipo.value = subtipos
+    especialidade.value = valoresBrutos
+  }
 
   function setDataInicio(d: string | null): void { dataInicio.value = d }
   function setDataFim(d: string | null): void { dataFim.value = d }
@@ -61,16 +83,19 @@ export const useFilterStore = defineStore('filter', () => {
     unidade.value = []
     grupo.value = []
     especialidade.value = []
+    especialidadeBase.value = []
+    especialidadeSubtipo.value = []
     dataInicio.value = null
     dataFim.value = null
     // groupBy mantém a preferência do usuário
   }
 
   return {
-    unidade, grupo, especialidade, dataInicio, dataFim, groupBy,
+    unidade, grupo, especialidade, especialidadeBase, especialidadeSubtipo,
+    dataInicio, dataFim, groupBy,
     activeFilters, activeCount,
     toggleUnidade, toggleGrupo, toggleEspecialidade,
-    setUnidades, setGrupos, setEspecialidades,
+    setUnidades, setGrupos, setEspecialidades, setEspecialidadeSelecao,
     setDataInicio, setDataFim, setGroupBy, reset,
   }
 })

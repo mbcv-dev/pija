@@ -1,8 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { getDimensoes } from '@/services/api'
-import { agruparUnidades } from '@/lib/dimensoes'
+import { agruparUnidades, agruparEspecialidades } from '@/lib/dimensoes'
 import type { UnidadeDim } from '@/types/api.types'
+
+// Funções puras da derivação base/subtipo (testáveis sem Pinia) — ver @/lib/dimensoes.
+export { separarEspecialidade, agruparEspecialidades, expandirEspecialidades } from '@/lib/dimensoes'
+export type { BaseEspecialidade, EspecialidadeSeparada, SubtipoEspecialidade } from '@/lib/dimensoes'
 
 /**
  * useDimensoesStore — valores reais dos filtros (grupo, unidade, especialidade).
@@ -22,6 +26,10 @@ export const useDimensoesStore = defineStore('dimensoes', () => {
   const unidadesAgrupadas = computed(() => agruparUnidades(unidades.value))
   /** Nomes das unidades (lista plana), para o `options` do FilterSelect. */
   const unidadesValores = computed(() => unidades.value.map((u) => u.valor))
+  /** Especialidades (já escopadas pela cascata) agrupadas por base, com subtipos derivados. */
+  const especialidadeBases = computed(() => agruparEspecialidades(especialidades.value))
+  /** Nomes das bases (lista plana), para o select de Especialidade. */
+  const especialidadeBasesValores = computed(() => especialidadeBases.value.map((b) => b.base))
 
   async function load(): Promise<void> {
     if (loaded.value || loading.value) return
@@ -63,7 +71,7 @@ export const useDimensoesStore = defineStore('dimensoes', () => {
 
   return {
     grupos, unidades, especialidades, unidadesFull, especialidadesFull, loaded, loading,
-    unidadesAgrupadas, unidadesValores,
+    unidadesAgrupadas, unidadesValores, especialidadeBases, especialidadeBasesValores,
     load, scopeByGrupo, scopeEspecialidades,
   }
 })
