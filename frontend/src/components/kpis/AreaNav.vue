@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { AREAS_JORNADA, type AreaId } from '@/lib/areas'
+import { useKpiStore } from '@/stores/useKpiStore'
 import Icon from '@/components/ui/Icon.vue'
 
 /**
@@ -23,25 +24,23 @@ function irPara(id: AreaId): void {
   document.getElementById(`area-${id}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
 }
 
+const kpiStore = useKpiStore()
 let observer: IntersectionObserver | null = null
-let mutationObserver: MutationObserver | null = null
-const observadas = new Set<AreaId>()
 
 /**
- * Observa as seções `#area-<id>` ainda não observadas. O KpiGrid só cria essas
- * seções depois que o fetch dos KPIs resolve (antes disso mostra skeleton), então
- * no onMounted do AreaNav elas normalmente ainda não existem — por isso isto é
- * chamado de novo via MutationObserver sempre que o DOM muda, até achar todas.
+ * Reobserva as seções `#area-<id>` do zero. Sempre `disconnect()` antes de
+ * observar de novo: um filtro novo põe `store.loading` em `true` e o `v-else`
+ * do KpiGrid DESMONTA as `<section>` antigas; quando `loading` volta a `false`
+ * elas voltam como nós DOM novos. Só adicionar os que "faltam" deixaria o
+ * observer preso em elementos desconectados e o scroll-spy morreria calado
+ * no primeiro filtro.
  */
-function observarSecoesDisponiveis(): void {
+function sincronizarObservacoes(): void {
   if (!observer) return
+  observer.disconnect()
   for (const area of AREAS_JORNADA) {
-    if (observadas.has(area.id)) continue
     const el = document.getElementById(`area-${area.id}`)
-    if (el) {
-      observer.observe(el)
-      observadas.add(area.id)
-    }
+    if (el) observer.observe(el)
   }
 }
 
@@ -58,27 +57,30 @@ onMounted(() => {
       const id = paraAreaId(topo.target.id.replace('area-', ''))
       if (id) ativa.value = id
     },
+    // -96px casa com o `scroll-mt-24` (96px) das <section> no KpiGrid.vue — se um
+    // mudar o offset de rolagem, o outro precisa acompanhar.
     { rootMargin: '-96px 0px -60% 0px' },
   )
-  observarSecoesDisponiveis()
+  // Cobre o caso de o store já ter KPIs em cache (ex.: volta pra rota sem refetch).
+  sincronizarObservacoes()
+})
 
-  // Seções ainda não renderizadas (KpiGrid em skeleton): fica de olho no DOM até
-  // achar todas; depois disso não há mais nada novo a observar.
-  if (observadas.size < AREAS_JORNADA.length && typeof MutationObserver !== 'undefined') {
-    mutationObserver = new MutationObserver(() => {
-      observarSecoesDisponiveis()
-      if (observadas.size === AREAS_JORNADA.length) {
-        mutationObserver?.disconnect()
-        mutationObserver = null
-      }
-    })
-    mutationObserver.observe(document.body, { childList: true, subtree: true })
-  }
-})
-onUnmounted(() => {
-  observer?.disconnect()
-  mutationObserver?.disconnect()
-})
+// O KpiGrid mostra skeleton com `store.loading` e só renderiza as <section>
+// no `v-else` (sem erro, sem lista vazia) quando ele vira `false` — é o gate
+// que decide se as seções existem no DOM. Observar `loading` em vez de vasculhar
+// o DOM (MutationObserver + subtree) dispara exatamente nessa transição, sem
+// custo pra qualquer outra mutação da página (dropdown de filtro, tema, etc.).
+// Se o fetch cair em erro ou lista vazia as seções não existem mesmo — reobservar
+// aí só encontra 0 elementos, o que é inofensivo.
+watch(
+  () => kpiStore.loading,
+  (loading) => {
+    if (loading) return
+    void nextTick().then(sincronizarObservacoes)
+  },
+)
+
+onUnmounted(() => observer?.disconnect())
 </script>
 
 <template>
