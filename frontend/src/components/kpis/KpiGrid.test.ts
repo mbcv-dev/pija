@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { setActivePinia, createPinia, type Pinia } from 'pinia'
+import { nextTick } from 'vue'
 import type { KpiItem } from '@/types/api.types'
 
 const K = (codigo: KpiItem['codigo']): KpiItem => ({
@@ -16,6 +17,7 @@ vi.mock('@/services/api', () => ({
 import KpiGrid from './KpiGrid.vue'
 import KpiCard from './KpiCard.vue'
 import { getKpis } from '@/services/api'
+import { useKpiStore } from '@/stores/useKpiStore'
 
 let pinia: Pinia
 
@@ -23,8 +25,14 @@ async function montar() {
   const w = mount(KpiGrid, {
     global: {
       plugins: [pinia],
-      // Cross-links usam RouterLink; stub evita precisar de router real.
-      stubs: { RouterLink: { template: '<a data-gargalos-link><slot /></a>' } },
+      // Cross-links usam RouterLink; stub captura a prop `to` (serializada em data-to)
+      // para permitir asserir o destino do link, não só a sua presença.
+      stubs: {
+        RouterLink: {
+          props: ['to'],
+          template: '<a data-gargalos-link :data-to="JSON.stringify(to)"><slot /></a>',
+        },
+      },
     },
   })
   await flushPromises()
@@ -73,10 +81,38 @@ describe('KpiGrid — seções por área da jornada', () => {
     expect(comLink).toEqual(['consultas', 'exames', 'internacao'])
   })
 
+  // Task 3 já testa o lado leitor (GargaloList lendo ?kpi=). Este teste cobre o
+  // lado escritor: o `to` que o KpiGrid efetivamente monta para o RouterLink.
+  it('link de gargalos de Exames aponta para /gargalos?kpi=KPI-05', async () => {
+    const w = await montar()
+    const exames = w.findAll('[data-area]').find((s) => s.attributes('data-area') === 'exames')!
+    const link = exames.find('[data-gargalos-link]')
+    const to = JSON.parse(link.attributes('data-to')!) as unknown
+    expect(to).toEqual({ path: '/gargalos', query: { kpi: 'KPI-05' } })
+  })
+
   it('nenhum KPI mapeado mostra o vazio global, sem seções soltas', async () => {
     vi.mocked(getKpis).mockResolvedValueOnce({ kpis: [] })
     const w = await montar()
     expect(w.text()).toContain('Sem KPIs no recorte')
     expect(w.findAll('[data-area]')).toHaveLength(0)
+  })
+
+  it('loading mostra o skeleton, sem seções', async () => {
+    const w = await montar()
+    useKpiStore().loading = true
+    await nextTick()
+    expect(w.find('[data-area]').exists()).toBe(false)
+    expect(w.find('.animate-pulse-soft').exists()).toBe(true)
+  })
+
+  it('erro mostra ErrorState, sem seções', async () => {
+    const w = await montar()
+    const store = useKpiStore()
+    store.loading = false
+    store.error = 'boom'
+    await nextTick()
+    expect(w.find('[data-area]').exists()).toBe(false)
+    expect(w.text()).toContain('boom')
   })
 })

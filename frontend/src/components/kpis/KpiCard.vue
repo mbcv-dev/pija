@@ -49,9 +49,9 @@ const subMeetsTarget = computed(() => {
       <span class="shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
         <Icon :name="meta.icon" :size="18" />
       </span>
-      <h2 class="min-w-0 flex-1 text-sm font-semibold text-text dark:text-text-dark leading-snug">
+      <h3 class="min-w-0 flex-1 text-sm font-semibold text-text dark:text-text-dark leading-snug">
         {{ kpi.descricao }}
-      </h2>
+      </h3>
       <span @click.stop>
         <Tooltip v-if="meta.aviso || meta.nota" :text="meta.aviso ?? meta.nota ?? ''" />
       </span>

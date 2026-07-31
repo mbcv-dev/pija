@@ -65,6 +65,7 @@ onMounted(() => {
           <RouterLink
             v-if="area.gargalosKpi"
             :to="{ path: '/gargalos', query: { kpi: area.gargalosKpi } }"
+            :aria-label="`Ver gargalos de ${area.label}`"
             class="shrink-0 text-xs font-medium text-primary dark:text-accent hover:underline whitespace-nowrap"
           >
             Ver gargalos →
