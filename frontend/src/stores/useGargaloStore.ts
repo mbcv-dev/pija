@@ -52,6 +52,12 @@ export const useGargaloStore = defineStore('gargalo', () => {
     void fetchGargalos()
   }
 
+  /** Substitui a seleção de métricas (usado pelo deep-link ?kpi= do dashboard). */
+  function setMetricas(codes: KpiCode[]): void {
+    if (codes.length === 0) return // mantém ao menos uma métrica
+    metricas.value = [...codes]
+  }
+
   function initWatcher(): void {
     const filterStore = useFilterStore()
     watch(
@@ -61,5 +67,5 @@ export const useGargaloStore = defineStore('gargalo', () => {
     )
   }
 
-  return { items, loading, error, limit, metricas, fetchGargalos, setLimit, toggleMetrica, initWatcher }
+  return { items, loading, error, limit, metricas, fetchGargalos, setLimit, toggleMetrica, setMetricas, initWatcher }
 })
