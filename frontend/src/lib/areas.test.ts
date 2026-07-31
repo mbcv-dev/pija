@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { AREAS_JORNADA } from './areas'
-import type { KpiCode } from '@/types/api.types'
-
-// METRIC_OPTIONS do GargaloList (KPIs que participam do ranking de gargalos).
-const METRIC_OPTIONS: KpiCode[] = ['KPI-03', 'KPI-05', 'KPI-06', 'KPI-07']
+import { METRIC_OPTIONS } from './gargalos'
 
 describe('AREAS_JORNADA', () => {
   it('segue a ordem canônica da jornada', () => {

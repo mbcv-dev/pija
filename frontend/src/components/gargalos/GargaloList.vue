@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useGargaloStore } from '@/stores/useGargaloStore'
 import { KPI_META } from '@/types/api.types'
 import type { KpiCode } from '@/types/api.types'
+import { METRIC_OPTIONS } from '@/lib/gargalos'
 import GargaloItem from './GargaloItem.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
@@ -10,11 +12,16 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import Badge from '@/components/ui/Badge.vue'
 
 const store = useGargaloStore()
+const route = useRoute()
 
-const METRIC_OPTIONS: KpiCode[] = ['KPI-03', 'KPI-05', 'KPI-06', 'KPI-07']
 const maxMedia = computed(() => Math.max(...store.items.map((i) => i.media), 0))
 
 onMounted(() => {
+  // Deep-link das seções do dashboard: /gargalos?kpi=KPI-05 pré-seleciona a métrica.
+  const kpi = route.query.kpi
+  if (typeof kpi === 'string' && (METRIC_OPTIONS as string[]).includes(kpi)) {
+    store.setMetricas([kpi as KpiCode])
+  }
   store.initWatcher()
   void store.fetchGargalos()
 })
