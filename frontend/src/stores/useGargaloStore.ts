@@ -52,7 +52,12 @@ export const useGargaloStore = defineStore('gargalo', () => {
     void fetchGargalos()
   }
 
-  /** Substitui a seleção de métricas (usado pelo deep-link ?kpi= do dashboard). */
+  /**
+   * Substitui a seleção de métricas (usado pelo deep-link ?kpi= do dashboard).
+   *
+   * NÃO dispara fetchGargalos — ao contrário de setLimit/toggleMetrica. O chamador
+   * busca em seguida (GargaloList.onMounted chama setMetricas e depois fetchGargalos).
+   */
   function setMetricas(codes: KpiCode[]): void {
     if (codes.length === 0) return // mantém ao menos uma métrica
     metricas.value = [...codes]
