@@ -7,7 +7,8 @@ vi.mock('@/services/api', () => ({
 }))
 
 // useRoute é mockado por teste para simular a query string.
-const rota = { query: {} as Record<string, string> }
+// vue-router permite ?kpi=A&kpi=B, que surge aqui como string[] — daí o tipo mais largo.
+const rota = { query: {} as Record<string, string | string[]> }
 vi.mock('vue-router', () => ({
   useRoute: () => rota,
 }))
@@ -19,7 +20,7 @@ import { AREAS_JORNADA } from '@/lib/areas'
 
 let pinia: Pinia
 
-async function montar(query: Record<string, string>) {
+async function montar(query: Record<string, string | string[]>) {
   rota.query = query
   const w = mount(GargaloList, { global: { plugins: [pinia] } })
   await flushPromises()
@@ -44,6 +45,11 @@ describe('GargaloList — deep-link ?kpi=', () => {
 
   it('sem query mantém o default', async () => {
     await montar({})
+    expect(useGargaloStore().metricas).toEqual(['KPI-03', 'KPI-05', 'KPI-06', 'KPI-07'])
+  })
+
+  it('?kpi= repetido (vira array) mantém o default', async () => {
+    await montar({ kpi: ['KPI-05', 'KPI-03'] })
     expect(useGargaloStore().metricas).toEqual(['KPI-03', 'KPI-05', 'KPI-06', 'KPI-07'])
   })
 

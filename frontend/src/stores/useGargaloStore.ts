@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { useFilterStore } from './useFilterStore'
 import { getGargalos } from '@/services/api'
+import { METRIC_OPTIONS } from '@/lib/gargalos'
 import type { GargaloItem, KpiCode } from '@/types/api.types'
 
 /**
@@ -14,7 +15,9 @@ export const useGargaloStore = defineStore('gargalo', () => {
   const loading = ref(false)
   const error   = ref<string | null>(null)
   const limit   = ref(10)
-  const metricas = ref<KpiCode[]>(['KPI-03', 'KPI-05', 'KPI-06', 'KPI-07'])
+  // Cópia defensiva: nunca referenciar METRIC_OPTIONS diretamente, ou uma mutação
+  // aqui corromperia a fonte única compartilhada com GargaloList.
+  const metricas = ref<KpiCode[]>([...METRIC_OPTIONS])
 
   // ── Actions ───────────────────────────────────────────────────
 
