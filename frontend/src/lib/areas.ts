@@ -1,5 +1,8 @@
 import type { KpiCode } from '@/types/api.types'
 
+/** Identificador estável de área — também usado como DOM id (`area-${id}`) para scroll-spy/cross-links. */
+export type AreaId = 'entrada' | 'consultas' | 'exames' | 'internacao' | 'cirurgias'
+
 /**
  * Áreas da jornada do paciente — fonte única do agrupamento do Dashboard.
  *
@@ -9,7 +12,7 @@ import type { KpiCode } from '@/types/api.types'
  * KPI-07B não aparece aqui — é submétrica renderizada dentro do card do KPI-07.
  */
 export interface AreaJornada {
-  id: string
+  id: AreaId
   label: string
   /** Nome de ícone existente em Icon.vue. */
   icon: string
