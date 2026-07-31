@@ -1,16 +1,34 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useKpiStore } from '@/stores/useKpiStore'
+import { AREAS_JORNADA } from '@/lib/areas'
+import type { KpiItem } from '@/types/api.types'
 import KpiCard from './KpiCard.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
+import Icon from '@/components/ui/Icon.vue'
 import Skeleton from '@/components/ui/Skeleton.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
 const store = useKpiStore()
 
-const submetric = computed(() => store.kpis.find((k) => k.codigo === 'KPI-07B'))
-const mainKpis = computed(() => store.kpis.filter((k) => k.codigo !== 'KPI-07B'))
+const porCodigo = computed(() => new Map(store.kpis.map((k) => [k.codigo, k])))
+const submetric = computed(() => porCodigo.value.get('KPI-07B'))
+
+/** Áreas com os KPIs já resolvidos a partir da resposta da API (ausentes são pulados). */
+const areasComCards = computed(() =>
+  AREAS_JORNADA.map((area) => ({
+    area,
+    cards: area.kpis.reduce<KpiItem[]>((acc, codigo) => {
+      const kpi = porCodigo.value.get(codigo)
+      if (kpi) acc.push(kpi)
+      return acc
+    }, []),
+  })),
+)
+
+const nenhumKpi = computed(() => areasComCards.value.every(({ cards }) => cards.length === 0))
 
 onMounted(() => {
   store.initWatcher()
@@ -28,12 +46,45 @@ onMounted(() => {
       </BaseCard>
     </div>
     <ErrorState v-else-if="store.error" :message="store.error" @retry="store.fetchKpis()" />
-    <EmptyState v-else-if="mainKpis.length === 0" title="Sem KPIs no recorte" description="Ajuste os filtros para ver os indicadores." />
-    <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      <KpiCard
-        v-for="kpi in mainKpis" :key="kpi.codigo" :kpi="kpi"
-        :submetric="kpi.codigo === 'KPI-07' ? submetric : undefined"
-      />
+    <EmptyState v-else-if="nenhumKpi" title="Sem KPIs no recorte" description="Ajuste os filtros para ver os indicadores." />
+
+    <div v-else class="flex flex-col gap-8">
+      <section
+        v-for="{ area, cards } in areasComCards" :key="area.id"
+        :id="`area-${area.id}`" :data-area="area.id"
+        class="flex flex-col gap-3 scroll-mt-24"
+      >
+        <header class="flex items-start gap-3">
+          <span class="shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Icon :name="area.icon" :size="18" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <h2 class="text-base font-bold text-text dark:text-text-dark leading-snug">{{ area.label }}</h2>
+            <p class="text-xs text-text-muted dark:text-text-dark-muted">{{ area.descricao }}</p>
+          </div>
+          <RouterLink
+            v-if="area.gargalosKpi"
+            :to="{ path: '/gargalos', query: { kpi: area.gargalosKpi } }"
+            class="shrink-0 text-xs font-medium text-primary dark:text-accent hover:underline whitespace-nowrap"
+          >
+            Ver gargalos →
+          </RouterLink>
+        </header>
+
+        <div v-if="cards.length > 0" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <KpiCard
+            v-for="kpi in cards" :key="kpi.codigo" :kpi="kpi"
+            :submetric="kpi.codigo === 'KPI-07' ? submetric : undefined"
+          />
+        </div>
+        <BaseCard v-else>
+          <EmptyState
+            :icon="area.icon"
+            title="Sem indicadores nesta área ainda"
+            description="Os indicadores operacionais (cirurgias/partos, cancelamentos…) estão no roadmap — implementação futura."
+          />
+        </BaseCard>
+      </section>
     </div>
   </div>
 </template>
