@@ -61,12 +61,12 @@ onMounted(() => {
     // mudar o offset de rolagem, o outro precisa acompanhar.
     { rootMargin: '-96px 0px -60% 0px' },
   )
-  // O KpiGrid vem antes na árvore (ver DashboardView.vue) e os hooks `mounted`
-  // de uma subárvore só disparam depois que o render síncrono dela termina —
-  // então, se o estado do store já permitir, as <section> do KpiGrid já
-  // existem no DOM quando este onMounted roda. Chamar aqui também é o que
-  // protege contra um futuro cache-skip no fetch ou uma reordenação dos
-  // componentes em DashboardView.vue.
+  // Apesar de o AreaNav vir ANTES do KpiGrid no template (ver DashboardView.vue),
+  // os hooks `mounted` de toda a subárvore só disparam depois que o render
+  // síncrono inteiro termina — então, se o estado do store já permitir, as
+  // <section> do KpiGrid já existem no DOM quando este onMounted roda,
+  // independente da ordem de declaração. Chamar aqui também protege contra um
+  // futuro cache-skip no fetch ou uma reordenação dos componentes.
   sincronizarObservacoes()
 })
 
