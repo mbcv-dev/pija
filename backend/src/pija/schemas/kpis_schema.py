@@ -53,7 +53,8 @@ class KpiDistribuicao(BaseModel):
     codigo: str = Field(description="Código do KPI.", examples=["KPI-07B"])
     unidade_tempo: str = Field(default="dias", description="Unidade dos valores (mesma do KPI).")
     p50: float | None = Field(None, description="Mediana. `null` sem dados.")
-    p95: float | None = Field(None, description="Percentil 95 dos valores. `null` sem dados. Costuma ser o teto dos baldes lineares — mas o teto real é sempre `buckets[-1].de`.")
+    p95: float | None = Field(None, description="Percentil 95 dos valores. `null` sem dados. Costuma ser igual ao `teto`, mas quem define o eixo é o `teto`.")
+    teto: float | None = Field(None, description="Teto dos baldes lineares — é este o limite do eixo do gráfico, e é sempre igual a `buckets[-1].de`. Normalmente é o p95; quando p95 = 0 (>= 95% dos casos zerados, situação do KPI-07B) cai no valor MÁXIMO, senão a cauda, que é o objeto do histograma, sumiria. `null` sem dados.")
     n_total: int = Field(0, description="Total de casos no recorte.")
     buckets: list[DistBucket] = Field(default_factory=list, description="Baldes em ordem: os lineares de 0 até o teto e, por último, a cauda aberta (`ate=null`). O teto é o p95, ou o máximo quando p95 = 0 (>= 95% dos casos zerados), para a cauda não desaparecer. Se todos os casos forem 0, sai um único balde aberto em 0. Vazio quando não há casos.")
 
@@ -64,6 +65,7 @@ class KpiDistribuicao(BaseModel):
                 "unidade_tempo": "dias",
                 "p50": 12.4,
                 "p95": 64.0,
+                "teto": 64.0,
                 "n_total": 1200,
                 "buckets": [
                     {"de": 0.0, "ate": 4.0, "n": 310},

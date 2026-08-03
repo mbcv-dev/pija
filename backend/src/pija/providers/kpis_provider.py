@@ -230,7 +230,9 @@ class KpisProvider:
         results = [await self.compute(code, group_by, filtros) for code in codes]
         return KpisResponse(kpis=results)
 
-    async def _distribuicao(self, code: str, base: str, params: dict) -> KpiDistribuicao:
+    async def _distribuicao(
+        self, code: str, base: str, params: dict[str, str | None]
+    ) -> KpiDistribuicao:
         """Roda o envelope de distribuição sobre um produtor de linhas já montado."""
         rows = (
             await self._session.execute(
@@ -282,6 +284,7 @@ class KpisProvider:
             unidade_tempo=KPI_UNIDADE_TEMPO.get(code, "dias"),
             p50=p50 if n_total else None,
             p95=p95 if n_total else None,
+            teto=teto if n_total else None,
             n_total=n_total,
             buckets=buckets,
         )

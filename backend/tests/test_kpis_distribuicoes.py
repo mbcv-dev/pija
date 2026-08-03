@@ -79,7 +79,16 @@ class TestDistribuicoes:
     async def test_teto_e_o_p95_quando_p95_positivo(self, fixture_db_session):
         for d in (await _dist(fixture_db_session)).values():
             if d.n_total and d.p95 and d.p95 > 0:
-                assert d.buckets[-1].de == pytest.approx(d.p95)
+                assert d.teto == pytest.approx(d.p95)
+                assert d.buckets[-1].de == pytest.approx(d.teto)
+
+    async def test_teto_publicado_bate_com_o_ultimo_balde(self, fixture_db_session):
+        # O teto é o cap do eixo linear; o frontend não pode ter de deduzi-lo.
+        for d in (await _dist(fixture_db_session)).values():
+            if d.n_total == 0:
+                assert d.teto is None
+            else:
+                assert d.teto == d.buckets[-1].de
 
     async def test_cada_valor_cai_no_balde_certo(self, fixture_db_session):
         # KPI-07 tem 3 permanências conhecidas na fixture: 3, 5 e 7 dias.
@@ -118,7 +127,8 @@ class TestDistribuicoes:
         # Recorte impossível → todo KPI zera, com buckets [].
         vazio = await _dist(fixture_db_session, unidade=["__NAO_EXISTE__"])
         for d in vazio.values():
-            assert d.n_total == 0 and d.buckets == [] and d.p50 is None and d.p95 is None
+            assert d.n_total == 0 and d.buckets == []
+            assert d.p50 is None and d.p95 is None and d.teto is None
 
 
 def _base_valores(valores) -> str:
@@ -200,7 +210,9 @@ class TestEnvelopeSintetico:
         assert d.p95 == pytest.approx(0.0)
         assert d.n_total == 100 and sum(b.n for b in d.buckets) == 100
         assert len(d.buckets) == _N_BUCKETS + 1
-        assert d.buckets[-1].de == pytest.approx(400.0)  # teto = máximo
+        # o teto publicado é o máximo, NÃO o p95 — é isso que o eixo do gráfico usa
+        assert d.teto == pytest.approx(400.0)
+        assert d.buckets[-1].de == pytest.approx(400.0)
         assert d.buckets[-1].n == 1  # a cauda está VISÍVEL
         assert d.buckets[0].n == 98  # 96 zeros + 10 + 20 (largura 25)
         assert d.buckets[2].n == 1  # o 50
@@ -213,6 +225,7 @@ class TestEnvelopeSintetico:
         # aberto (ate=None) e não [0, 0): intervalo vazio mentiria sobre o conteúdo
         assert d.buckets[0].de == 0.0 and d.buckets[0].ate is None and d.buckets[0].n == 10
         assert d.p50 == pytest.approx(0.0) and d.p95 == pytest.approx(0.0)
+        assert d.teto == pytest.approx(0.0)  # máximo também é 0
 
     async def test_valor_negativo_nao_some(self, fixture_db_session):
         # Fora do domínio dos KPIs de hoje, mas se um .sql futuro deixar passar,
@@ -225,7 +238,8 @@ class TestEnvelopeSintetico:
 
     async def test_sem_linhas_vem_vazio(self, fixture_db_session):
         d = await _dist_sintetica(fixture_db_session, [None, None])
-        assert d.n_total == 0 and d.buckets == [] and d.p50 is None and d.p95 is None
+        assert d.n_total == 0 and d.buckets == []
+        assert d.p50 is None and d.p95 is None and d.teto is None
 
     async def test_envelope_nao_depende_de_dimensao(self, fixture_db_session):
         # `dimensao` é ignorada pelo envelope: dimensões diferentes, mesmo histograma.
