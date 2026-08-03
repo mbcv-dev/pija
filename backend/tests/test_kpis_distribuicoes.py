@@ -9,11 +9,24 @@ A fixture do banco tem 2–5 casos por KPI, o que não exercita 17 baldes. Por i
 sintético (lista de valores conhecidos), onde dá para conferir balde a balde.
 """
 import pytest
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from pija.main import app
 from pija.providers.kpis_provider import _MEDIAN_SQL, _N_BUCKETS, KpisProvider
 from pija.schemas.common import GroupBy
 from pija.sql_filtros import Filtros
+
+
+@pytest.fixture
+async def client(async_engine, fixture_db_session):
+    """HTTP client (ASGI) apontando para o mesmo engine populado usado por
+    `fixture_db_session` — replica o padrão de test_kpis_multiselect.py para
+    exercitar a rota real /kpis/distribuicoes."""
+    app.state.session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
 
 
 def _filtros(**kwargs) -> Filtros:
@@ -270,3 +283,35 @@ class TestParidadeComOEnvelopeDaMediana:
             n_mediana, mediana = await _mediana_sintetica(fixture_db_session, valores)
             assert d.n_total == n_mediana == len(valores)
             assert d.p50 == pytest.approx(mediana)
+
+
+class TestDistribuicoesApi:
+    """Camada HTTP: .sql -> provider -> controller -> router -> schema."""
+
+    async def test_endpoint_devolve_distribuicoes(self, client):
+        resp = await client.get("/api/v1/kpis/distribuicoes")
+        assert resp.status_code == 200
+        dados = resp.json()["distribuicoes"]
+        assert {d["codigo"] for d in dados} == {"KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B"}
+
+    async def test_kpi_codes_invalido_da_400(self, client):
+        resp = await client.get("/api/v1/kpis/distribuicoes", params={"kpi_codes": "KPI-99"})
+        assert resp.status_code == 400
+
+    async def test_kpi_codes_subconjunto_restringe_a_resposta(self, client):
+        resp = await client.get(
+            "/api/v1/kpis/distribuicoes", params=[("kpi_codes", "KPI-03"), ("kpi_codes", "KPI-07")]
+        )
+        assert resp.status_code == 200
+        dados = resp.json()["distribuicoes"]
+        assert {d["codigo"] for d in dados} == {"KPI-03", "KPI-07"}
+
+    async def test_filtro_de_unidade_via_querystring_restringe_n_total(self, client):
+        # Mesmo recorte do teste do provider: "UAC: BIOQUÍMICA" deixa só 1 dos 2 exames do KPI-05.
+        resp = await client.get(
+            "/api/v1/kpis/distribuicoes", params={"kpi_codes": "KPI-05", "unidade": "UAC: BIOQUÍMICA"}
+        )
+        assert resp.status_code == 200
+        kpi05 = resp.json()["distribuicoes"][0]
+        assert kpi05["codigo"] == "KPI-05"
+        assert kpi05["n_total"] == 1
