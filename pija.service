@@ -1,0 +1,15 @@
+[Unit]
+Description=PIJA Application Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/app/pija
+ExecStartPre=/usr/bin/touch /var/app/pija/backend/data/pija_demo.db
+ExecStart=/usr/bin/podman-compose up --build
+ExecStop=/usr/bin/podman-compose down
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
