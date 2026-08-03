@@ -844,6 +844,20 @@ git commit -m "feat(front): histograma de tempos nos cards de KPI" -m "Card most
 - Tipos consistentes: `DistBucket/KpiDistribuicao/DistribuicoesResponse` idênticos entre schema Pydantic (Task 1), zod (Task 3) e consumo (Tasks 4–6); `data-balde`/`data-mediana`/`data-cauda` idênticos entre Task 5 (componente) e Tasks 5–6 (testes); `_N_BUCKETS` exportado (Task 1) e usado no teste.
 - Placeholders: os pontos onde o implementador precisa LER o repo antes (nome de fixture do client HTTP, shape de `activeFilters`, assinatura de `formatDuration`, unidade que existe na fixture de teste) estão marcados explicitamente como verificação, não como lacuna.
 
+## Registro de execução
+
+### 2026-08-03 — base da branch: `feat/dashboard-areas`, não `main`
+
+O prompt de abertura manda criar `feat/indicadores-graficos` a partir de `main`. Ao conferir o repo,
+`main` **não contém** o trabalho do dashboard por áreas do qual este plano depende: não há
+`AreaNav.vue`, nem as seções `data-area` do `KpiGrid` (usadas nos testes da Task 6), nem `lib/layout`
+— e os próprios arquivos deste plano e da spec só existem em `feat/dashboard-areas` (a Task 7 pediria
+para editar um arquivo inexistente). A instrução era premissa desatualizada, escrita supondo o merge
+de `feat/dashboard-areas` já feito.
+
+**Decisão (confirmada com o usuário):** branch criada a partir de `feat/dashboard-areas`
+(`7469357`). Nenhuma outra alteração no plano.
+
 ## Fora de escopo (reafirmado)
 
 Biblioteca de gráficos · tendência temporal · gráficos em Ciclicidade/Gargalos · mudanças nos `.sql`
