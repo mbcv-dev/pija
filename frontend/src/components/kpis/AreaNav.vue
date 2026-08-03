@@ -57,9 +57,11 @@ onMounted(() => {
       const id = paraAreaId(topo.target.id.replace('area-', ''))
       if (id) ativa.value = id
     },
-    // -96px casa com o `scroll-mt-24` (96px) das <section> no KpiGrid.vue — se um
-    // mudar o offset de rolagem, o outro precisa acompanhar.
-    { rootMargin: '-96px 0px -60% 0px' },
+    // -100px = o que fica fixo no topo: AppHeader sticky (56px) + esta barra (44px).
+    // As <section> do KpiGrid usam `scroll-mt-[104px]` (os 100px + 4px de respiro)
+    // pro título não parar embaixo da barra ao clicar num chip. Mexer no `top-14`
+    // daqui, na altura do header ou no scroll-mt exige revisar os três juntos.
+    { rootMargin: '-100px 0px -60% 0px' },
   )
   // Apesar de o AreaNav vir ANTES do KpiGrid no template (ver DashboardView.vue),
   // os hooks `mounted` de toda a subárvore só disparam depois que o render
@@ -101,7 +103,7 @@ onUnmounted(() => {
 <template>
   <nav
     aria-label="Áreas da jornada"
-    class="sticky top-0 z-20 -mx-1 px-1 py-2 bg-surface/95 dark:bg-surface-dark/95 backdrop-blur
+    class="sticky top-14 z-20 -mx-1 px-1 py-2 bg-surface/95 dark:bg-surface-dark/95 backdrop-blur
            flex gap-1.5 overflow-x-auto"
   >
     <button

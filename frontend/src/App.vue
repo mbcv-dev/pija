@@ -17,7 +17,15 @@ import BottomNav from '@/components/ui/BottomNav.vue'
 
       <!-- Área de conteúdo com padding responsivo -->
       <!-- pb-20 em mobile: espaço para o bottom nav não cobrir o conteúdo -->
-      <main class="flex-1 overflow-auto">
+      <!-- SEM overflow aqui: quem rola é o documento (o shell é min-h-screen, então
+           este main nunca rolou por conta própria). Um `overflow: auto` criava um
+           scrollport que jamais rolava, e isso deixava `position: sticky` INERTE
+           em qualquer descendente — era o que impedia a barra de áreas do
+           dashboard (AreaNav) de grudar. Ver docs/superpowers/plans/2026-07-30-dashboard-areas-jornada.md
+           `min-w-0` é obrigatório junto: sem o `overflow`, o min-width automático de
+           flex item volta a valer e o main não encolhe, jogando rolagem horizontal
+           na página em telas estreitas (era o `overflow` que zerava esse mínimo). -->
+      <main class="flex-1 min-w-0">
         <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 pb-24 md:pb-6">
           <RouterView v-slot="{ Component, route }">
             <Transition name="fade" mode="out-in">

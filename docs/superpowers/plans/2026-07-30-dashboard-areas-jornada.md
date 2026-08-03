@@ -738,6 +738,73 @@ git commit -m "docs(plan): registro de execucao do dashboard por areas"
 
 ---
 
+## Registro de execução (2026-08-03)
+
+**Todas as 6 tasks executadas** por subagentes, cada uma com revisão de conformidade + revisão de
+qualidade (e re-revisão após correções). Suíte: **125 testes / 15 arquivos**, `vue-tsc` limpo.
+
+### Bugs reais encontrados pelas revisões (nenhum apareceria em teste verde)
+
+1. **`AreaId` largo demais** (Task 1) — `id: string` não pegava typo de id; as Tasks 4–5 derivam
+   `area-${id}` no DOM e consultam de volta. Estreitado para union; provado com `TS2820`.
+2. **Contrato implícito do `setMetricas`** (Task 2) — todas as outras ações do store fazem refetch
+   sozinhas; essa não. Documentado + travado por teste (`getGargalos` não chamado).
+3. **Duplicação remanescente do `METRIC_OPTIONS`** (Task 3) — a extração tinha deixado o default do
+   store fora, o lugar mais propenso a divergir. Unificado com spread defensivo.
+4. **Lado *escritor* do deep-link não testado** (Task 4) — o stub do `RouterLink` descartava props,
+   então um typo em `query: { kpi }` passaria por todos os testes. Corrigido serializando o `to`.
+5. **Hierarquia de cabeçalhos quebrada** (Task 4) — o `<h2>` da seção passou a envolver o `<h2>` do
+   card. `KpiCard` virou `<h3>`; agora é `h1 → h2 → h3`.
+6. **Scroll-spy morria na 1ª troca de filtro** (Task 5) — o `KpiGrid` volta ao skeleton, o que
+   **destrói** as `<section>`, e o observer ficava com nós órfãos. Trocado por reobservar a cada flip
+   do `loading` (era `MutationObserver` em `document.body` + subtree, que também nunca desconectava
+   nos estados vazio/erro).
+7. **Observer ressuscitado após unmount** (Task 5) — `nextTick().then(...)` é promise comum, fora do
+   escopo de efeito do Vue: navegar para fora entre a troca de filtro e a resolução re-armava um
+   observer já desconectado. Fechado com `observer = null` no `onUnmounted`.
+
+### Achado de arquitetura: `position: sticky` estava inerte no app inteiro (Task 6, browser)
+
+A barra de chips não grudava. Causa: `<main class="flex-1 overflow-auto">` (App.vue) criava um
+**scrollport** por ter `overflow-y: auto`, mas **nunca rolava** (`scrollHeight === clientHeight`) —
+quem rola é o documento, porque o shell é `min-h-screen`. Pelo CSS, um sticky se ancora no scrollport
+mais próximo; como aquele jamais rolava, o `sticky` ficava inerte em **qualquer descendente do main**.
+O `AppHeader` funcionava só porque está fora do `main`.
+
+Correção (App.vue): `overflow-auto` → **`min-w-0`**. As duas partes são obrigatórias:
+- sem `overflow`, o documento volta a ser o scrollport → sticky funciona;
+- **`min-w-0` é indispensável**: era o `overflow` que zerava o `min-width: auto` de flex item. Sem ele
+  o `main` não encolhe e a página ganha **rolagem horizontal em telas estreitas** (regressão detectada
+  no viewport de 390px durante a verificação, e corrigida antes do commit).
+
+Ajustes de alinhamento decorrentes: a barra passou a `sticky top-14` (abaixo do header de 56px) e as
+seções de `scroll-mt-24` (96px) para `scroll-mt-[104px]` — o topo fixo real é 56 + 44 = 100px, então
+96px deixava o título 4px sob a barra ao clicar num chip. `rootMargin` foi de `-96px` para `-100px`.
+**Os três números (top-14 · rootMargin · scroll-mt) são acoplados — mexer em um exige revisar os três.**
+
+### Verificado no browser (backend real, coorte de 2,26M eventos)
+
+5 seções na ordem canônica · cross-links só em Consultas/Exames/Internação · Cirurgias com vazio
+honesto · chips grudam abaixo do header (medido: `navTop: 56`) · scroll-spy acompanha a rolagem e
+**sobrevive à troca de filtro** · clique em cada um dos 5 chips destaca e deixa 4px de respiro ·
+`Ver gargalos` de Exames abre `/gargalos?kpi=KPI-05` com só aquela métrica e preserva o filtro ·
+as 5 rotas sem rolagem horizontal em 1440px e em 390px.
+
+**Limitação da verificação:** o sticky foi confirmado por **medição de DOM** (`getBoundingClientRect`
+em várias posições de rolagem), não por screenshot — nesta sessão headless os prints pararam de
+pintar o shell (header *e* sidebar, que não é sticky) após a máquina suspender. **Vale um olhar
+humano numa janela real** antes do deploy.
+
+### Deixado de propósito para depois (com evidência, não por especulação)
+
+- **Flicker no clique:** durante a rolagem suave nada suprime o observer, então seções intermediárias
+  podem roubar o destaque. Não reproduzido em jsdom e não observado nas medições; se aparecer no uso
+  real, o padrão é uma flag de supressão liberada no `scrollend`.
+- **Extrair `AreaSection.vue`:** recomendação da revisão é esperar a frente dos **indicadores
+  gráficos**, quando o contrato de props da seção ficar conhecido em vez de adivinhado.
+- **Seções com 1 card só** ocupam 1/3 da largura (grid de 3 colunas) — decisão visual em aberto; a
+  largura do card é a mesma de antes, não é regressão.
+
 ## Self-review (do plano, já aplicado)
 
 - Spec §3.1→Task 1, §3.4→Tasks 2–3, §3.2→Task 4, §3.3→Task 5, §4 browser→Task 6. Sem lacunas.

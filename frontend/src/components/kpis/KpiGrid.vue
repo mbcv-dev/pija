@@ -52,7 +52,7 @@ onMounted(() => {
       <section
         v-for="{ area, cards } in areasComCards" :key="area.id"
         :id="`area-${area.id}`" :data-area="area.id"
-        class="flex flex-col gap-3 scroll-mt-24"
+        class="flex flex-col gap-3 scroll-mt-[104px]"
       >
         <header class="flex items-start gap-3">
           <span class="shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
