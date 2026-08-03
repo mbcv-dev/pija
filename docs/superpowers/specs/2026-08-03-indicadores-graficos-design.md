@@ -12,7 +12,7 @@
 
 | Tema | Decisão |
 |---|---|
-| Escopo | **Barras + histograma.** Barras por dimensão **já existem** (top-5 no `KpiBreakdownBar` do card, lista completa com busca/ordenação no `KpiDetailModal`, ranking nos Gargalos) — não reconstruir; apenas passada de qualidade dataviz no modal. O entregável novo é o **histograma da distribuição de tempos por KPI**, com endpoint novo no backend. |
+| Escopo | **Barras + histograma.** Barras por dimensão **já existem e já estão bem-feitas** — top-5 no `KpiBreakdownBar` do card; lista completa no `KpiDetailModal` **já com escala comum** (`maxMedia` sobre o breakdown inteiro, barras comparáveis entre páginas) e rótulos de valor; ranking nos Gargalos. Constatado lendo o código durante o design: a "passada de qualidade" imaginada seria no-op → **removida do escopo**. O entregável é o **histograma da distribuição de tempos por KPI**, com endpoint novo no backend. |
 | Renderização | **SVG à mão** (como o grafo de ciclicidade), guiado pela skill `dataviz`. **Sem biblioteca de gráficos** — stack travada do CLAUDE.md mantida. |
 | Onde mora | **No card, sempre visível**, abaixo do valor principal. A página cresce — as seções + chips sticky da frente anterior foram desenhados para isso. |
 | KPI-07B | Ganha histograma também, no bloco da submétrica dentro do card do KPI-07. É o **caso-âncora** (mediana ~0 escondendo 4º NORTE a ~6,3h). |
@@ -70,8 +70,8 @@
 
 - `KpiCard` renderiza o histograma entre o valor principal e o breakdown; no bloco da submétrica
   (KPI-07B), versão menor no mesmo lugar lógico.
-- `KpiDetailModal`: passada de qualidade nas barras existentes — **escala comum** entre as barras
-  (relativa ao máximo da lista filtrada) e rótulo de valor alinhado. Sem mudança funcional.
+- `KpiDetailModal`: **sem mudança.** A escala comum e os rótulos que a versão inicial desta spec
+  previa já existem no componente (ver decisão de escopo em §1).
 
 ## 4. Testes
 
