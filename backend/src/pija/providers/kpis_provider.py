@@ -74,6 +74,11 @@ ranked AS (
          ROW_NUMBER() OVER (ORDER BY valor)                       AS rn_g,
          COUNT(*)     OVER ()                                     AS cnt_g
   FROM base
+  -- Sem valor não há tempo a medir. Descartar aqui (e não deixar o AVG ignorar
+  -- depois) é o que mantém o envelope da distribuição lendo as MESMAS linhas —
+  -- e evita que NULLs, que o SQLite ordena primeiro, inflem cnt e desloquem o
+  -- elemento central da mediana.
+  WHERE valor IS NOT NULL
 )
 SELECT 'B' AS tipo, dimensao, AVG(valor) AS mediana, MAX(cnt_d) AS n
 FROM ranked
@@ -86,17 +91,30 @@ FROM ranked
 WHERE rn_g IN ((cnt_g + 1) / 2, (cnt_g + 2) / 2)
 """
 
-# Baldes lineares entre 0 e p95; o que passa de p95 cai num único balde de cauda.
-# O cap em p95 existe porque a cauda é o objeto de interesse: sem ele, um único
-# outlier esmagaria todos os demais baldes num histograma ilegível.
+# Quantidade de baldes lineares antes do balde de cauda aberta.
 _N_BUCKETS = 16
 
-# Envelope de distribuição: mesmo {base} produtor de linhas usado pela mediana.
-# `dimensao` é ignorada aqui — o histograma é sempre do recorte inteiro.
+# Envelope de distribuição: envolve o mesmo {base} produtor de linhas que a
+# mediana usa. `dimensao` é ignorada — o histograma é sempre do recorte inteiro.
+#
+# TETO dos baldes lineares: normalmente o p95, e tudo acima dele cai num único
+# balde de cauda. O corte existe por LEGIBILIDADE (sem ele um único outlier
+# esmagaria os demais baldes), NUNCA para fingir que a cauda não existe. Por isso
+# quando p95 = 0 — que não quer dizer "tudo é zero", e sim ">= 95% dos casos são
+# zero", situação real do KPI-07B — o teto cai no MÁXIMO: senão a cauda, que é
+# justamente o objeto do gráfico, sumiria num balde só.
+#
 # p50 replica LITERALMENTE a expressão do _MEDIAN_SQL global (média do(s)
 # elemento(s) central(is)) para o gráfico não contradizer o número do card.
-# p95 = valor na posição ceil(0.95 * n): (cnt * 95 + 99) / 100 é divisão
-# INTEIRA de propósito (teto), e é sempre >= 1 porque cnt >= 1.
+#
+# p95 = valor na posição ceil(0.95 * n): (cnt * 95 + 99) / 100 é divisão INTEIRA
+# de propósito (teto), e é sempre >= 1 porque cnt >= 1.
+#
+# MAX(0, ...) no índice: os .sql de hoje só produzem valor >= 0, mas se um KPI
+# futuro deixar passar negativo, o CAST truncaria para índice negativo e o caso
+# SUMIRIA da resposta sem erro nenhum. Com o clamp ele cai no primeiro balde —
+# contado mesmo estando abaixo do `de` dele — e sum(n) == n_total se mantém.
+# Sumir em silêncio é pior do que aparecer no balde errado.
 _DIST_SQL = """
 WITH base AS (
 {base}
@@ -108,21 +126,28 @@ ranked AS (
   FROM base
   WHERE valor IS NOT NULL
 ),
-stats AS (
+percentis AS (
   SELECT
     (SELECT AVG(valor) FROM ranked WHERE rn IN ((cnt + 1) / 2, (cnt + 2) / 2)) AS p50,
     (SELECT valor FROM ranked WHERE rn = (cnt * 95 + 99) / 100 LIMIT 1)        AS p95,
-    (SELECT MAX(cnt) FROM ranked)                                              AS n_total
+    (SELECT MAX(valor) FROM ranked)                                            AS vmax,
+    (SELECT MAX(cnt)   FROM ranked)                                            AS n_total
+),
+stats AS (
+  SELECT p50, p95, n_total,
+         CASE WHEN p95 > 0 THEN p95 ELSE vmax END AS teto
+  FROM percentis
 )
 SELECT
   CASE
-    WHEN s.p95 IS NULL OR s.p95 <= 0 THEN 0
-    WHEN r.valor >= s.p95 THEN :n_buckets
-    ELSE CAST(r.valor * :n_buckets / s.p95 AS INTEGER)
+    WHEN s.teto IS NULL OR s.teto <= 0 THEN 0
+    WHEN r.valor >= s.teto            THEN :n_buckets
+    ELSE MAX(0, CAST(r.valor * :n_buckets / s.teto AS INTEGER))
   END            AS idx,
   COUNT(*)       AS n,
   MAX(s.p50)     AS p50,
   MAX(s.p95)     AS p95,
+  MAX(s.teto)    AS teto,
   MAX(s.n_total) AS n_total
 FROM ranked r CROSS JOIN stats s
 GROUP BY idx
@@ -142,7 +167,9 @@ class KpisProvider:
         quoted = ", ".join("'" + g.replace("'", "''") + "'" for g in scope)
         return f"AND {col} IN ({quoted})"
 
-    def _base_sql(self, code: str, group_by: GroupBy, filtros: Filtros) -> tuple[str, dict]:
+    def _base_sql(
+        self, code: str, group_by: GroupBy, filtros: Filtros
+    ) -> tuple[str, dict[str, str | None]]:
         """Monta o produtor de linhas (dimensao, valor) do KPI com filtros/escopo aplicados.
 
         Compartilhado por mediana e distribuição — os dois envelopes PRECISAM ler
@@ -166,7 +193,7 @@ class KpisProvider:
         return base, params
 
     async def compute(self, code: str, group_by: GroupBy, filtros: Filtros) -> KpiResult:
-        descricao = KPI_META[code][1]
+        _, descricao = KPI_META[code]
         base, params = self._base_sql(code, group_by, filtros)
         rows = (await self._session.execute(text(_MEDIAN_SQL.format(base=base)), params)).all()
 
@@ -203,58 +230,80 @@ class KpisProvider:
         results = [await self.compute(code, group_by, filtros) for code in codes]
         return KpisResponse(kpis=results)
 
+    async def _distribuicao(self, code: str, base: str, params: dict) -> KpiDistribuicao:
+        """Roda o envelope de distribuição sobre um produtor de linhas já montado."""
+        rows = (
+            await self._session.execute(
+                text(_DIST_SQL.format(base=base)),
+                {**params, "n_buckets": _N_BUCKETS},
+            )
+        ).all()
+
+        por_idx: dict[int, int] = {}
+        p50: float | None = None
+        p95: float | None = None
+        teto: float | None = None
+        n_total = 0
+        for r in rows:
+            m = r._mapping
+            por_idx[int(m["idx"])] = int(m["n"])
+            p50 = float(m["p50"]) if m["p50"] is not None else None
+            p95 = float(m["p95"]) if m["p95"] is not None else None
+            teto = float(m["teto"]) if m["teto"] is not None else None
+            n_total = int(m["n_total"] or 0)
+
+        buckets: list[DistBucket] = []
+        if n_total > 0 and teto is not None and teto > 0:
+            largura = teto / _N_BUCKETS
+            # Lineares (preenche baldes vazios com n=0 — o histograma é contínuo).
+            # O último fecha em `teto` cravado: _N_BUCKETS * (teto/_N_BUCKETS) só
+            # devolve `teto` exato por sorte do binário (hoje 16 é potência de 2);
+            # fixar o valor evita que trocar a constante abra uma fresta no eixo.
+            buckets = [
+                DistBucket(
+                    de=i * largura,
+                    ate=teto if i == _N_BUCKETS - 1 else (i + 1) * largura,
+                    n=por_idx.get(i, 0),
+                )
+                for i in range(_N_BUCKETS)
+            ]
+            # …e a cauda aberta por último.
+            buckets.append(DistBucket(de=teto, ate=None, n=por_idx.get(_N_BUCKETS, 0)))
+        elif n_total > 0:
+            # Aqui o máximo também é 0: não há intervalo a fatiar e todos os casos
+            # valem 0. Sai um balde aberto em 0 — e não [0, 0), que é intervalo
+            # vazio e mentiria sobre o que o balde contém.
+            # Ancorar em 0 assume valor >= 0, o que todo .sql de KPI garante
+            # (filtram `fim >= inicio`) e é a mesma premissa do eixo do histograma.
+            buckets = [DistBucket(de=0.0, ate=None, n=n_total)]
+
+        return KpiDistribuicao(
+            codigo=code,
+            unidade_tempo=KPI_UNIDADE_TEMPO.get(code, "dias"),
+            p50=p50 if n_total else None,
+            p95=p95 if n_total else None,
+            n_total=n_total,
+            buckets=buckets,
+        )
+
     async def get_distribuicoes(
         self, *, kpi_codes: list[str] | None, filtros: Filtros
     ) -> DistribuicoesResponse:
         """Distribuição dos tempos por KPI (histograma).
 
-        Não há group_by: a coluna `dimensao` do produtor de linhas é ignorada e
-        `unidade` é usada só para satisfazer o placeholder {group_col}.
+        Não existe group_by aqui: a coluna `dimensao` do produtor de linhas é
+        ignorada pelo envelope, e `GroupBy.unidade` entra só para preencher o
+        placeholder {group_col}.
+
+        ISSO SÓ É SEGURO porque, em todos os .sql de KPI, {group_col} aparece
+        apenas na projeção (`SELECT {group_col} AS dimensao`) — nunca num GROUP BY
+        que mudasse a cardinalidade das linhas. Um KPI novo que agrupe por
+        {group_col} quebraria a premissa: o histograma passaria a contar linhas
+        agregadas em vez de casos, e n_total divergiria do n_global do card.
         """
         codes = kpi_codes or ALL_KPIS
         out: list[KpiDistribuicao] = []
         for code in codes:
             base, params = self._base_sql(code, GroupBy.unidade, filtros)
-            rows = (
-                await self._session.execute(
-                    text(_DIST_SQL.format(base=base)),
-                    {**params, "n_buckets": _N_BUCKETS},
-                )
-            ).all()
-
-            por_idx: dict[int, int] = {}
-            p50: float | None = None
-            p95: float | None = None
-            n_total = 0
-            for r in rows:
-                m = r._mapping
-                por_idx[int(m["idx"])] = int(m["n"])
-                p50 = float(m["p50"]) if m["p50"] is not None else None
-                p95 = float(m["p95"]) if m["p95"] is not None else None
-                n_total = int(m["n_total"] or 0)
-
-            buckets: list[DistBucket] = []
-            if n_total > 0 and p95 is not None and p95 > 0:
-                largura = p95 / _N_BUCKETS
-                # Lineares (preenche baldes vazios com n=0 — o histograma é contínuo)…
-                buckets = [
-                    DistBucket(de=i * largura, ate=(i + 1) * largura, n=por_idx.get(i, 0))
-                    for i in range(_N_BUCKETS)
-                ]
-                # …e a cauda aberta por último.
-                buckets.append(DistBucket(de=p95, ate=None, n=por_idx.get(_N_BUCKETS, 0)))
-            elif n_total > 0:
-                # Degenerado (p95 <= 0: praticamente todos os valores são 0) — um balde só.
-                buckets = [DistBucket(de=0.0, ate=0.0, n=n_total)]
-
-            out.append(
-                KpiDistribuicao(
-                    codigo=code,
-                    unidade_tempo=KPI_UNIDADE_TEMPO.get(code, "dias"),
-                    p50=p50 if n_total else None,
-                    p95=p95 if n_total else None,
-                    n_total=n_total,
-                    buckets=buckets,
-                )
-            )
+            out.append(await self._distribuicao(code, base, params))
         return DistribuicoesResponse(distribuicoes=out)

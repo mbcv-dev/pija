@@ -43,7 +43,7 @@ class KpisResponse(BaseModel):
 
 class DistBucket(BaseModel):
     de: float = Field(description="Limite inferior do balde (inclusivo), na unidade do KPI.")
-    ate: float | None = Field(None, description="Limite superior (exclusivo). `null` = balde de cauda aberta (>= p95).")
+    ate: float | None = Field(None, description="Limite superior (exclusivo). `null` = balde de cauda aberta (todos os casos >= `de`).")
     n: int = Field(description="Número de casos no balde.")
 
 
@@ -53,9 +53,9 @@ class KpiDistribuicao(BaseModel):
     codigo: str = Field(description="Código do KPI.", examples=["KPI-07B"])
     unidade_tempo: str = Field(default="dias", description="Unidade dos valores (mesma do KPI).")
     p50: float | None = Field(None, description="Mediana. `null` sem dados.")
-    p95: float | None = Field(None, description="Percentil 95 (teto dos baldes lineares). `null` sem dados.")
+    p95: float | None = Field(None, description="Percentil 95 dos valores. `null` sem dados. Costuma ser o teto dos baldes lineares — mas o teto real é sempre `buckets[-1].de`.")
     n_total: int = Field(0, description="Total de casos no recorte.")
-    buckets: list[DistBucket] = Field(default_factory=list, description="Baldes em ordem: lineares 0→p95 e por último a cauda (ate=null).")
+    buckets: list[DistBucket] = Field(default_factory=list, description="Baldes em ordem: os lineares de 0 até o teto e, por último, a cauda aberta (`ate=null`). O teto é o p95, ou o máximo quando p95 = 0 (>= 95% dos casos zerados), para a cauda não desaparecer. Se todos os casos forem 0, sai um único balde aberto em 0. Vazio quando não há casos.")
 
     model_config = {
         "json_schema_extra": {
