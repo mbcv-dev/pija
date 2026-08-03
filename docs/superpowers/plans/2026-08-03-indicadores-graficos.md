@@ -858,6 +858,30 @@ de `feat/dashboard-areas` já feito.
 **Decisão (confirmada com o usuário):** branch criada a partir de `feat/dashboard-areas`
 (`7469357`). Nenhuma outra alteração no plano.
 
+### 2026-08-03 — Task 1: o teto dos baldes não é o p95 (emenda ao plano)
+
+O código-baseline da Task 1 assumia que `p95 <= 0` significa "todos os valores são 0" e colapsava a
+distribuição num balde só. Isso está **errado** e mordia justamente o caso-âncora: `p95 <= 0` só
+significa que ≥95% dos casos são zero — os outros ≤5% podem ser uma cauda longa. Verificado: 96 zeros
++ `[10, 20, 50, 400]` produzia um único `{de: 0, ate: 0, n: 100}`, apagando a cauda que a feature
+existe para mostrar. É o cenário do KPI-07B (alta médica → saída do leito).
+
+**Correções (commits `663da66` e `cf415bb`):**
+
+1. O SQL calcula `teto = p95 se p95 > 0, senão MAX(valor)` e bucketiza contra o `teto`. O balde
+   degenerado único só ocorre quando o máximo também é 0, e agora é `{de: 0, ate: null}` (cauda
+   aberta) — `[0, 0)` era um intervalo vazio contendo casos, contradizendo o schema.
+2. **`teto` virou campo da resposta** (`KpiDistribuicao.teto`). Consequência para o frontend:
+   **o teto do eixo é `teto` (== `buckets[-1].de`), nunca `p95`** — os dois divergem exatamente no
+   caso do KPI-07B. O cálculo de `medianaX` na Task 5 (`p50 / p95`) foi corrigido para usar `teto`.
+3. `_MEDIAN_SQL` ganhou o mesmo `WHERE valor IS NOT NULL` do `_DIST_SQL` — sem isso card e gráfico
+   podiam divergir (SQLite ordena NULL primeiro, deslocando o elemento central). No-op no dado real,
+   provado por igualdade exata; de quebra remove um 500 latente no breakdown do `compute`.
+4. Índice de balde negativo passou a ser clampado em SQL (`MAX(0, ...)`): antes sumia em silêncio,
+   quebrando `sum(n) == n_total`.
+
+Testes: 160 → 182 no backend.
+
 ## Fora de escopo (reafirmado)
 
 Biblioteca de gráficos · tendência temporal · gráficos em Ciclicidade/Gargalos · mudanças nos `.sql`
