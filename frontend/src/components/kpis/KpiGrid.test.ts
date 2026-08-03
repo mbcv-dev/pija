@@ -67,6 +67,16 @@ describe('KpiGrid — seções por área da jornada', () => {
     expect((card07.props('submetric') as KpiItem).codigo).toBe('KPI-07B')
   })
 
+  it('hierarquia de cabeçalhos: seção h2 envolve o título do card em h3', async () => {
+    // A página tem h1 (DashboardView). Se o card voltar pra h2, um leitor de tela
+    // não distingue onde a área termina — foi regressão real quando as seções entraram.
+    const w = await montar()
+    const secao = w.findAll('[data-area]')[0]!
+    expect(secao.find('h2').exists()).toBe(true)
+    expect(secao.findAllComponents(KpiCard)[0]!.find('h3').exists()).toBe(true)
+    expect(secao.findAllComponents(KpiCard)[0]!.find('h2').exists()).toBe(false)
+  })
+
   it('Cirurgias mostra estado vazio honesto', async () => {
     const w = await montar()
     const cirurgias = w.findAll('[data-area]').find((s) => s.attributes('data-area') === 'cirurgias')!

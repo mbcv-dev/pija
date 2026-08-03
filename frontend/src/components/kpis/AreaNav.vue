@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { AREAS_JORNADA, type AreaId } from '@/lib/areas'
+import { HEADER_H_PX, STICKY_OFFSET_PX } from '@/lib/layout'
 import { useKpiStore } from '@/stores/useKpiStore'
 import Icon from '@/components/ui/Icon.vue'
 
@@ -57,11 +58,9 @@ onMounted(() => {
       const id = paraAreaId(topo.target.id.replace('area-', ''))
       if (id) ativa.value = id
     },
-    // -100px = o que fica fixo no topo: AppHeader sticky (56px) + esta barra (44px).
-    // As <section> do KpiGrid usam `scroll-mt-[104px]` (os 100px + 4px de respiro)
-    // pro título não parar embaixo da barra ao clicar num chip. Mexer no `top-14`
-    // daqui, na altura do header ou no scroll-mt exige revisar os três juntos.
-    { rootMargin: '-100px 0px -60% 0px' },
+    // Desconta o chrome fixo no topo (header + esta barra) pra "seção atual" ser a
+    // que está de fato visível abaixo dele. Ver lib/layout.ts.
+    { rootMargin: `-${STICKY_OFFSET_PX}px 0px -60% 0px` },
   )
   // Apesar de o AreaNav vir ANTES do KpiGrid no template (ver DashboardView.vue),
   // os hooks `mounted` de toda a subárvore só disparam depois que o render
@@ -103,7 +102,8 @@ onUnmounted(() => {
 <template>
   <nav
     aria-label="Áreas da jornada"
-    class="sticky top-14 z-20 -mx-1 px-1 py-2 bg-surface/95 dark:bg-surface-dark/95 backdrop-blur
+    :style="{ top: `${HEADER_H_PX}px` }"
+    class="sticky z-20 -mx-1 px-1 py-2 bg-surface/95 dark:bg-surface-dark/95 backdrop-blur
            flex gap-1.5 overflow-x-auto"
   >
     <button

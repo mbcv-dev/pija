@@ -3,6 +3,8 @@ import { computed, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useKpiStore } from '@/stores/useKpiStore'
 import { AREAS_JORNADA } from '@/lib/areas'
+// Onde a seção para ao rolar: abaixo do header + barra de áreas (ver lib/layout.ts).
+import { SCROLL_MARGIN_PX } from '@/lib/layout'
 import type { KpiItem } from '@/types/api.types'
 import KpiCard from './KpiCard.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
@@ -52,7 +54,8 @@ onMounted(() => {
       <section
         v-for="{ area, cards } in areasComCards" :key="area.id"
         :id="`area-${area.id}`" :data-area="area.id"
-        class="flex flex-col gap-3 scroll-mt-[104px]"
+        :style="{ scrollMarginTop: `${SCROLL_MARGIN_PX}px` }"
+        class="flex flex-col gap-3"
       >
         <header class="flex items-start gap-3">
           <span class="shrink-0 w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
