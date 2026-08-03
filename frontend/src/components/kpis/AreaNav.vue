@@ -61,7 +61,12 @@ onMounted(() => {
     // mudar o offset de rolagem, o outro precisa acompanhar.
     { rootMargin: '-96px 0px -60% 0px' },
   )
-  // Cobre o caso de o store já ter KPIs em cache (ex.: volta pra rota sem refetch).
+  // O KpiGrid vem antes na árvore (ver DashboardView.vue) e os hooks `mounted`
+  // de uma subárvore só disparam depois que o render síncrono dela termina —
+  // então, se o estado do store já permitir, as <section> do KpiGrid já
+  // existem no DOM quando este onMounted roda. Chamar aqui também é o que
+  // protege contra um futuro cache-skip no fetch ou uma reordenação dos
+  // componentes em DashboardView.vue.
   sincronizarObservacoes()
 })
 
@@ -80,7 +85,17 @@ watch(
   },
 )
 
-onUnmounted(() => observer?.disconnect())
+onUnmounted(() => {
+  // Zerar a variável (não só desconectar) importa: o `watch` acima agenda
+  // `nextTick().then(sincronizarObservacoes)`, uma Promise comum que NÃO é
+  // cancelada pelo unmount. Se ela resolver depois que o componente já saiu
+  // (ex.: usuário navega logo após um filtro), `sincronizarObservacoes` só
+  // não re-arma o observer desconectado porque o guard `if (!observer) return`
+  // encontra `null` — sem isso, `observer` continuaria truthy e a função
+  // reobservaria elementos num observer que nunca mais será desconectado.
+  observer?.disconnect()
+  observer = null
+})
 </script>
 
 <template>

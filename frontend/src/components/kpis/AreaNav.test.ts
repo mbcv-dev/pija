@@ -26,18 +26,24 @@ class FakeIntersectionObserver {
   static instances: FakeIntersectionObserver[] = []
   callback: IntersectionObserverCallback
   observed: Element[] = []
+  /** Contadores cumulativos (não zeram em disconnect()) — usados pra provar que
+   * NADA acontece depois do unmount, mesmo quando `observed` já foi limpo. */
+  observeCallCount = 0
+  disconnectCallCount = 0
   constructor(cb: IntersectionObserverCallback) {
     this.callback = cb
     FakeIntersectionObserver.instances.push(this)
   }
   observe(el: Element): void {
     this.observed.push(el)
+    this.observeCallCount++
   }
   unobserve(el: Element): void {
     this.observed = this.observed.filter((e) => e !== el)
   }
   disconnect(): void {
     this.observed = []
+    this.disconnectCallCount++
   }
   takeRecords(): IntersectionObserverEntry[] {
     return []
@@ -183,6 +189,31 @@ describe('AreaNav', () => {
       expect(w.find('[data-chip-area="exames"]').attributes('aria-current')).toBe('location')
       expect(w.find('[data-chip-area="consultas"]').attributes('aria-current')).toBeUndefined()
       w.unmount()
+    })
+
+    it('nao reobserva depois de desmontar, mesmo com uma resync ja agendada (race de nextTick)', async () => {
+      // O watch de `loading` agenda `nextTick().then(sincronizarObservacoes)` —
+      // uma Promise comum, que NAO é cancelada quando o componente desmonta.
+      // Reproduz a janela exata do bug: deixa o watch callback rodar e agendar
+      // essa Promise (um `await Promise.resolve()` é suficiente pra isso, já
+      // que o flush do Vue roda antes da nossa continuação), desmonta ANTES
+      // dela resolver, e só depois deixa o resto da fila de microtasks drenar.
+      document.body.innerHTML = AREA_IDS_HTML()
+      const w = montar(document.body)
+      const fake = FakeIntersectionObserver.instances[0]!
+      const store = useKpiStore()
+
+      store.loading = true
+      await nextTick()
+      store.loading = false
+      await Promise.resolve() // deixa o watch callback rodar (agenda a resync, ainda pendente)
+      w.unmount()
+
+      const chamadasAntesDoUnmount = fake.observeCallCount
+      // Drena o resto da fila — inclui a resync pendente, se ela ainda existir.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(fake.observeCallCount).toBe(chamadasAntesDoUnmount)
     })
 
     it('ignora um id desconhecido (fora do contrato de areas.ts) sem alterar o destaque', async () => {
