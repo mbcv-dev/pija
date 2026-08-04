@@ -40,19 +40,24 @@ export const useKpiStore = defineStore('kpi', () => {
   async function fetchDistribuicoes(): Promise<void> {
     const filterStore = useFilterStore()
     const reqId = ++distReqId
+    /** Esta busca ainda é a mais recente? Se não, nada dela pode tocar o estado. */
+    const isCurrent = (): boolean => reqId === distReqId
     loadingDist.value = true
 
     try {
       // Mesmos filtros dos KPIs; `group_by` não se aplica (sem breakdown aqui).
       const { group_by: _semBreakdown, ...params } = filterStore.activeFilters
       const response = await getDistribuicoes(params)
-      if (reqId !== distReqId) return  // obsoleta: já há busca mais nova no ar
+      if (!isCurrent()) return  // obsoleta: já há busca mais nova no ar
       distribuicoes.value = new Map(response.distribuicoes.map((d) => [d.codigo, d]))
-    } catch {
-      // Silencioso de propósito (enhancement): sem `error`, sem ErrorState.
-      if (reqId === distReqId) distribuicoes.value = new Map()
+    } catch (e) {
+      // Silencioso para o USUÁRIO (enhancement: sem `error`, sem ErrorState) —
+      // mas não para o dev: sem este warn, um histograma que some não deixa
+      // rastro nenhum fora da aba Network.
+      console.warn('[useKpiStore] falha ao buscar distribuicoes; histograma oculto', e)
+      if (isCurrent()) distribuicoes.value = new Map()
     } finally {
-      if (reqId === distReqId) loadingDist.value = false
+      if (isCurrent()) loadingDist.value = false
     }
   }
 

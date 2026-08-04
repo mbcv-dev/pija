@@ -50,7 +50,9 @@ describe('useKpiStore — distribuições', () => {
   })
 
   it('falha da distribuição NÃO seta o error global nem mexe no loading dos cards', async () => {
-    vi.mocked(getDistribuicoes).mockRejectedValueOnce(new Error('boom'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const erro = new Error('boom')
+    vi.mocked(getDistribuicoes).mockRejectedValueOnce(erro)
     const store = useKpiStore()
     await store.fetchKpis()
     await vi.waitFor(() => expect(getDistribuicoes).toHaveBeenCalled())
@@ -59,6 +61,9 @@ describe('useKpiStore — distribuições', () => {
     expect(store.loading).toBe(false)
     expect(store.loadingDist).toBe(false)
     expect(store.distribuicoes.size).toBe(0)
+    // Silencioso para o usuário, mas rastreável para o dev.
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('distribuicoes'), erro)
+    warn.mockRestore()
   })
 
   it('o loading dos cards não espera a distribuição (desacoplado)', async () => {
