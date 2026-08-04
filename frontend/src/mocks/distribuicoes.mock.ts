@@ -8,12 +8,22 @@ import { UNIDADES } from '@/types/api.types'
 // mentiria para o gráfico:
 //   1. teto === buckets[buckets.length - 1].de
 //   2. soma dos n === n_total
+//
+// Os dois formatos degenerados que o backend emite também são alcançáveis aqui,
+// para o gráfico poder ser desenvolvido contra eles sem subir o backend:
+//   • SEM DADOS  (n_total 0, buckets [], p50/p95/teto null) → KPI-05 filtrado
+//     por especialidade 'CIRURGIA GERAL'.
+//   • TUDO ZERO  (1 balde só, { de: 0, ate: null }, teto 0) → KPI-07B filtrado
+//     pela unidade 'MATERNIDADE'.
 
 /** Baldes lineares antes da cauda aberta — mesmo número que o backend usa. */
 const N_LINEARES = 16
 
 /** Fração dos casos que cai na cauda aberta: por construção o teto é o p95. */
 const FRACAO_CAUDA = 0.05
+
+/** Unidade que dispara o recorte degenerado "tudo zero" no KPI-07B. */
+const UNIDADE_TUDO_ZERO = 'MATERNIDADE'
 
 interface PerfilDist {
   /** Teto do eixo linear, na unidade do KPI. */
@@ -41,8 +51,10 @@ const arred = (v: number): number => +v.toFixed(2)
 
 /**
  * Gera 16 baldes lineares decrescentes + 1 balde de cauda aberta no teto.
- * A sobra do arredondamento vai para o 1º balde (o maior), de forma que a soma
- * dos n bata exatamente com n_total.
+ * A sobra do arredondamento vai para o 1º balde, de forma que a soma dos n bata
+ * exatamente com n_total: sob decaimento geométrico o 1º é sempre o maior balde,
+ * então a sobra (no máximo alguns casos) é proporcionalmente desprezível ali e
+ * não distorce a forma da distribuição.
  */
 function gerarBuckets(teto: number, nTotal: number, decaimento: number): DistBucket[] {
   const pesos = Array.from({ length: N_LINEARES }, (_, i) => decaimento ** i)
@@ -96,6 +108,16 @@ export function mockDistribuicoes(params: DistribuicoesParams): DistribuicoesRes
     const semDados = codigo === 'KPI-05' && !!params.especialidade?.includes('CIRURGIA GERAL')
     if (semDados) {
       return { codigo, unidade_tempo: perfil.unidade, p50: null, p95: null, teto: null, n_total: 0, buckets: [] }
+    }
+
+    // Recorte em que TODOS os casos são zero: a unidade registra a alta médica e a
+    // saída do leito no mesmo horário. Sem valor > 0, o backend não tem eixo para
+    // repartir e devolve um único balde aberto em 0 — o formato degenerado que o
+    // gráfico precisa saber desenhar.
+    const tudoZero = codigo === 'KPI-07B' && !!params.unidade?.includes(UNIDADE_TUDO_ZERO)
+    if (tudoZero) {
+      const n = Math.floor(perfil.nTotal * fator)
+      return { codigo, unidade_tempo: perfil.unidade, p50: 0, p95: 0, teto: 0, n_total: n, buckets: [{ de: 0, ate: null, n }] }
     }
 
     const teto = arred(perfil.teto * fator)
