@@ -1,8 +1,9 @@
 import axios from 'axios'
-import type { KpiParams, KpiResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem, DimensoesResponse, CiclicidadeParams, CiclicidadeResponse } from '@/types/api.types'
+import type { KpiParams, KpiResponse, DistribuicoesParams, DistribuicoesResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem, DimensoesResponse, CiclicidadeParams, CiclicidadeResponse } from '@/types/api.types'
 import { GRUPOS, UNIDADES, ESPECIALIDADES } from '@/types/api.types'
-import { KpiResponseSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema, CiclicidadeResponseSchema } from '@/schemas/api.schemas'
+import { KpiResponseSchema, DistribuicoesResponseSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema, CiclicidadeResponseSchema } from '@/schemas/api.schemas'
 import { mockKpis } from '@/mocks/kpis.mock'
+import { mockDistribuicoes } from '@/mocks/distribuicoes.mock'
 import { mockGargalos } from '@/mocks/gargalos.mock'
 import { mockEventos } from '@/mocks/eventos.mock'
 import { mockJornada } from '@/mocks/jornada.mock'
@@ -89,6 +90,21 @@ export async function getKpis(params: KpiParams): Promise<KpiResponse> {
   }
   const { data } = await client.get<KpiResponse>('/kpis/tempos-medios', { params })
   return KpiResponseSchema.parse(data)
+}
+
+/**
+ * GET /api/v1/kpis/distribuicoes
+ * Histograma dos tempos de cada KPI — mostra a cauda que a média/mediana escondem.
+ * Batch: uma requisição traz todos os códigos. Mesmos filtros do getKpis;
+ * `group_by` não se aplica (a distribuição não tem breakdown por dimensão).
+ */
+export async function getDistribuicoes(params: DistribuicoesParams): Promise<DistribuicoesResponse> {
+  if (USE_MOCK) {
+    await delay(300)
+    return mockDistribuicoes(params)
+  }
+  const { data } = await client.get<DistribuicoesResponse>('/kpis/distribuicoes', { params })
+  return DistribuicoesResponseSchema.parse(data)
 }
 
 /**
