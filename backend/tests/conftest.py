@@ -71,11 +71,17 @@ async def fixture_db_session(async_engine):
                    unidade="CARDIOLOGIA (AMBULATÓRIO)", grupo="Ambulatorial", especialidade="CARDIOLOGIA",
                    situacao="PACIENTE AGENDADO", dt_carga="2024-01-01"),
         # EXAMES — grupos executores (KPI-05); pacientes 008/009 SEM prontuário (não afetam KPI-01)
+        # `timestamp_liberacao` repete o valor de `timestamp_realizacao` de propósito: o KPI-05
+        # passou a medir solicitação → LIBERAÇÃO (ver spec 2026-08-05-kpi-05-liberacao-design),
+        # e manter os mesmos deltas (4 e 7 dias) deixa os testes de KPI/gargalos/distribuição que
+        # já existiam servirem de rede para a troca de coluna.
         FatoEvento(evento_id="E-001", paciente_id="008", tipo_entidade="EXAME", entidade_id="E001",
-                   timestamp_principal="2024-03-01", timestamp_solicitacao="2024-03-01", timestamp_realizacao="2024-03-05",
+                   timestamp_principal="2024-03-01", timestamp_solicitacao="2024-03-01",
+                   timestamp_realizacao="2024-03-05", timestamp_liberacao="2024-03-05",
                    unidade="UAC: BIOQUÍMICA", grupo="Análises Clínicas", especialidade="CARDIOLOGIA", dt_carga="2024-01-01"),
         FatoEvento(evento_id="E-002", paciente_id="009", tipo_entidade="EXAME", entidade_id="E002",
-                   timestamp_principal="2024-03-01", timestamp_solicitacao="2024-03-01", timestamp_realizacao="2024-03-08",
+                   timestamp_principal="2024-03-01", timestamp_solicitacao="2024-03-01",
+                   timestamp_realizacao="2024-03-08", timestamp_liberacao="2024-03-08",
                    unidade="UDI: ULTRASSONOGRAFIA", grupo="Diagnóstico por Imagem", especialidade="ORTOPEDIA", dt_carga="2024-01-01"),
         # INTERNAÇÕES — grupo Internação (KPI-06 e KPI-07)
         FatoEvento(evento_id="I-001", paciente_id="001", tipo_entidade="INTERNACAO", entidade_id="I001",
