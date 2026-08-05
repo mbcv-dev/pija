@@ -882,6 +882,36 @@ existe para mostrar. É o cenário do KPI-07B (alta médica → saída do leito)
 
 Testes: 160 → 182 no backend.
 
+### 2026-08-05 — Task 7: verificação no browser e a escala de altura
+
+Os 7 itens do checklist passaram contra o backend real (base de 2,26M eventos). A linha da mediana
+bate com o valor grande do card em todos os KPIs medidos (fração renderizada × `p50/teto`, exata na
+precisão de renderização); filtro atualiza os gráficos junto com os cards; backend morto produz UMA
+superfície de erro só (a dos cards) e o histograma some com um `console.warn`; exatamente 1 chamada a
+`/kpis/distribuicoes` por mudança de filtro, disparada 0,3 ms depois da `/kpis/tempos-medios` — em
+paralelo, não em série; a 390px não há rolagem horizontal.
+
+**Mas o caso-âncora não se sustentava pela geometria.** Números reais do KPI-07B: `p50 = 0`,
+`p95 = teto = 8,2667 h`, `n_total = 124.558`, e **o primeiro balde sozinho tem 99.710 casos (80%)**.
+Numa escala linear de altura isso achata todo o resto no piso de 3px: a cauda (6.231 casos) saía com
+3,5px, e baldes de 574 e 1.805 casos ficavam pixel-idênticos. A cauda aparecia pela cor e pelo
+rótulo, **não pela altura** — e um leitor que lê alturas concluiria "depois do zero é tudo igualmente
+raro", o que é falso (a distribuição decai de 1.658 para 574 ao longo de 8 horas). O canal de altura
+não era só pouco informativo: era levemente contra-verdadeiro, justamente no gráfico que motivou a
+feature. KPI-01 e KPI-05 degeneram igual.
+
+**Decisão (do usuário, 2026-08-05): altura em escala raiz quadrada.** Troca proporcionalidade por
+legibilidade — e por isso **a troca é declarada no gráfico**, no `aria-label` e na legenda da tabela
+`sr-only`; as contagens exatas seguem nos tooltips e na tabela. Alternativas descartadas: manter
+linear (cauda ilegível) e cortar o balde dominante com marcador de quebra (mais convenção visual para
+o leitor aprender). Baldes de contagem zero continuam sem barra nenhuma — a distinção zero/não-zero é
+absoluta e não entra na compressão.
+
+**Sobre o campo `teto`:** com o dado real `p95 > 0` em todos os KPIs, então `teto == p95` e o
+fallback nunca é exercitado nesta base. O que ocorre é `p50 = 0` com `teto > 0` — degeneração bem
+mais branda. O `teto` continua correto e necessário como contrato (o backend pode produzir o caso
+divergente noutra base), mas vale saber que ele é hoje um cinto de segurança, não um caminho quente.
+
 ## Fora de escopo (reafirmado)
 
 Biblioteca de gráficos · tendência temporal · gráficos em Ciclicidade/Gargalos · mudanças nos `.sql`
