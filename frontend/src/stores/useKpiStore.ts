@@ -20,7 +20,19 @@ export const useKpiStore = defineStore('kpi', () => {
 
   /** Histograma de tempos por KPI, indexado pelo código. Vazio = sem gráfico. */
   const distribuicoes = ref<Map<KpiCode, KpiDistribuicao>>(new Map())
-  /** Loading PRÓPRIO do histograma — nunca reaproveitar `loading` (ver nota acima). */
+  /**
+   * Loading PRÓPRIO do histograma — nunca reaproveitar `loading` (ver nota acima).
+   *
+   * NÃO É CÓDIGO MORTO, apesar de nenhum componente ler: a spec descarta
+   * skeleton no histograma (ver KpiCard.vue), então nenhum vai ler mesmo. É
+   * exportado de propósito como o ÚNICO observável que distingue
+   * "requisição ainda no ar" de "requisição nunca disparada" — e é isso que
+   * o teste do desacoplamento afirma: `fetchKpis` resolveu E a distribuição
+   * continua pendente. Sem este campo o teste só conseguiria provar que
+   * `fetchKpis` retornou, o que passaria igual se a busca nem tivesse
+   * começado — justo a garantia que esta feature existe para dar.
+   * Antes de remover: leia useKpiStore.test.ts.
+   */
   const loadingDist   = ref(false)
   /**
    * Sequência da última busca disparada. Filtros mudam sem debounce, então duas
@@ -94,6 +106,8 @@ export const useKpiStore = defineStore('kpi', () => {
 
   return {
     kpis, loading, error,
+    // `loadingDist` sai daqui sem consumidor em componente de propósito — é
+    // observável de teste, não estado de UI. Motivo completo na declaração.
     distribuicoes, loadingDist,
     fetchKpis, fetchDistribuicoes, initWatcher,
   }

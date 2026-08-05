@@ -72,6 +72,9 @@ describe('useKpiStore — distribuições', () => {
     const store = useKpiStore()
     await store.fetchKpis()
     expect(store.loading).toBe(false)
+    // Este assert é o coração do teste: prova que a distribuição estava MESMO
+    // no ar quando fetchKpis resolveu. Só `loading === false` passaria também
+    // se a busca nunca tivesse sido disparada.
     expect(store.loadingDist).toBe(true)
   })
 
