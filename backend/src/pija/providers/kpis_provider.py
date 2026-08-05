@@ -35,7 +35,7 @@ from pija.unidades import (
 KPI_META: dict[str, tuple[str, str]] = {
     "KPI-01": ("kpis/kpi_01.sql", "Prontuário → 1º evento assistencial"),
     "KPI-03": ("kpis/kpi_03.sql", "Agendamento → realização (consulta)"),
-    "KPI-05": ("kpis/kpi_05.sql", "Solicitação → realização (exame)"),
+    "KPI-05": ("kpis/kpi_05.sql", "Solicitação → liberação (exame)"),
     "KPI-06": ("kpis/kpi_06.sql", "Última consulta → internação subsequente"),
     "KPI-07": ("kpis/kpi_07.sql", "Tempo de permanência no leito"),
     "KPI-07B": ("kpis/kpi_07b.sql", "Alta médica → saída do leito"),

@@ -95,3 +95,17 @@ class TestKpisProvider:
     async def test_subconjunto_kpi_codes(self, fixture_db_session):
         kpis = await _kpis(fixture_db_session, kpi_codes=["KPI-03"])
         assert list(kpis) == ["KPI-03"]
+
+    async def test_kpi_05_usa_liberacao_e_nao_realizacao(self, fixture_db_session):
+        """O KPI-05 mede solicitação → LIBERAÇÃO.
+
+        Em `vw_exames`, `data_hora_realizacao` é anterior à solicitação em 61,2% das linhas
+        (ver DADOS-ESTADO §12) — a medida antiga descartava 600 mil eventos em silêncio e
+        devolvia mediana zero. Este teste fixa a coluna certa lendo o SQL: garante que a
+        troca não seja desfeita por engano numa refatoração futura.
+        """
+        from pija.db import load_sql
+
+        sql = load_sql("kpis/kpi_05.sql")
+        assert "timestamp_liberacao" in sql
+        assert "timestamp_realizacao" not in sql
