@@ -938,6 +938,27 @@ duas condições positivamente correlacionadas, invalidando um julgamento anteri
 quando foi feito), a ordem de pintura do rótulo da cauda (o oclusor é a barra *vizinha*, não a
 própria cauda), e "1 casos" → "1 caso".
 
+### 2026-08-05 — estado final da branch
+
+As 7 tasks estão feitas. Cada uma passou por duas reviews (conformidade com a spec, depois qualidade
+de código), com correções e re-review quando houve achado. Suítes: **backend 186** (era 160),
+**frontend 189** (era 126), `vue-tsc` limpo.
+
+Ficam registrados três pontos para quem abrir o PR:
+
+1. **A branch parte de `feat/dashboard-areas`, não de `main`** — motivo na primeira entrada deste
+   registro. Se `feat/dashboard-areas` entrar antes, isso é invisível; se a ordem de merge for
+   questionada, a razão está aqui.
+2. **Esta branch muda o comportamento do `/kpis/tempos-medios` existente**, não só o endpoint novo:
+   `_MEDIAN_SQL` ganhou `WHERE valor IS NOT NULL` para ler as mesmas linhas que o `_DIST_SQL`.
+   No-op no dado real (provado por igualdade exata), e de quebra remove um 500 latente no breakdown
+   do `compute` quando uma dimensão tem todos os valores nulos. Merece uma linha na descrição do PR.
+3. **O que sobrou está no backlog**, não perdido: ver
+   [2026-08-03-backlog-duplicacao-filtros.md](2026-08-03-backlog-duplicacao-filtros.md) — duplicação
+   dos filtros nos controllers, fixture `client` duplicada, requisições obsoletas não canceladas,
+   submétrica sem dado reportada como "acima da meta" (pré-existente), invariantes estruturais
+   validadas só no mock, e o parse tudo-ou-nada da distribuição.
+
 ## Fora de escopo (reafirmado)
 
 Biblioteca de gráficos · tendência temporal · gráficos em Ciclicidade/Gargalos · mudanças nos `.sql`
