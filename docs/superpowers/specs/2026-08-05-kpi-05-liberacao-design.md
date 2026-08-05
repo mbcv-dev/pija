@@ -23,6 +23,13 @@ Medido no banco de demonstração (2,26M eventos, mesmo dado que está em produ�
 | `n` válido do KPI | 380.200 | **440.855** |
 | mediana | **0,00 h** | 9,23 h |
 
+> **Nota (2026-08-05, durante a execução):** os números acima foram medidos **sem** o
+> `KPI_GRUPO_SCOPE` do KPI-05. Como o provider restringe a Análises Clínicas, Diagnóstico por
+> Imagem e Anatomia Patológica, o número que o **dashboard realmente exibe** é
+> **n = 422.080, mediana 9,62 h** (contra 361.837 e 0,00 h da medida antiga). A diferença de
+> 18.775 linhas é exatamente Procedimental (10.638) + Ambulatorial (8.123) + Internação (14).
+> A conclusão não muda; o número de referência, sim.
+
 **Em 61,2% dos exames a "realização" é anterior à solicitação.** O exame estaria sendo feito antes
 de ser pedido. O `.sql` do KPI-05 tem a guarda `JULIANDAY(realizacao) >= JULIANDAY(solicitacao)`,
 então essas linhas são descartadas **em silêncio** — o card mostra `n = 380 mil` e não há nada na
@@ -68,9 +75,16 @@ espera pelo exame"), medido no ponto certo. Evita renumerar, evita quebrar `METR
 
 ## 3. A ressalva que precisa aparecer na tela
 
-**45% dos exames nunca foram liberados** e portanto não entram no KPI: 446.377 em `A COLETAR`,
-mais `A EXECUTAR`, `AGENDADO`, `CANCELADO` e outros. Isso **não é perda de dado** — é o
-denominador correto para um tempo de resposta: só faz sentido medir a duração de algo que terminou.
+**55% dos exames nunca foram liberados** e portanto não entram no KPI: de 979.847 eventos EXAME,
+440.855 (45,0%) têm resultado liberado e **538.992 (55,0%) não** — 446.377 em `A COLETAR`, mais
+`A EXECUTAR`, `AGENDADO`, `CANCELADO` e outros. Isso **não é perda de dado** — é o denominador
+correto para um tempo de resposta: só faz sentido medir a duração de algo que terminou.
+
+> **Correção (2026-08-05, durante a execução):** a primeira versão desta spec dizia "45% nunca
+> foram liberados". Estava invertido — 45% é a fatia **liberada**. O número veio de
+> 446.377 `A COLETAR` / 979.847 = 45,6%, mas a frase somava outras quatro situações **por cima**
+> desse número, contradizendo a si mesma. Como esta frase vai literalmente para as regras do card,
+> o erro subestimaria o viés justamente para quem precisa dele.
 
 Mas gera **viés de sobrevivência**, e um indicador hospitalar não pode escondê-lo: um exame parado
 em `A COLETAR` há dois anos contribui com **zero** para o KPI. O indicador responde *"dos exames

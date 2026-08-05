@@ -56,8 +56,15 @@ E-001 = 4 dias, E-002 = 7 dias. Testes que dependem desses números **em três a
 
 **A estratégia que mantém os três passando sem editá-los:** dar a cada exame um
 `timestamp_liberacao` **igual ao seu `timestamp_realizacao` atual**. Os deltas continuam 4 e 7 dias,
-então todas as asserções acima seguem verdadeiras — e a mudança do `.sql` fica coberta pelos testes
-que já existem, que é a rede de segurança certa para uma troca de coluna.
+então todas as asserções acima seguem verdadeiras.
+
+> **Correção (2026-08-05, apontada na review da Task 2):** essa estratégia faz desses testes uma
+> **rede de regressão** — provam que nada mais quebrou —, e **não** uma verificação da troca em si.
+> Com `liberacao == realizacao` na fixture, eles passariam com qualquer uma das duas colunas. Numa
+> fixture de 2 exames, ambos liberados, nenhuma asserção de comportamento consegue distinguir as
+> colunas; por isso a Task 2 se apoia numa asserção sobre o texto do SQL e **a prova de
+> comportamento é a Task 3**, com fixture isolada. Se a Task 3 for cortada, a escolha da coluna
+> fica com cobertura só textual.
 
 ---
 
@@ -330,8 +337,21 @@ git commit -m "feat(front): rotulo e regras do KPI-05 falam de liberacao" -m "As
 ### Task 5: Documentos canônicos
 
 **Files:**
+- Modify: `backend/src/pija/routers/kpis_router.py`
 - Modify: `02-requisitos.md`
 - Modify: `CLAUDE.md`
+- Modify: `SPEC.md`
+
+- [ ] **Step 0: O texto do OpenAPI (achado na review da Task 2)**
+
+`backend/src/pija/routers/kpis_router.py:19` descreve o KPI-05 na documentação servida em `/docs`:
+
+```
+"| KPI-05 | Dias entre solicitação e realização do exame *(pendente confirmação HC)* |\n"
+```
+
+Trocar para liberação **e remover o "(pendente confirmação HC)"** — foi exatamente esta entrega que
+resolveu a pendência. É backend: sem isso o Swagger em produção descreve a semântica antiga.
 
 > **A Metodologia não precisa de mudança.** `frontend/src/views/MetodologiaView.vue` renderiza a
 > partir de `KPI_META` (`kpi.ancora` e `kpi.regras`), então a Task 4 já atualizou a página inteira —
@@ -344,16 +364,24 @@ Na tabela de KPIs, a linha do KPI-05 hoje descreve a fórmula com realização. 
 `AVG(dt_liberacao - dt_solicitacao)` (ou a forma usada nas linhas vizinhas — seguir o padrão da
 tabela) e o nome para "Tempo médio solicitação → liberação (exame)".
 
-- [ ] **Step 2: `CLAUDE.md`**
+- [ ] **Step 2: `CLAUDE.md` e `SPEC.md`**
 
-Na seção "KPIs do MVP", a linha do KPI-05 diz "solicitação → realização (exame)". Trocar para
-"solicitação → liberação (exame)".
+Na seção "KPIs do MVP" do `CLAUDE.md`, a linha do KPI-05 diz "solicitação → realização (exame)".
+Trocar para "solicitação → liberação (exame)".
 
-- [ ] **Step 3: Commit**
+`SPEC.md:112` tem a mesma frase (`- \`KPI-05\`: solicitação → realização (exame)`) — trocar também.
+
+- [ ] **Step 3: Rodar a suíte**
+
+Run: `cd backend; $env:JWT_SECRET="test-secret-not-for-production-min-32-chars"; .\venv\Scripts\python.exe -m pytest -q`
+Expected: sem regressão. O `kpis_router.py` do Step 0 é código — se algum teste fixar o texto da
+descrição da rota, atualize-o (é mudança intencional).
+
+- [ ] **Step 4: Commit**
 
 ```bash
-git add 02-requisitos.md CLAUDE.md
-git commit -m "docs(kpis): documentos canonicos acompanham o KPI-05" -m "Requisitos e CLAUDE falavam de realizacao. Sem isso o repo fica com indicador em producao que o contrato nao descreve. A Metodologia nao entra: ela renderiza a partir do KPI_META, ja atualizado."
+git add backend/src/pija/routers/kpis_router.py 02-requisitos.md CLAUDE.md SPEC.md
+git commit -m "docs(kpis): documentos e OpenAPI acompanham o KPI-05" -m "Requisitos, CLAUDE, SPEC e a descricao da rota falavam de realizacao -- o Swagger em producao descreveria a semantica antiga, com um 'pendente confirmacao HC' que esta entrega resolveu. A Metodologia nao entra: renderiza a partir do KPI_META, ja atualizado."
 ```
 
 ---
