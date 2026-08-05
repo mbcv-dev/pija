@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from pija.controllers.kpis_controller import get_kpis
-from pija.schemas.kpis_schema import KpisResponse
+from pija.controllers.kpis_controller import get_distribuicoes, get_kpis
+from pija.schemas.kpis_schema import DistribuicoesResponse, KpisResponse
 
 router = APIRouter(tags=["kpis"])
 router.add_api_route(
@@ -22,4 +22,20 @@ router.add_api_route(
         "Todos os filtros são opcionais. Sem filtros, o cálculo considera toda a base."
     ),
     response_description="Lista dos 5 KPIs com média em dias, volume de registros e avisos quando aplicável",
+)
+router.add_api_route(
+    "/kpis/distribuicoes",
+    get_distribuicoes,
+    methods=["GET"],
+    response_model=DistribuicoesResponse,
+    summary="Distribuição dos tempos por KPI (histograma)",
+    description=(
+        "Histograma dos tempos de cada KPI: baldes lineares de 0 até um teto, mais um balde de "
+        "cauda aberta (>= teto) para os casos acima dele. O teto é normalmente o p95, mas cai no "
+        "valor máximo quando o p95 é 0 (caso em que 95%+ dos casos estão zerados, ex.: KPI-07B) — "
+        "senão a cauda, que é o objeto do histograma, desapareceria. Mostra a cauda que a mediana "
+        "do /tempos-medios esconde. Mesmos filtros do /tempos-medios, sem group_by: a distribuição "
+        "não tem breakdown por dimensão."
+    ),
+    response_description="Uma distribuição (baldes + p50/p95/teto) por KPI solicitado",
 )

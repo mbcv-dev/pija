@@ -47,3 +47,20 @@ export function formatCount(n: number): string {
   if (n >= 1_000) return `${Math.round(n / 1_000)} mil`
   return String(n)
 }
+
+/**
+ * Só o substantivo: "caso" quando n é exatamente 1, "casos" no resto.
+ * Mora aqui, e não no gráfico, porque a regra é de formatação e vale pra toda
+ * frase "N casos" do app — card, modal, gargalos e histograma. Existe separado
+ * de `formatCasos` porque nem toda frase usa a contagem compacta: os tooltips e
+ * o aria-label do histograma mostram o número exato (`toLocaleString`) e ainda
+ * assim precisam concordar em número.
+ */
+export function pluralCasos(n: number): string {
+  return n === 1 ? 'caso' : 'casos'
+}
+
+/** "1 caso" / "850 casos" / "45 mil casos" — contagem compacta + substantivo. */
+export function formatCasos(n: number): string {
+  return `${formatCount(n)} ${pluralCasos(n)}`
+}

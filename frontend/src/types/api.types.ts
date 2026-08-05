@@ -42,6 +42,53 @@ export interface KpiResponse {
   kpis: KpiItem[]
 }
 
+// ── Distribuição de tempos (histograma por KPI) ───────────────
+// A média/mediana escondem a cauda: o histograma existe justamente para
+// mostrá-la. Contrato espelhado de backend/src/pija/schemas/kpis_schema.py.
+
+export interface DistBucket {
+  /** Limite inferior do balde, inclusivo, na unidade do KPI. */
+  de: number
+  /**
+   * Limite superior, exclusivo. `null` = balde de cauda aberta (todos os casos
+   * >= `de`) — existe no máximo um, e é sempre o último do array.
+   */
+  ate: number | null
+  n: number
+}
+
+export interface KpiDistribuicao {
+  codigo: KpiCode
+  unidade_tempo: 'dias' | 'horas'
+  /** Mediana. `null` quando não há dados no recorte. */
+  p50: number | null
+  /** Percentil 95. Serve de rótulo/referência — NÃO use para escalar o eixo. */
+  p95: number | null
+  /**
+   * Teto do eixo linear do gráfico — é SEMPRE igual a `buckets[buckets.length - 1].de`.
+   * Escale o eixo X por `teto`, nunca por `p95`: os dois coincidem no caso normal,
+   * mas quando o p95 é 0 (>= 95% dos casos zerados, situação do KPI-07B) o backend
+   * cai no valor máximo, senão a cauda — o objeto do gráfico — sumiria.
+   * `null` quando não há dados no recorte.
+   */
+  teto: number | null
+  /** Total de casos no recorte. `0` = sem dados; `buckets` vem vazio e o gráfico é ocultado. */
+  n_total: number
+  /**
+   * Baldes em ordem: os lineares de 0 até o `teto` e, por último, a cauda aberta.
+   * Normalmente 17 (16 lineares + cauda), mas 1 quando todos os casos são zero e
+   * 0 quando não há dados — nunca assuma a quantidade.
+   */
+  buckets: DistBucket[]
+}
+
+export interface DistribuicoesResponse {
+  distribuicoes: KpiDistribuicao[]
+}
+
+/** Mesmos filtros dos KPIs; `group_by` não se aplica (a distribuição não tem breakdown). */
+export type DistribuicoesParams = Omit<KpiParams, 'group_by'>
+
 // ── Gargalos ──────────────────────────────────────────────────
 
 export interface GargaloParams extends BaseFilterParams {

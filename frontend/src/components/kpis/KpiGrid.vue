@@ -5,7 +5,7 @@ import { useKpiStore } from '@/stores/useKpiStore'
 import { AREAS_JORNADA } from '@/lib/areas'
 // Onde a seção para ao rolar: abaixo do header + barra de áreas (ver lib/layout.ts).
 import { SCROLL_MARGIN_PX } from '@/lib/layout'
-import type { KpiItem } from '@/types/api.types'
+import type { KpiCode, KpiItem } from '@/types/api.types'
 import KpiCard from './KpiCard.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import Icon from '@/components/ui/Icon.vue'
@@ -31,6 +31,13 @@ const areasComCards = computed(() =>
 )
 
 const nenhumKpi = computed(() => areasComCards.value.every(({ cards }) => cards.length === 0))
+
+/**
+ * Distribuição de um KPI, ou `undefined` enquanto ela não chegou (ou se falhou).
+ * O histograma é enhancement: o card renderiza igual com ou sem ela, então aqui
+ * não há espera nem estado de erro — só a ausência do gráfico.
+ */
+const distDe = (codigo: KpiCode) => store.distribuicoes.get(codigo)
 
 onMounted(() => {
   store.initWatcher()
@@ -79,6 +86,8 @@ onMounted(() => {
           <KpiCard
             v-for="kpi in cards" :key="kpi.codigo" :kpi="kpi"
             :submetric="kpi.codigo === 'KPI-07' ? submetric : undefined"
+            :dist="distDe(kpi.codigo)"
+            :sub-dist="kpi.codigo === 'KPI-07' ? distDe('KPI-07B') : undefined"
           />
         </div>
         <BaseCard v-else>
