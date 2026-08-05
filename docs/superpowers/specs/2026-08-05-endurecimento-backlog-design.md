@@ -69,27 +69,21 @@ guarda continua sendo a proteção de correção e o abort vira otimização de 
 **Testes:** que uma mudança de filtro aborta a requisição anterior; que uma resposta abortada não
 seta `error` (um `AbortError` não é falha de verdade e não pode virar ErrorState).
 
-### 2.4 Submétrica sem dado é reportada como "acima da meta"
+### 2.4 ~~Submétrica sem dado é reportada como "acima da meta"~~ — resolvido por remoção
 
-**Estado (defeito pré-existente, do commit `3c4a40e`):** `subMeetsTarget` em
-`frontend/src/components/kpis/KpiCard.vue` devolve `false` quando `media_global` é `null`, então
-**ausência de dado vira meta perdida**: a submétrica renderiza "sem dados" e, ao lado, "meta: 4h ·
-acima da meta" em laranja.
+**Item retirado desta frente em 2026-08-05**, na mesma conversa que aprovou as specs.
 
-**Decisão:** três estados em vez de dois — **dentro da meta** / **acima da meta** / **sem dado**.
-O terceiro não usa a cor de alerta nem a de sucesso; usa texto neutro (`text-muted`) e não afirma
-nada sobre a meta. A barra de progresso, que hoje fica em 0% com a cor de nível 0, deve ficar
-visivelmente vazia/neutra no estado sem-dado.
+O defeito era real: `subMeetsTarget` em `KpiCard.vue` devolve `false` quando `media_global` é
+`null`, então ausência de dado virava meta perdida ("sem dados" ao lado de "meta: 4h · acima da
+meta" em laranja). A correção planejada era um terceiro estado.
 
-**Verificar também o card principal:** o mesmo padrão pode existir para o KPI principal — conferir
-e corrigir junto se existir.
+**O usuário decidiu remover a barra de meta de 4h inteira** (ver
+[Frente 2](2026-08-05-simplificacao-breakdown-e-cores-design.md) §4). Sem barra, não há
+`subMeetsTarget`, não há estado a distinguir e não há defeito a consertar. Um item resolvido por
+deleção não precisa de código — precisa apenas não ser reintroduzido.
 
-**Teste:** um caso por estado, sendo o de sem-dado o que fixa a regressão.
-
-**Fronteira com a Frente 2:** as duas frentes tocam esta mesma barra de meta, sem conflito. Aqui
-tratamos **quais estados existem** (dentro / acima / sem dado); a Frente 2 decide que a barra
-**mantém a cor** nos dois estados com dado, por codificar meta pactuada e não magnitude. Se as duas
-frentes forem executadas fora de ordem, nenhuma invalida a outra.
+Fica registrado aqui, riscado em vez de apagado, para que a próxima leitura do backlog não
+reabra o item achando que foi esquecido.
 
 ### 2.5 Invariantes estruturais da distribuição só valem no mock
 
@@ -131,13 +125,11 @@ warn; resposta com envelope malformado → falha como hoje.
 - Nenhuma mudança de contrato HTTP: os endpoints continuam recebendo e devolvendo o mesmo.
 - Nenhuma mudança nos `.sql`.
 - O guarda de sequência do store permanece (ver §2.3).
-- A cor da barra de meta do KPI-07B permanece — ela codifica uma meta acordada com o HC, não
-  magnitude. Ver a spec da [Frente 2](2026-08-05-simplificacao-breakdown-e-cores-design.md) §3.
 
 ## 4. Verificação
 
 Suítes atuais: backend **186**, frontend **189**, `vue-tsc` limpo. Nenhum item deste escopo pode
-reduzir esses números; os itens 2.3–2.6 os aumentam.
+reduzir esses números; os itens 2.3, 2.5 e 2.6 os aumentam. (O 2.4 saiu — ver acima.)
 
 Como a Frente 1 mexe em backend, ela termina com **deploy manual do Railway**
 (`railway up --no-gitignore` a partir de `backend/`) — o auto-deploy do GitHub não alcança o

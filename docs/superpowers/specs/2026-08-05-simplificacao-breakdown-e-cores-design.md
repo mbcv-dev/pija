@@ -70,7 +70,7 @@ consumido em três lugares:
 | `GargaloItem.vue` | tempo da dimensão, normalizado pelo maior tempo da lista |
 | `KpiCard.vue` (top-5, via `KpiBreakdownBar`) | idem, dentro do card |
 | `KpiDetailModal.vue` | idem, na lista completa |
-| `KpiCard.vue` (barra de meta do KPI-07B) | **distância até a meta de 4h** — outra coisa |
+| `KpiCard.vue` (barra de meta do KPI-07B) | distância até a meta de 4h — **removida por inteiro, ver §4** |
 
 ### 3.2 Decisão
 
@@ -83,24 +83,20 @@ natureza do que fazem, e isso é o hospital funcionando, não um problema. Pinta
 vermelho/laranja transforma uma observação em acusação — exatamente o tipo de leitura que o
 histograma foi construído para evitar na entrega anterior.
 
-### 3.3 A exceção, explícita
+### 3.3 Não há exceção
 
-**A barra de meta do KPI-07B mantém a cor.** Ali a cor não codifica magnitude: codifica distância
-até uma meta de 4 horas **acordada com o HC**. Existe um alvo pactuado, então dizer "acima" é
-reportar um fato combinado, não emitir julgamento sobre volume.
-
-Registro explícito para que a diferença não pareça esquecimento em revisão futura: neutralizamos
-cor-por-magnitude, preservamos cor-por-meta.
+Uma versão anterior desta spec preservava a cor da barra de meta do KPI-07B, por ela codificar meta
+pactuada e não magnitude. **A barra de meta foi removida** (§4), então a exceção deixou de existir:
+nenhum lugar da aplicação colore por tempo depois desta frente.
 
 ### 3.4 Destino do `lib/intensity.ts`
 
-Continua existindo, com um consumidor (a barra de meta) — mas **o teste e o doc do módulo devem
-dizer para que ele serve agora**, senão o próximo leitor reintroduz a escala de cor no ranking
-achando que é o uso pretendido. Comentário no módulo nomeando a distinção do §3.3.
+Com o ranking neutralizado (§3.2) e a barra de meta removida (§4), o módulo fica **sem nenhum
+consumidor**. **Apagar** `lib/intensity.ts` e `lib/intensity.test.ts`, junto com os tokens
+`bg-intensity-*` do `tailwind.config.js` se nenhum outro componente os usar — conferir antes.
 
-Se após a mudança sobrar API não usada em `intensity.ts` (ex.: níveis que só o ranking usava),
-remover — a decisão do `loadingDist` (manter estado sem consumidor por ser observável de teste)
-não se aplica aqui: não há teste que dependa disso.
+Isto é remoção de código morto de verdade, não o caso do `loadingDist` (estado sem consumidor de
+UI, preservado por ser observável de teste): aqui não sobra nem teste nem uso.
 
 ### 3.5 O texto que acompanha
 
@@ -109,15 +105,48 @@ de *"ordenado por tempo médio. Tempo maior não significa necessariamente garga
 unidades leva mais tempo pela natureza do que faz."* Texto final a definir na implementação; o
 requisito é que a ressalva do usuário fique na tela, não só no código.
 
-## 4. Verificação
+## 4. Remoção da barra de meta de 4h (KPI-07B)
+
+**Decisão do usuário em 2026-08-05:** *"vamos tirar essa barra de 4h como meta"*.
+
+O bloco da submétrica KPI-07B renderiza hoje, abaixo do valor: uma barra de progresso proporcional a
+`media_global / (4h × 2)` e a legenda `meta: 4h · dentro da meta | acima da meta`. Tudo isso sai. O
+bloco da submétrica **permanece** — descrição, valor, histograma e o botão de detalhe continuam como
+estão; some apenas o par barra-de-meta + legenda.
+
+**O que a remoção arrasta junto** (todos em `KpiCard.vue` salvo indicação):
+
+- `subBarClass`, `subBarRatio`, `subMeetsTarget` — os três computeds existem só para a barra.
+- `metaHoras` em `KpiMeta` (`api.types.ts`) e o valor na entrada do KPI-07B — a única meta pactuada
+  do sistema. Se sair do tipo, conferir que nada mais lê o campo.
+- O último consumidor de `lib/intensity.ts`, o que permite apagar o módulo (§3.4).
+- **O item 2.4 da [Frente 1](2026-08-05-endurecimento-backlog-design.md)**, que planejava um terceiro
+  estado ("sem dado") para a legenda da meta. Sem legenda, não há defeito — o item foi retirado
+  daquela frente, riscado em vez de apagado.
+
+**Racional:** os 4h eram uma meta acordada com o HC, mas uma meta única exibida num único KPI,
+sem que os demais tenham alvo, cria assimetria sem explicação na tela — e a legenda em laranja
+afirmava "acima da meta" com a mesma força visual que o ranking usava para afirmar "isto é um
+gargalo", que é exatamente o tipo de afirmação que esta frente está reduzindo. Com a barra fora, o
+KPI-07B passa a ser lido como os outros: valor, distribuição, e o julgamento fica com quem lê.
+
+**Teste:** o caso que hoje assegura a legenda da meta deve ser **removido**, não adaptado — é
+remoção de comportamento. Um teste novo garantindo que o bloco da submétrica continua íntegro (valor
++ histograma) fixa que a remoção não levou o resto junto.
+
+## 5. Verificação
 
 - Suítes atuais: backend **186**, frontend **189**, `vue-tsc` limpo. Esta frente é frontend-only.
-- Verificar no browser, **nos dois temas**: barras de ranking legíveis com cor única (contraste
-  contra o fundo do card em claro e escuro), barra de meta do 07B ainda colorida, e a barra de
-  filtros sem o par de botões e sem buraco de layout onde eles estavam.
+  A contagem do frontend **cai** — três remoções de comportamento (toggle, escala de intensidade,
+  barra de meta) levam seus testes junto. Queda esperada; o que não pode haver é falha.
+- Verificar no browser, **nos dois temas**: barras de ranking legíveis com a cor única (conferir
+  contraste contra o fundo do card em claro e escuro — a escala de intensidade garantia isso por
+  construção, uma cor fixa não garante); a barra de filtros sem o par de botões e sem buraco de
+  layout onde eles estavam; e o bloco da submétrica do KPI-07B íntegro sem a barra de meta —
+  descrição, valor e histograma no lugar, sem espaçamento órfão onde a barra estava.
 - Não precisa de deploy de backend — só a Vercel, que é automática no merge para `main`.
 
-## 5. Fora de escopo
+## 6. Fora de escopo
 
 - Mudar o que o ranking de Gargalos ordena ou quais KPIs participam (`METRIC_OPTIONS`).
 - Comparação contra baseline/pares (o "é normal essa unidade demorar" tratado quantitativamente) —

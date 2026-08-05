@@ -322,6 +322,43 @@ nota na tela de Ciclicidade). Não colapsar itens de exame no ETL por ora.
 
 ---
 
+## 12. `data_hora_realizacao` de `vw_exames` é inconsistente (investigação 2026-08-05)
+
+Investigação motivada por uma pergunta do time do HC — *"não faz mais sentido ser da solicitação
+até a liberação (e não realização)?"*. Medido no `pija_demo.db` (2,26M eventos, mesmo dado que está
+em produção):
+
+| Medida | solicitação → **realização** | solicitação → **liberação** |
+|---|---|---|
+| pares com os dois timestamps | 979.847 | 440.855 |
+| descartados pela guarda `fim >= início` | **599.647 (61,2%)** | **0 (0,0%)** |
+| `n` válido | 380.200 | 440.855 |
+| mediana | **0,00 h** | 9,23 h |
+
+**Em 61,2% das linhas, `data_hora_realizacao` é anterior a `data_hora_solicitacao`** — o exame
+apareceria como realizado antes de ser pedido. Não é ruído de borda: é a maioria. A guarda do
+`.sql` do KPI-05 descartava essas linhas **em silêncio**, e a mediana do que sobrava era zero — o
+dashboard exibia "< 1 min" para o tempo de exame.
+
+A inversão **não é específica de laboratório**: os 557 exames não-laboratoriais (0,06% do total,
+todos sob o `tipo_evento` `Imagem / Outros`) têm exatamente a mesma taxa de 61,2%.
+
+Por contraste, `data_hora_liberacao` é confiável: preenchido em correspondência **1 para 1** com
+`situacao = 'LIBERADO'` (440.855 = 440.855), e nenhuma outra situação (`A COLETAR`, `A EXECUTAR`,
+`AGENDADO`, `CANCELADO`, `EM COLETA`, `COLETADO`) tem liberação preenchida.
+
+**Consequência:** o KPI-05 passou a medir solicitação → liberação — ver
+[spec 2026-08-05-kpi-05-liberacao-design.md](superpowers/specs/2026-08-05-kpi-05-liberacao-design.md).
+
+**Em aberto, para levar ao HC:** o que `data_hora_realizacao` realmente contém? Ou o campo não
+significa "quando o exame foi realizado", ou há problema na carga da view. Importa para qualquer
+indicador futuro que pense em usar esse campo.
+
+**Nota de cobertura:** 45% dos exames nunca foram liberados (446.377 em `A COLETAR`, mais
+`A EXECUTAR`, `AGENDADO`, `CANCELADO`). É o denominador correto para tempo de resposta — só se mede
+duração do que terminou — mas gera viés de sobrevivência: um exame parado há dois anos contribui
+com zero para o KPI.
+
 ## 9. Próximos passos
 
 1. Executar Fase 0 (Scaffold) e Fase 1 (ETL CSV → SQLite) conforme [docs/plans/2026-05-29-fase-0-1-implementation.md](plans/2026-05-29-fase-0-1-implementation.md)
