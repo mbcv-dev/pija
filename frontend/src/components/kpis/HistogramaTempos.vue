@@ -24,10 +24,9 @@ const BASE = FONTE + 3 // faixa abaixo do plot: rótulos do eixo — idem
 const GAP = 1.5 // respiro em cor de superfície entre barras vizinhas
 const CAUDA_GAP = 4 // respiro extra antes da cauda: ela está noutra escala de eixo
 const RAIO = 2 // topo arredondado; a base fica reta, ancorada na linha de base
-// Piso de altura: com 99% dos casos num balde só (KPI-07B), os demais viram
-// hairline e a cauda — o objeto do gráfico — some. 3px mantém "existe algo aqui"
-// legível sem inflar a leitura: acima do piso as alturas seguem estritamente
-// proporcionais à contagem (há teste fixando os dois lados dessa fronteira).
+// Piso de altura: mantém "existe algo aqui" legível para um balde minúsculo.
+// Vale só pra n > 0 — balde vazio continua sem barra nenhuma, a distinção entre
+// zero e não-zero é absoluta (há teste fixando os dois lados dessa fronteira).
 const ALTURA_MIN = 3
 
 /** Arredonda pra 2 casas e serializa — evita `1.2000000000000002` no path. */
@@ -97,6 +96,27 @@ function escalaX(valor: number): number {
 const maiorN = computed(() => Math.max(1, ...props.dist.buckets.map((b) => b.n)))
 
 /**
+ * Altura da barra em ESCALA DE RAIZ QUADRADA — troca deliberada de
+ * proporcionalidade por legibilidade, e o motivo está no dado real.
+ *
+ * No KPI-07B de produção o primeiro balde concentra 80% da massa (99.710 de
+ * 124.558 casos). Em escala linear todo o resto desaba no piso de 3px: a cauda
+ * (6.231 casos) sairia a 3,5px e baldes de 574 e 1.805 casos ficariam com
+ * altura idêntica. O canal de altura não ficaria só mudo — ficaria
+ * contra-informativo, sugerindo "depois do zero é tudo igualmente raro" quando
+ * a distribuição de fato decai de 1.658 para 574 ao longo de 8 horas. E este é
+ * exatamente o gráfico que motivou a feature. KPI-01 e KPI-05 degeneram igual.
+ *
+ * O custo é real: altura deixa de ser proporcional à contagem, então o gráfico
+ * DECLARA isso (nota visível, aria-label e legenda da tabela) em vez de deixar
+ * o leitor supor. As contagens exatas seguem no tooltip e na tabela.
+ */
+function alturaBarra(n: number): number {
+  if (n <= 0) return 0
+  return Math.max(ALTURA_MIN, Math.sqrt(n / maiorN.value) * H)
+}
+
+/**
  * Topo arredondado + base reta. `rx` num <rect> arredondaria também a base e a
  * barra pareceria flutuar acima da linha de base — por isso o path à mão.
  */
@@ -126,7 +146,7 @@ const barras = computed(() =>
     const x = cauda ? larguraLinear.value + respiroCauda.value : escalaX(b.de)
     const fim = cauda ? x + larguraSlot.value : escalaX(b.ate as number)
     const largura = Math.max(0.5, fim - x - GAP)
-    const altura = b.n > 0 ? Math.max(ALTURA_MIN, (b.n / maiorN.value) * H) : 0
+    const altura = alturaBarra(b.n)
     return {
       cauda,
       // Cor de alerta só quando a cauda é de fato o extremo lento de um eixo.
@@ -189,21 +209,37 @@ const barraCauda = computed(() => {
  * saber de quanta gente se trata — justamente o dado que o componente existe
  * pra mostrar, e que só o leitor de tela estava recebendo.
  */
-const cauda = computed(() => {
+const rotuloCauda = computed(() => {
   const b = barraCauda.value
   if (!b) return null
-  const acima = H - b.altura - 3
-  // O rótulo é bem mais largo que a barra (~15 un.), então NÃO dá pra escrevê-lo
-  // "por dentro" quando a cauda é alta: ele vazaria pros lados da barra e a
-  // tinta clara sumiria no fundo do card. Nesse caso ele sobe pra faixa de
-  // anotações, onde nunca disputa espaço com barra nenhuma.
-  const cabeAcimaDaBarra = acima >= FONTE
+  const texto = `${formatCount(b.n)} casos`
+  // O rótulo é bem mais largo que o slot da cauda (~15 un.), então ele sempre
+  // invade as colunas vizinhas. Por isso a altura que importa não é a da cauda,
+  // e sim a da barra MAIS ALTA que ele cobre — um filtro estreito deixa o
+  // último balde linear alto e era ele que engolia o texto. Escrever "por
+  // dentro" não resolve: o rótulo transborda a barra e a tinta clara sumiria no
+  // fundo do card. Não cabendo acima de todas, ele sobe pra faixa de anotações.
+  const larguraTexto = texto.length * FONTE * 0.62
+  const bordaEsquerda = b.x + b.largura - larguraTexto
+  const alturaCoberta = Math.max(
+    ...barras.value.filter((o) => o.x + o.largura > bordaEsquerda).map((o) => o.altura),
+  )
+  const acima = H - alturaCoberta - 3
   return {
-    texto: `${formatCount(b.n)} casos`,
+    texto,
     x: b.x + b.largura,
-    y: cabeAcimaDaBarra ? TOPO + acima : TOPO - 4,
+    y: acima >= FONTE ? TOPO + acima : TOPO - 4,
   }
 })
+
+/**
+ * A escala comprimida só precisa ser declarada quando há mais de uma barra pra
+ * comparar — com uma barra só não existe proporção entre alturas pra distorcer.
+ */
+const temEscalaComprimida = computed(() => barras.value.length > 1)
+
+const AVISO_ESCALA =
+  'Alturas em escala de raiz quadrada: comprimem as diferenças para manter as faixas raras visíveis, então não são proporcionais às contagens'
 
 const casosNaCauda = computed(() => {
   const bs = props.dist.buckets
@@ -230,13 +266,18 @@ const descricao = computed(() => {
   } else {
     partes.push('todos os casos numa única faixa')
   }
+  if (temEscalaComprimida.value) partes.push(AVISO_ESCALA)
   return `${partes.join('. ')}.`
 })
 
 /** A tabela já traz os números; a legenda só a nomeia, sem repetir a descrição. */
-const legendaTabela = computed(
-  () => `Casos por faixa de tempo (${props.dist.n_total.toLocaleString('pt-BR')} no total).`,
-)
+const legendaTabela = computed(() => {
+  const base = `Casos por faixa de tempo (${props.dist.n_total.toLocaleString('pt-BR')} no total).`
+  // A tabela é a via que preserva a proporção — vale dizer que o desenho não preserva.
+  return temEscalaComprimida.value
+    ? `${base} No gráfico as alturas usam escala de raiz quadrada; os números abaixo são as contagens exatas.`
+    : base
+})
 </script>
 
 <template>
@@ -262,18 +303,6 @@ const legendaTabela = computed(
         :font-size="FONTE"
         class="fill-text-muted dark:fill-text-dark-muted"
       >{{ rotuloMediana }}</text>
-
-      <!--
-        Contagem da cauda: o toco de 3px sozinho não diz nada a quem enxerga.
-        Fica em coordenadas absolutas (fora do grupo do plot) porque ele pode
-        precisar subir pra faixa de anotações quando a cauda é alta.
-      -->
-      <text
-        v-if="cauda"
-        data-cauda-n
-        :x="cauda.x" :y="cauda.y" text-anchor="end" :font-size="FONTE"
-        class="fill-text-muted dark:fill-text-dark-muted"
-      >{{ cauda.texto }}</text>
 
       <g :transform="`translate(0, ${TOPO})`">
         <!-- Linha de base: hairline sólida, recessiva -->
@@ -306,6 +335,7 @@ const legendaTabela = computed(
           este gráfico vive); noutro fundo ele apareceria como um vinco claro.
         -->
         <template v-if="medianaX !== null">
+          <!-- 3,5 = os 1,5 da linha + 1 de halo de cada lado -->
           <line
             :x1="medianaX" :x2="medianaX" y1="0" :y2="H"
             class="stroke-surface dark:stroke-surface-dark" stroke-width="3.5"
@@ -318,6 +348,23 @@ const legendaTabela = computed(
           />
         </template>
       </g>
+
+      <!--
+        Contagem da cauda: o toco sozinho não diz nada a quem enxerga. Pintada
+        DEPOIS do grupo do plot (em SVG quem vem depois fica por cima): o rótulo
+        é bem mais largo que o slot da cauda e sempre invade a coluna do último
+        balde linear, que um filtro estreito o bastante deixa alto. O halo (fino:
+        a 9px um traço grosso engole o miolo da letra) é a segunda linha de
+        defesa — a primeira é o rótulo subir acima da barra mais alta que cobre.
+      -->
+      <text
+        v-if="rotuloCauda"
+        data-cauda-n
+        :x="rotuloCauda.x" :y="rotuloCauda.y" text-anchor="end" :font-size="FONTE"
+        paint-order="stroke"
+        stroke-width="1.5"
+        class="fill-text-muted dark:fill-text-dark-muted stroke-surface dark:stroke-surface-dark"
+      >{{ rotuloCauda.texto }}</text>
 
       <!--
         Eixo: só as duas extremidades, ancoradas onde o eixo realmente começa e
@@ -333,6 +380,18 @@ const legendaTabela = computed(
           :x="larguraLinear" :y="TOPO + H + FONTE" text-anchor="end" :font-size="FONTE"
           class="fill-text-muted dark:fill-text-dark-muted"
         >{{ rotuloFimEixo }}</text>
+        <!--
+          Declaração da escala comprimida: sem ela o leitor supõe que altura é
+          contagem. Fica no centro do eixo, longe das duas pontas rotuladas, e
+          numa posição fixa — não se move com o dado, então nunca colide.
+        -->
+        <text
+          v-if="temEscalaComprimida"
+          data-aviso-escala
+          :x="larguraLinear / 2" :y="TOPO + H + FONTE" text-anchor="middle" :font-size="FONTE"
+          font-style="italic"
+          class="fill-text-muted dark:fill-text-dark-muted"
+        >alturas comprimidas</text>
       </template>
       <text
         v-else
