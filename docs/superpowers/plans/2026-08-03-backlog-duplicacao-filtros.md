@@ -54,3 +54,25 @@ dado vira meta perdida**. Ver `frontend/src/components/kpis/KpiCard.vue` (cálcu
 **Escopo quando for feito:** distinguir os três estados (dentro / acima / sem dado) em vez de dois, e
 conferir se o card principal tem o mesmo problema. Não corrigido junto com os indicadores gráficos
 por ser defeito de outra entrega — corrigir aqui misturaria as duas na mesma branch.
+
+## 5. Invariantes estruturais da distribuição só são checadas no mock
+
+Achado na review final da branch dos indicadores gráficos (2026-08-05).
+
+`frontend/src/mocks/distribuicoes.mock.test.ts` garante que `teto === buckets[último].de` e que existe
+exatamente uma cauda aberta, sempre por último. O componente `HistogramaTempos.vue` **depende** da
+segunda. Mas o `DistribuicoesResponseSchema` (zod) não valida nenhuma das duas, então o caminho da
+resposta **real** não tem a garantia que o mock tem.
+
+**Escopo quando for feito:** um `.superRefine` no `KpiDistribuicaoSchema` estendendo as duas
+invariantes ao dado de produção. Custo quase zero.
+
+## 6. O parse da distribuição é tudo-ou-nada
+
+Mesma review. Um `codigo` ou `unidade_tempo` desconhecido vindo do backend faz o
+`DistribuicoesResponseSchema.parse` falhar e **derruba os seis histogramas de uma vez**
+(`frontend/src/services/api.ts`, no `getDistribuicoes`). Hoje os enums batem exatamente com o
+backend, então é latente — mas é um acoplamento para saber antes de adicionar um KPI-08.
+
+**Escopo quando for feito:** decidir se vale degradar por KPI em vez de por resposta. Só faz sentido
+se o conjunto de códigos passar a variar entre backend e frontend.
