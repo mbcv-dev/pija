@@ -101,6 +101,55 @@ const picoExtremo: KpiDistribuicao = {
   ],
 }
 
+/**
+ * Métrica quase constante num recorte filtrado: p50 = p95 = teto, então TODOS
+ * os casos caem no balde de cauda. A cauda vira o pico e a mediana vai pro
+ * extremo direito ao mesmo tempo — a forma que faz os dois rótulos da faixa de
+ * anotações disputarem o mesmo espaço.
+ */
+const constante: KpiDistribuicao = {
+  codigo: 'KPI-03',
+  unidade_tempo: 'dias',
+  p50: 8,
+  p95: 8,
+  teto: 8,
+  n_total: 50,
+  buckets: [
+    ...Array.from({ length: 16 }, (_, i) => ({ de: i * 0.5, ate: (i + 1) * 0.5, n: 0 })),
+    { de: 8, ate: null, n: 50 },
+  ],
+}
+
+/** Recorte estreito: poucos casos, e um balde linear alto colado na cauda. */
+const filtrado: KpiDistribuicao = {
+  codigo: 'KPI-07B',
+  unidade_tempo: 'horas',
+  p50: 2,
+  p95: 8,
+  teto: 8,
+  n_total: 40,
+  buckets: [
+    ...Array.from({ length: 16 }, (_, i) => ({
+      de: i * 0.5, ate: (i + 1) * 0.5, n: i === 0 ? 12 : i === 15 ? 9 : 1,
+    })),
+    { de: 8, ate: null, n: 4 },
+  ],
+}
+
+/** Cauda que é o próprio pico: empurra o rótulo dela pra faixa de anotações. */
+const caudaAlta: KpiDistribuicao = {
+  codigo: 'KPI-05',
+  unidade_tempo: 'dias',
+  p50: 14,
+  p95: 16,
+  teto: 16,
+  n_total: 300,
+  buckets: [
+    ...Array.from({ length: 16 }, (_, i) => ({ de: i, ate: i + 1, n: i + 1 })),
+    { de: 16, ate: null, n: 120 },
+  ],
+}
+
 const semDados: KpiDistribuicao = {
   codigo: 'KPI-05',
   unidade_tempo: 'dias',
@@ -130,6 +179,20 @@ function xDaMediana(w: Wrapper): number {
   return Number(w.find('[data-mediana]').attributes('x1'))
 }
 
+/**
+ * Caixa horizontal de um <text>, a partir de x + text-anchor. Usa a MESMA
+ * estimativa de largura de glifo do componente (0,62 do corpo): SVG não mede
+ * texto sem renderizar, e o que importa aqui é a decisão de sobreposição, que
+ * é tomada com esse mesmo número dos dois lados.
+ */
+function caixaDeTexto(t: ReturnType<Wrapper['find']>) {
+  const x = Number(t.attributes('x'))
+  const largura = (t.text().length * 9) * 0.62
+  const ancora = t.attributes('text-anchor') ?? 'start'
+  const esquerda = ancora === 'end' ? x - largura : ancora === 'middle' ? x - largura / 2 : x
+  return { esquerda, direita: esquerda + largura }
+}
+
 function larguraViewBox(w: Wrapper): number {
   return Number(w.find('svg').attributes('viewBox')!.split(' ')[2])
 }
@@ -140,7 +203,13 @@ function larguraViewBox(w: Wrapper): number {
  * ponto em questão: se a contagem chega ou não a quem está olhando.
  */
 function textosVisiveis(w: Wrapper): string[] {
-  return w.findAll('svg text').map((t) => t.text())
+  return w.findAll('svg text').map((t) => {
+    // <title> pode ser filho de um <text> (o aviso de escala tem um), e aí ele
+    // entra no textContent — tem que sair pra sobrar só o que é desenhado.
+    const clone = t.element.cloneNode(true) as SVGElement
+    clone.querySelectorAll('title').forEach((n) => n.remove())
+    return (clone.textContent ?? '').trim()
+  })
 }
 
 describe('HistogramaTempos', () => {
@@ -323,15 +392,6 @@ describe('HistogramaTempos', () => {
   it('cauda alta empurra a contagem pra faixa de anotações, nunca pra dentro da barra', () => {
     // O rótulo é ~2x mais largo que a barra: escrito "por dentro" ele vaza pros
     // lados e, em tinta clara, some no fundo do card.
-    const caudaAlta: KpiDistribuicao = {
-      ...base,
-      p50: 14,
-      n_total: 300,
-      buckets: [
-        ...Array.from({ length: 16 }, (_, i) => ({ de: i, ate: i + 1, n: i + 1 })),
-        { de: 16, ate: null, n: 120 },
-      ],
-    }
     const w = mount(HistogramaTempos, { props: { dist: caudaAlta } })
     const rotulo = w.find('[data-cauda-n]')
     expect(rotulo.text()).toBe('120 casos')
@@ -340,6 +400,43 @@ describe('HistogramaTempos', () => {
     // E sempre em tinta de texto — nunca clara, que dependeria de estar sobre a barra.
     expect(rotulo.classes()).toContain('fill-text-muted')
     expect(w.html()).not.toContain('fill-white')
+  })
+
+  it('um caso so e "1 caso", nao "1 casos"', () => {
+    const umCaso: KpiDistribuicao = {
+      ...base,
+      n_total: 2,
+      buckets: [
+        { de: 0, ate: 1, n: 1 },
+        ...Array.from({ length: 15 }, (_, i) => ({ de: i + 1, ate: i + 2, n: 0 })),
+        { de: 16, ate: null, n: 1 },
+      ],
+    }
+    const w = mount(HistogramaTempos, { props: { dist: umCaso } })
+    // Anotacao da cauda
+    expect(w.find('[data-cauda-n]').text()).toBe('1 caso')
+    // Tooltip do balde
+    expect(w.find('[data-balde] title').text()).toMatch(/1 caso$/)
+    // E o plural continua valendo pra qualquer outro numero
+    const w2 = mount(HistogramaTempos, { props: { dist: base } })
+    expect(w2.find('[data-cauda-n]').text()).toBe('5 casos')
+    expect(w2.find('[data-balde] title').text()).toMatch(/16 casos$/)
+  })
+
+  it('a fala tambem concorda em numero', () => {
+    const umCaso: KpiDistribuicao = {
+      ...base,
+      n_total: 1,
+      buckets: [
+        ...Array.from({ length: 16 }, (_, i) => ({ de: i, ate: i + 1, n: 0 })),
+        { de: 16, ate: null, n: 1 },
+      ],
+    }
+    const rotulo = mount(HistogramaTempos, { props: { dist: umCaso } })
+      .find('svg')
+      .attributes('aria-label')!
+    expect(rotulo).toContain('Distribuição de 1 caso.')
+    expect(rotulo).toContain('1 caso igual ou acima')
   })
 
   it('não rotula contagem quando não há cauda de verdade', () => {
@@ -354,15 +451,6 @@ describe('HistogramaTempos', () => {
     // cauda e sempre invade a coluna do último balde linear — que um filtro
     // estreito (uma unidade só, dezenas de casos) deixa alto o bastante pra
     // ocultar o texto. A escala de raiz TORNA isso mais provável, não menos.
-    const filtrado: KpiDistribuicao = {
-      codigo: 'KPI-07B', unidade_tempo: 'horas', p50: 2, p95: 8, teto: 8, n_total: 40,
-      buckets: [
-        ...Array.from({ length: 16 }, (_, i) => ({
-          de: i * 0.5, ate: (i + 1) * 0.5, n: i === 0 ? 12 : i === 15 ? 9 : 1,
-        })),
-        { de: 8, ate: null, n: 4 },
-      ],
-    }
     const w = mount(HistogramaTempos, { props: { dist: filtrado } })
     // O balde vizinho é mesmo alto o bastante pra alcançar o rótulo — e mais
     // alto que a própria cauda, então só olhar pra altura da cauda não bastava.
@@ -385,15 +473,64 @@ describe('HistogramaTempos', () => {
     expect(rotulo.classes()).toContain('stroke-surface')
   })
 
+  // ── Disputa entre os dois rótulos da faixa de anotações ─────────────────
+
+  it('metrica quase constante: a mediana cede o texto, mas nao a linha', () => {
+    // Forma alcancavel por filtro: com p50 = p95 = teto todos os casos caem no
+    // balde de cauda, entao a cauda VIRA o pico (sobe pra faixa) e ao mesmo
+    // tempo a mediana vai pro extremo direito. Depois que o gatilho da faixa
+    // passou a olhar a altura do VIZINHO, essas duas condicoes viraram a mesma
+    // forma de distribuicao — deixaram de ser mutuamente exclusivas.
+    const w = mount(HistogramaTempos, { props: { dist: constante } })
+    expect(w.find('[data-cauda-n]').exists()).toBe(true)
+    expect(Number(w.find('[data-cauda-n]').attributes('y'))).toBeLessThanOrEqual(13)
+    // O texto some...
+    expect(w.find('[data-mediana-rotulo]').exists()).toBe(false)
+    // ...mas a linha tracejada continua marcando a posicao.
+    expect(w.find('[data-mediana]').exists()).toBe(true)
+  })
+
+  it('os dois rotulos da faixa nunca se sobrepoem, em nenhuma forma', () => {
+    // Fixa a CLASSE do defeito, nao a instancia: a regra de posicao vertical tem
+    // tres entradas que se cruzam (altura da cauda, altura do vizinho, posicao
+    // da mediana) e nada garantia a interacao entre os dois rotulos.
+    const formas: Array<[string, KpiDistribuicao]> = [
+      ['base', base],
+      ['real07b', real07b],
+      ['p95Zerado', p95Zerado],
+      ['constante', constante],
+      ['quase constante', { ...constante, p50: 7.7 }],
+      ['mediana a 96% do teto', { ...constante, p50: 7.68 }],
+      ['filtrado', filtrado],
+      ['cauda dominante', caudaAlta],
+    ]
+    for (const [nome, dist] of formas) {
+      const w = mount(HistogramaTempos, { props: { dist } })
+      const mediana = w.find('[data-mediana-rotulo]')
+      const cauda = w.find('[data-cauda-n]')
+      if (!mediana.exists() || !cauda.exists()) continue
+      const yM = Number(mediana.attributes('y'))
+      const yC = Number(cauda.attributes('y'))
+      if (yM !== yC) continue // alturas diferentes: nao disputam espaco
+      expect(caixaDeTexto(mediana).direita, nome).toBeLessThanOrEqual(
+        caixaDeTexto(cauda).esquerda,
+      )
+    }
+  })
+
   // ── Divulgação da escala comprimida ─────────────────────────────────────
 
   it('declara a escala comprimida no desenho, na fala e na tabela', () => {
     // A raiz quadrada compra legibilidade vendendo proporcionalidade — o gráfico
-    // tem que dizer isso, senão o leitor supoe que altura e contagem.
+    // tem que dizer isso, senão o leitor supõe que altura é contagem.
     const w = mount(HistogramaTempos, { props: { dist: real07b } })
-    expect(textosVisiveis(w)).toContain('alturas comprimidas')
+    // A nota tem que carregar a CONSEQUÊNCIA (alturas não são contagens), não
+    // só informar que algo foi feito com elas.
+    expect(textosVisiveis(w)).toContain('alturas não proporcionais')
     expect(w.find('svg').attributes('aria-label')).toContain('raiz quadrada')
     expect(w.find('table caption').text()).toContain('raiz quadrada')
+    // A frase inteira fica a um hover de distância, sem custar layout.
+    expect(w.find('[data-aviso-escala] title').text()).toContain('raiz quadrada')
   })
 
   it('não declara escala com uma barra só — não há proporção pra distorcer', () => {
@@ -422,10 +559,10 @@ describe('HistogramaTempos', () => {
   })
 
   it('só pinta a cauda de alerta quando ela é o extremo de um eixo', () => {
-    // Com eixo linear a cauda e "os mais lentos" → token de alerta.
+    // Com eixo linear a cauda é "os mais lentos" → token de alerta.
     const comEixo = mount(HistogramaTempos, { props: { dist: base } })
     expect(comEixo.find('[data-cauda] path').classes()).toContain('fill-warning')
-    // Sem eixo o único balde e "todos os casos": pinta-lo de alerta seria mentir.
+    // Sem eixo o único balde é "todos os casos": pintá-lo de alerta seria mentir.
     const semEixo = mount(HistogramaTempos, { props: { dist: degenerado } })
     expect(semEixo.find('[data-cauda] path').classes()).not.toContain('fill-warning')
   })
@@ -467,6 +604,26 @@ describe('HistogramaTempos', () => {
   it('o texto visível do caso degenerado também vem acentuado', () => {
     const w = mount(HistogramaTempos, { props: { dist: degenerado } })
     expect(textosVisiveis(w)).toContain('todos os casos numa única faixa')
+  })
+
+  // ── Layout: a tabela sr-only não pode esticar a pagina ──────────────────
+
+  it('a tabela sr-only fica DENTRO de um wrapper, nunca com a classe nela', () => {
+    // Numa <table> o width:1px do sr-only vale so como minimo: ela cresce ate
+    // caber a legenda (nowrap), e o box absoluto largo estica a area rolavel do
+    // documento — overflow horizontal invisivel. Num <div> a largura e obedecida.
+    const w = mount(HistogramaTempos, { props: { dist: real07b } })
+    const tabela = w.find('table')
+    expect(tabela.exists()).toBe(true)
+    expect(tabela.classes()).not.toContain('sr-only')
+    const pai = tabela.element.parentElement
+    expect(pai?.tagName.toLowerCase()).toBe('div')
+    expect(pai?.classList.contains('sr-only')).toBe(true)
+  })
+
+  it('a legenda longa continua inteira — o conserto e estrutural, nao encurtar texto', () => {
+    const w = mount(HistogramaTempos, { props: { dist: real07b } })
+    expect(w.find('table caption').text().length).toBeGreaterThan(100)
   })
 
   it('oferece uma tabela equivalente para leitores de tela', () => {

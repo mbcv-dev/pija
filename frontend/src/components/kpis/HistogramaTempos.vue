@@ -132,6 +132,20 @@ function caminhoBarra(x: number, largura: number, altura: number): string {
   )
 }
 
+/** "caso" no singular só quando n é exatamente 1 — "1 casos" denuncia gerador. */
+function pluralCasos(n: number): string {
+  return n === 1 ? 'caso' : 'casos'
+}
+
+/**
+ * Largura aproximada de um texto no viewBox. SVG não mede texto sem renderizar,
+ * então a estimativa é deliberadamente generosa: ela decide se dois rótulos se
+ * atropelam, e errar pra mais só custa um rótulo escondido a mais.
+ */
+function larguraTexto(t: string): number {
+  return t.length * FONTE * 0.62
+}
+
 function faixaLegivel(de: number, ate: number | null): string {
   const u = props.dist.unidade_tempo
   return ate === null
@@ -159,7 +173,7 @@ const barras = computed(() =>
       d: altura > 0 ? caminhoBarra(x, largura, altura) : null,
       faixa: faixaLegivel(b.de, b.ate),
       n: b.n,
-      titulo: `${faixaLegivel(b.de, b.ate)} · ${b.n.toLocaleString('pt-BR')} casos`,
+      titulo: `${faixaLegivel(b.de, b.ate)} · ${b.n.toLocaleString('pt-BR')} ${pluralCasos(b.n)}`,
     }
   }),
 )
@@ -212,24 +226,56 @@ const barraCauda = computed(() => {
 const rotuloCauda = computed(() => {
   const b = barraCauda.value
   if (!b) return null
-  const texto = `${formatCount(b.n)} casos`
+  const texto = `${formatCount(b.n)} ${pluralCasos(b.n)}`
   // O rótulo é bem mais largo que o slot da cauda (~15 un.), então ele sempre
   // invade as colunas vizinhas. Por isso a altura que importa não é a da cauda,
   // e sim a da barra MAIS ALTA que ele cobre — um filtro estreito deixa o
   // último balde linear alto e era ele que engolia o texto. Escrever "por
   // dentro" não resolve: o rótulo transborda a barra e a tinta clara sumiria no
-  // fundo do card. Não cabendo acima de todas, ele sobe pra faixa de anotações.
-  const larguraTexto = texto.length * FONTE * 0.62
-  const bordaEsquerda = b.x + b.largura - larguraTexto
+  // fundo do card. Não cabendo acima de todas, ele sobe pra faixa de anotações
+  // — onde não há barra, mas onde o rótulo da mediana também mora (ver
+  // `medianaOculta`, que resolve a disputa entre os dois).
+  const bordaEsquerda = b.x + b.largura - larguraTexto(texto)
   const alturaCoberta = Math.max(
     ...barras.value.filter((o) => o.x + o.largura > bordaEsquerda).map((o) => o.altura),
   )
   const acima = H - alturaCoberta - 3
+  const naFaixa = acima < FONTE
   return {
     texto,
     x: b.x + b.largura,
-    y: acima >= FONTE ? TOPO + acima : TOPO - 4,
+    y: naFaixa ? TOPO - 4 : TOPO + acima,
+    naFaixa,
   }
+})
+
+/**
+ * Some com o TEXTO da mediana (a linha tracejada fica) quando ele bateria no
+ * rótulo da cauda na faixa de anotações.
+ *
+ * Isto é alcançável, não teórico: numa métrica quase constante dentro de um
+ * recorte filtrado todos os casos caem no balde de cauda, então a cauda vira o
+ * pico (e sobe pra faixa) enquanto `p50 ≈ teto` empurra a mediana pro extremo
+ * direito. As duas condições passaram a ser a MESMA forma de distribuição
+ * quando o gatilho da faixa passou a olhar a altura do vizinho — antes eram
+ * quase independentes, e por isso se excluíam.
+ *
+ * Esconder o texto é barato: o card de KPI logo acima já mostra a mediana. É a
+ * premissa fundadora do componente — o card dá a mediana, o histograma mostra
+ * o que ela esconde.
+ */
+const medianaOculta = computed(() => {
+  const rc = rotuloCauda.value
+  const mx = medianaX.value
+  if (!rc || !rc.naFaixa || mx === null) return false
+  const largura = larguraTexto(rotuloMediana.value)
+  const direitaMediana =
+    medianaAncora.value === 'start'
+      ? mx + largura
+      : medianaAncora.value === 'middle'
+        ? mx + largura / 2
+        : mx
+  return direitaMediana > rc.x - larguraTexto(rc.texto)
 })
 
 /**
@@ -255,13 +301,13 @@ const casosNaCauda = computed(() => {
 const descricao = computed(() => {
   const u = props.dist.unidade_tempo
   const partes = [
-    `Distribuição de ${props.dist.n_total.toLocaleString('pt-BR')} casos`,
+    `Distribuição de ${props.dist.n_total.toLocaleString('pt-BR')} ${pluralCasos(props.dist.n_total)}`,
     `mediana ${formatDuration(props.dist.p50, u)}`,
   ]
   if (nLinear.value > 0) {
     partes.push(`eixo de zero a ${formatDuration(dominio.value, u)}`)
     partes.push(
-      `última barra reúne ${casosNaCauda.value.toLocaleString('pt-BR')} casos iguais ou acima desse limite`,
+      `última barra reúne ${casosNaCauda.value.toLocaleString('pt-BR')} ${pluralCasos(casosNaCauda.value)} ${casosNaCauda.value === 1 ? 'igual' : 'iguais'} ou acima desse limite`,
     )
   } else {
     partes.push('todos os casos numa única faixa')
@@ -294,9 +340,14 @@ const legendaTabela = computed(() => {
       role="img"
       :aria-label="descricao"
     >
-      <!-- Rótulo da mediana mora acima do plot pra nunca colidir com o eixo -->
+      <!--
+        Rótulo da mediana mora acima do plot pra nunca colidir com o eixo. Cede
+        a vez pro rótulo da cauda quando os dois disputam a faixa: a linha
+        tracejada continua marcando a posição, e o valor já está no card acima.
+      -->
       <text
-        v-if="medianaX !== null"
+        v-if="medianaX !== null && !medianaOculta"
+        data-mediana-rotulo
         :x="medianaX"
         :y="TOPO - 4"
         :text-anchor="medianaAncora"
@@ -391,7 +442,7 @@ const legendaTabela = computed(() => {
           :x="larguraLinear / 2" :y="TOPO + H + FONTE" text-anchor="middle" :font-size="FONTE"
           font-style="italic"
           class="fill-text-muted dark:fill-text-dark-muted"
-        >alturas comprimidas</text>
+        ><title>{{ AVISO_ESCALA }}</title>alturas não proporcionais</text>
       </template>
       <text
         v-else
@@ -400,18 +451,31 @@ const legendaTabela = computed(() => {
       >todos os casos numa única faixa</text>
     </svg>
 
-    <!-- Equivalente textual: o gráfico nunca é a única via de acesso ao dado -->
-    <table class="sr-only">
-      <caption>{{ legendaTabela }}</caption>
-      <thead>
-        <tr><th scope="col">Faixa de tempo</th><th scope="col">Casos</th></tr>
-      </thead>
-      <tbody>
-        <tr v-for="(b, i) in barras" :key="i">
-          <td>{{ b.faixa }}</td>
-          <td>{{ b.n.toLocaleString('pt-BR') }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <!--
+      Equivalente textual: o gráfico nunca é a única via de acesso ao dado.
+
+      O `sr-only` vai no WRAPPER, nunca na <table> — e mexer nisso volta a
+      quebrar o layout. Numa tabela com `table-layout: auto` o `width: 1px` do
+      sr-only vale só como MÍNIMO: ela cresce até caber seu conteúdo, e o
+      `white-space: nowrap` (também do sr-only) faz essa largura ser a da linha
+      mais longa — a legenda. O `clip` esconde o desenho, mas não encolhe a
+      caixa, e como ela é `position: absolute` esse box largo estica a área
+      rolável do documento: overflow horizontal invisível na página inteira.
+      Num <div> o `width: 1px` é respeitado de verdade e o overflow some.
+    -->
+    <div class="sr-only">
+      <table>
+        <caption>{{ legendaTabela }}</caption>
+        <thead>
+          <tr><th scope="col">Faixa de tempo</th><th scope="col">Casos</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="(b, i) in barras" :key="i">
+            <td>{{ b.faixa }}</td>
+            <td>{{ b.n.toLocaleString('pt-BR') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
