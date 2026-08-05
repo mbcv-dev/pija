@@ -16,7 +16,7 @@ router.add_api_route(
         "|--------|------------|\n"
         "| KPI-01 | Dias entre abertura do prontuário e o 1º evento clínico |\n"
         "| KPI-03 | Dias entre agendamento e realização da consulta |\n"
-        "| KPI-05 | Dias entre solicitação e realização do exame *(pendente confirmação HC)* |\n"
+        "| KPI-05 | Dias entre solicitação e liberação do resultado do exame |\n"
         "| KPI-06 | Dias entre a última consulta e a internação subsequente |\n"
         "| KPI-07 | Dias de permanência no leito (inclui período pós-alta médica) |\n\n"
         "Todos os filtros são opcionais. Sem filtros, o cálculo considera toda a base."

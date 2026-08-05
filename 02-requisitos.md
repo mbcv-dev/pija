@@ -62,7 +62,7 @@
 | KPI-02 | Taxa de prontuários inertes | `COUNT(sem_evento) / COUNT(total)` | Prontuários | ⏸ Pós-MVP |
 | KPI-03 | Tempo médio agendamento → realização (consulta) | `AVG(ts_realizacao - ts_agendado)` | Consultas | ✅ |
 | KPI-04 | Taxa de não realização (consultas) | `COUNT(nao_realizado) / COUNT(total)` | Consultas | ⏸ Pós-MVP |
-| KPI-05 | Tempo médio solicitação → realização (exame) | `AVG(ts_realizacao - ts_solicitacao)` | Exames | ✅ |
+| KPI-05 | Tempo médio solicitação → liberação (exame) | `AVG(ts_liberacao - ts_solicitacao)` | Exames | ✅ |
 | KPI-06 | Tempo médio solicitação → internação | `AVG(ts_internacao - ts_solicitacao)` | Internações | ✅ |
 | KPI-07 | Tempo médio de internação | `AVG(ts_alta_administrativa - ts_internacao)` | Internações + Altas | ✅ |
 | KPI-08 | Volume de eventos por período/unidade/especialidade | `COUNT(eventos) GROUP BY filtro` | Todas | ⏸ Pós-MVP |

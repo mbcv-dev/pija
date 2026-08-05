@@ -109,7 +109,7 @@ Detalhamento por fase, gates e skills Claude Code: [`docs/PLANO.md`](docs/PLANO.
 - [ ] **T2-2** `GET /api/v1/kpis/tempos-medios` — RF002 subset:
   - `KPI-01`: prontuário → 1º evento
   - `KPI-03`: agendamento → realização (consulta)
-  - `KPI-05`: solicitação → realização (exame)
+  - `KPI-05`: solicitação → liberação (exame)
   - `KPI-06`: solicitação → internação
   - `KPI-07`: tempo médio de internação (admissão → alta administrativa)
 - [ ] **T2-3** `GET /api/v1/gargalos` ranking — RF003 / UC003

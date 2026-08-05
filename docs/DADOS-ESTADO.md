@@ -354,7 +354,7 @@ Por contraste, `data_hora_liberacao` é confiável: preenchido em correspondênc
 significa "quando o exame foi realizado", ou há problema na carga da view. Importa para qualquer
 indicador futuro que pense em usar esse campo.
 
-**Nota de cobertura:** 45% dos exames nunca foram liberados (446.377 em `A COLETAR`, mais
+**Nota de cobertura:** 55% dos exames nunca foram liberados — 538.992 de 979.847 (446.377 em `A COLETAR`, mais
 `A EXECUTAR`, `AGENDADO`, `CANCELADO`). É o denominador correto para tempo de resposta — só se mede
 duração do que terminou — mas gera viés de sobrevivência: um exame parado há dois anos contribui
 com zero para o KPI.

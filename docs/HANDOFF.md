@@ -21,7 +21,7 @@
 - **5+1 KPIs**, escopados por `grupo` (decisão HC):
   - KPI-01 "Prontuário → 1º evento assistencial" — escopo **Ambulatorial**
   - KPI-03 "Agendamento → realização (consulta)" — **Ambulatorial**
-  - KPI-05 "Solicitação → realização (exame)" — **executores de exame** (Análises Clínicas / Diagnóstico por Imagem / Anatomia Patológica)
+  - KPI-05 "Solicitação → liberação (exame)" — **executores de exame** (Análises Clínicas / Diagnóstico por Imagem / Anatomia Patológica)
   - KPI-06 "Última consulta → internação" — **Internação**
   - KPI-07 "Permanência no leito" (entrada→saída, dias) — **Internação**
   - **KPI-07B "Alta médica → saída do leito" (em HORAS, meta 4h)** — **Internação**. `unidade_tempo="horas"`. Não entra no ranking de gargalos default (unidade diferente).

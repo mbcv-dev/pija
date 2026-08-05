@@ -86,7 +86,7 @@ Devolve os **5 KPIs de tempo médio** do MVP. Cada KPI vem com um **número gera
 |---|---|
 | `KPI-01` | tempo do cadastro do prontuário até o 1º atendimento |
 | `KPI-03` | tempo do agendamento até a realização da **consulta** |
-| `KPI-05` | tempo da solicitação até a realização do **exame** |
+| `KPI-05` | tempo da solicitação até a liberação do resultado do **exame** |
 | `KPI-06` | tempo da última consulta até a internação seguinte |
 | `KPI-07` | tempo de permanência na internação |
 

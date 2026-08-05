@@ -118,7 +118,7 @@ Frontend (Fase 4) só inicia após o usuário definir o desenho das telas.
 
 1. **KPI-01** prontuário → 1º evento
 2. **KPI-03** agendamento → realização (consulta)
-3. **KPI-05** solicitação → realização (exame)
+3. **KPI-05** solicitação → liberação (exame)
 4. **KPI-06** última consulta → internação subsequente (reformulado)
 5. **KPI-07** tempo de permanência no leito (= `dthr_fim - dthr_inicio` — inclui gap pós-alta médica relevante na obstetrícia)
 
