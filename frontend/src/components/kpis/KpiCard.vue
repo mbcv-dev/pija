@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { KpiItem } from '@/types/api.types'
+import type { KpiDistribuicao, KpiItem } from '@/types/api.types'
 import { KPI_META } from '@/types/api.types'
 import { formatDuration, formatCount } from '@/lib/format'
 import { intensityLevel, intensityBarClass } from '@/lib/intensity'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
+import HistogramaTempos from './HistogramaTempos.vue'
 import KpiBreakdownBar from './KpiBreakdownBar.vue'
 import KpiDetailModal from './KpiDetailModal.vue'
 
-const props = defineProps<{ kpi: KpiItem; submetric?: KpiItem }>()
+/**
+ * `dist`/`subDist` são OPCIONAIS de propósito: chegam por uma busca própria,
+ * depois dos cards. Sem elas o card é exatamente o de antes do gráfico existir —
+ * por isso também não há skeleton aqui (decisão da spec §3.2): o histograma
+ * simplesmente aparece quando chega.
+ */
+const props = defineProps<{
+  kpi: KpiItem
+  submetric?: KpiItem
+  dist?: KpiDistribuicao
+  subDist?: KpiDistribuicao
+}>()
 
 const detalheAberto = ref(false)
 const temDetalhe = computed(() => props.kpi.breakdown.length > 0)
@@ -70,6 +82,13 @@ const subMeetsTarget = computed(() => {
       </p>
     </div>
 
+    <!--
+      Histograma entre o valor principal e o breakdown: a mediana logo acima é o
+      que ele qualifica. O `gap-4` do card já dá o respiro; a guarda de n_total
+      evita reservar espaço para um gráfico que não desenharia nada.
+    -->
+    <HistogramaTempos v-if="dist && dist.n_total > 0" :dist="dist" />
+
     <!-- Breakdown -->
     <KpiBreakdownBar v-if="temDetalhe" :items="kpi.breakdown" :max-items="5" :unit="kpi.unidade_tempo" />
 
@@ -85,7 +104,7 @@ const subMeetsTarget = computed(() => {
     </button>
 
     <!-- Sub-métrica aninhada (KPI-07B: alta médica → saída, meta 4h) -->
-    <div v-if="submetric" class="border-t border-border dark:border-border-dark pt-3">
+    <div v-if="submetric" data-submetrica class="border-t border-border dark:border-border-dark pt-3">
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-medium text-text-muted dark:text-text-dark-muted">{{ submetric.descricao }}</span>
         <span class="text-sm font-semibold font-mono tabular-nums text-text dark:text-text-dark">
@@ -98,6 +117,14 @@ const subMeetsTarget = computed(() => {
       <p class="mt-1 text-[11px]" :class="subMeetsTarget ? 'text-success' : 'text-warning'">
         meta: {{ subMeta?.metaHoras }}h · {{ subMeetsTarget ? 'dentro da meta' : 'acima da meta' }}
       </p>
+      <!--
+        Caso-âncora do gráfico: a mediana do 07B lê "< 1 min" e a barra de meta
+        diz "dentro da meta" — só o histograma mostra a cauda de horas que as
+        duas escondem. Vem logo depois delas, no mesmo ritmo vertical do bloco.
+      -->
+      <div v-if="subDist && subDist.n_total > 0" class="mt-2">
+        <HistogramaTempos :dist="subDist" />
+      </div>
       <button
         v-if="temSubDetalhe"
         type="button"

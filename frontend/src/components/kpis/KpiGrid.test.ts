@@ -2,20 +2,39 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import { setActivePinia, createPinia, type Pinia } from 'pinia'
 import { nextTick } from 'vue'
-import type { KpiItem } from '@/types/api.types'
+import type { KpiCode, KpiDistribuicao, KpiItem } from '@/types/api.types'
 
 const K = (codigo: KpiItem['codigo']): KpiItem => ({
   codigo, descricao: '', unidade_tempo: 'dias', media_global: 1.5, n_global: 10, breakdown: [],
 })
 
+const D = (codigo: KpiCode, over: Partial<KpiDistribuicao> = {}): KpiDistribuicao => ({
+  codigo, unidade_tempo: 'dias', p50: 2, p95: 8, teto: 8, n_total: 100,
+  buckets: [{ de: 0, ate: 4, n: 60 }, { de: 4, ate: 8, n: 30 }, { de: 8, ate: null, n: 10 }],
+  ...over,
+})
+
+// O store agora consome getKpis E getDistribuicoes; o mock precisa cobrir as duas,
+// senão a segunda estoura um TypeError que o catch do store engole em silêncio e
+// os cards nunca veem distribuição nenhuma.
+// Recorte proposital: KPI-05 e KPI-07B com dados, KPI-03 com n_total = 0 (guarda),
+// KPI-01/06/07 sem distribuição (garantia de enhancement).
 vi.mock('@/services/api', () => ({
   getKpis: vi.fn(async () => ({
     kpis: [K('KPI-01'), K('KPI-03'), K('KPI-05'), K('KPI-06'), K('KPI-07'), K('KPI-07B')],
+  })),
+  getDistribuicoes: vi.fn(async () => ({
+    distribuicoes: [
+      D('KPI-05'),
+      D('KPI-07B', { unidade_tempo: 'horas' }),
+      D('KPI-03', { p50: null, p95: null, teto: null, n_total: 0, buckets: [] }),
+    ],
   })),
 }))
 
 import KpiGrid from './KpiGrid.vue'
 import KpiCard from './KpiCard.vue'
+import HistogramaTempos from './HistogramaTempos.vue'
 import { getKpis } from '@/services/api'
 import { useKpiStore } from '@/stores/useKpiStore'
 
@@ -114,6 +133,49 @@ describe('KpiGrid — seções por área da jornada', () => {
     await nextTick()
     expect(w.find('[data-area]').exists()).toBe(false)
     expect(w.find('.animate-pulse-soft').exists()).toBe(true)
+  })
+
+  // ── Histograma de tempos (enhancement) ────────────────────────────────
+  // O gráfico chega por uma busca própria, desacoplada dos cards: os asserts
+  // esperam por ele em vez de assumir que já veio junto com o mount.
+
+  it('card com distribuição renderiza o histograma', async () => {
+    const w = await montar()
+    const exames = w.findAll('[data-area]').find((s) => s.attributes('data-area') === 'exames')!
+    await vi.waitFor(() => expect(exames.find('[data-balde]').exists()).toBe(true))
+    const hist = exames.findComponent(HistogramaTempos)
+    expect((hist.props('dist') as KpiDistribuicao).codigo).toBe('KPI-05')
+  })
+
+  it('card sem distribuição continua íntegro (enhancement)', async () => {
+    const w = await montar()
+    // Espera o histograma de Exames chegar: garante que a busca já resolveu e que
+    // a ausência em Entrada é o recorte do mock, não uma corrida de timing.
+    await vi.waitFor(() => expect(w.find('[data-balde]').exists()).toBe(true))
+    const entrada = w.findAll('[data-area]').find((s) => s.attributes('data-area') === 'entrada')!
+    expect(entrada.findComponent(KpiCard).exists()).toBe(true)
+    expect(entrada.findComponent(HistogramaTempos).exists()).toBe(false)
+    expect(entrada.find('[data-balde]').exists()).toBe(false)
+  })
+
+  it('distribuição sem casos no recorte não vira gráfico vazio', async () => {
+    const w = await montar()
+    await vi.waitFor(() => expect(w.find('[data-balde]').exists()).toBe(true))
+    const consultas = w.findAll('[data-area]').find((s) => s.attributes('data-area') === 'consultas')!
+    expect(consultas.findComponent(HistogramaTempos).exists()).toBe(false)
+  })
+
+  it('a submétrica KPI-07B ganha histograma próprio, dentro do seu bloco', async () => {
+    const w = await montar()
+    const card07 = w.findAllComponents(KpiCard).find((c) => (c.props('kpi') as KpiItem).codigo === 'KPI-07')!
+    await vi.waitFor(() => expect(card07.find('[data-balde]').exists()).toBe(true))
+
+    // KPI-07 (o valor principal do card) não tem distribuição no mock — o único
+    // histograma do card tem que ser o da submétrica, e dentro do bloco dela.
+    const hists = card07.findAllComponents(HistogramaTempos)
+    expect(hists).toHaveLength(1)
+    expect((hists[0]!.props('dist') as KpiDistribuicao).codigo).toBe('KPI-07B')
+    expect(card07.find('[data-submetrica]').findComponent(HistogramaTempos).exists()).toBe(true)
   })
 
   it('erro mostra ErrorState, sem seções', async () => {
