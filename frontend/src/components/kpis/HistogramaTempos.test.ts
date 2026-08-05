@@ -332,10 +332,28 @@ describe('HistogramaTempos', () => {
     expect(balde(w, 0).altura).toBe(56)
   })
 
-  it('a escala de altura não mexe na posição da mediana', () => {
-    // A escala X é independente da Y; este teste tranca as duas coisas separadas.
-    const w = mount(HistogramaTempos, { props: { dist: base } })
-    expect(xDaMediana(w)).toBeCloseTo(balde(w, 2).x, 2)
+  it('mudar as contagens mexe nas alturas e em mais nada', () => {
+    // Prova de independência entre os eixos: dois fixtures com as MESMAS faixas
+    // (mesmo `de`/`ate`, mesmo p50, mesmo teto) e contagens completamente
+    // diferentes. Tudo que é horizontal — mediana, x e largura das barras —
+    // tem que sair idêntico; só as alturas podem mudar. Comparar um fixture
+    // consigo mesmo não prova nada disso.
+    const invertido: KpiDistribuicao = {
+      ...base,
+      buckets: base.buckets.map((b, i) => ({ ...b, n: i + 1 })),
+    }
+    const a = mount(HistogramaTempos, { props: { dist: base } })
+    const b = mount(HistogramaTempos, { props: { dist: invertido } })
+
+    expect(xDaMediana(b)).toBeCloseTo(xDaMediana(a), 5)
+    let alturasDiferentes = 0
+    for (let i = 0; i < 17; i++) {
+      expect(balde(b, i).x, `x do balde ${i}`).toBeCloseTo(balde(a, i).x, 5)
+      expect(balde(b, i).largura, `largura do balde ${i}`).toBeCloseTo(balde(a, i).largura, 5)
+      if (balde(b, i).altura !== balde(a, i).altura) alturasDiferentes++
+    }
+    // E a premissa do teste: as contagens realmente mudaram as alturas.
+    expect(alturasDiferentes).toBeGreaterThan(10)
   })
 
   it('balde vazio tem altura zero — ausência não ganha piso', () => {
@@ -389,6 +407,24 @@ describe('HistogramaTempos', () => {
     expect(textosVisiveis(w)).toContain('4 casos')
   })
 
+  it('com cauda baixa o rótulo fica DENTRO do plot, logo acima da barra', () => {
+    // O outro lado da regra de posição: subir pra faixa de anotações é a exceção
+    // (cauda ou vizinho altos). Sem esta asserção, uma regressão que mandasse
+    // todo rótulo pra faixa — ou que errasse `acima` — passaria a suíte inteira.
+    for (const [nome, dist] of [
+      ['base', base],
+      ['p95Zerado', p95Zerado],
+      ['real07b', real07b],
+    ] as Array<[string, KpiDistribuicao]>) {
+      const y = Number(
+        mount(HistogramaTempos, { props: { dist } }).find('[data-cauda-n]').attributes('y'),
+      )
+      // TOPO (13) é o topo do plot; a faixa de anotações fica acima disso.
+      expect(y, nome).toBeGreaterThan(13)
+      expect(y, nome).toBeLessThanOrEqual(13 + 56) // e dentro da altura do plot
+    }
+  })
+
   it('cauda alta empurra a contagem pra faixa de anotações, nunca pra dentro da barra', () => {
     // O rótulo é ~2x mais largo que a barra: escrito "por dentro" ele vaza pros
     // lados e, em tinta clara, some no fundo do card.
@@ -397,9 +433,23 @@ describe('HistogramaTempos', () => {
     expect(rotulo.text()).toBe('120 casos')
     // Acima do plot (a faixa de anotações), não sobreposto a barra.
     expect(Number(rotulo.attributes('y'))).toBeLessThanOrEqual(13)
-    // E sempre em tinta de texto — nunca clara, que dependeria de estar sobre a barra.
-    expect(rotulo.classes()).toContain('fill-text-muted')
-    expect(w.html()).not.toContain('fill-white')
+  })
+
+  it('o rótulo da cauda usa tinta de texto em qualquer posição', () => {
+    // O que interessa é que ele nunca dependa de estar sobre a barra pra ser
+    // legível — asserir `not.toContain('fill-white')` não guardava nada, porque
+    // essa classe nunca existiu no componente.
+    for (const [nome, dist] of [
+      ['cauda alta (na faixa)', caudaAlta],
+      ['cauda baixa (no plot)', real07b],
+      ['recorte estreito', filtrado],
+    ] as Array<[string, KpiDistribuicao]>) {
+      const classes = mount(HistogramaTempos, { props: { dist } })
+        .find('[data-cauda-n]')
+        .classes()
+      expect(classes, nome).toContain('fill-text-muted')
+      expect(classes, nome).toContain('stroke-surface')
+    }
   })
 
   it('um caso so e "1 caso", nao "1 casos"', () => {
@@ -443,6 +493,11 @@ describe('HistogramaTempos', () => {
     // O rótulo do eixo degenerado diz "todos os casos ..."; o que não pode
     // aparecer é a ANOTAÇÃO de contagem ("42 casos") sobre o balde único.
     const w = mount(HistogramaTempos, { props: { dist: degenerado } })
+    // Âncora positiva primeiro: sem ela, um `temDados` quebrado zeraria o SVG e
+    // a negativa abaixo passaria por vacuidade.
+    expect(w.find('svg').exists()).toBe(true)
+    expect(textosVisiveis(w)).toContain('todos os casos numa única faixa')
+    expect(w.find('[data-cauda-n]').exists()).toBe(false)
     expect(textosVisiveis(w).join(' ')).not.toMatch(/\d+ casos/)
   })
 
@@ -452,9 +507,12 @@ describe('HistogramaTempos', () => {
     // estreito (uma unidade só, dezenas de casos) deixa alto o bastante pra
     // ocultar o texto. A escala de raiz TORNA isso mais provável, não menos.
     const w = mount(HistogramaTempos, { props: { dist: filtrado } })
-    // O balde vizinho é mesmo alto o bastante pra alcançar o rótulo — e mais
-    // alto que a própria cauda, então só olhar pra altura da cauda não bastava.
-    expect(balde(w, 15).altura).toBeGreaterThan(40)
+    // O vizinho tem que ser alto o bastante pra DISPARAR a subida do rótulo, e
+    // o gatilho real é `H - altura - 3 < FONTE`, ou seja altura > 44 (não 40, o
+    // valor da era linear: uma barra de 41 a 44 satisfaria o `>40` enquanto o
+    // gatilho virava falso e a asserção de verdade, logo abaixo, quebrava).
+    expect(balde(w, 15).altura).toBeGreaterThan(44)
+    // E mais alto que a própria cauda: só olhar pra altura da cauda não bastava.
     expect(balde(w, 15).altura).toBeGreaterThan(balde(w, 16).altura)
 
     // Primeira linha de defesa: o rótulo sobe pra faixa de anotações, acima de
@@ -504,18 +562,31 @@ describe('HistogramaTempos', () => {
       ['filtrado', filtrado],
       ['cauda dominante', caudaAlta],
     ]
+    let comparacoes = 0
+    let suprimidas = 0
     for (const [nome, dist] of formas) {
       const w = mount(HistogramaTempos, { props: { dist } })
       const mediana = w.find('[data-mediana-rotulo]')
       const cauda = w.find('[data-cauda-n]')
-      if (!mediana.exists() || !cauda.exists()) continue
+      if (!cauda.exists()) continue
+      if (!mediana.exists()) {
+        // Rótulo escondido: é a outra forma legítima de não colidir.
+        suprimidas++
+        continue
+      }
       const yM = Number(mediana.attributes('y'))
       const yC = Number(cauda.attributes('y'))
-      if (yM !== yC) continue // alturas diferentes: nao disputam espaco
+      if (yM !== yC) continue // alturas diferentes: não disputam espaço
+      comparacoes++
       expect(caixaDeTexto(mediana).direita, nome).toBeLessThanOrEqual(
         caixaDeTexto(cauda).esquerda,
       )
     }
+    // SEM ISTO O TESTE MENTE: com 6 das 8 formas saindo pelo `continue`, qualquer
+    // mudança que faça os rótulos nunca dividirem a faixa — ou que esconda um
+    // deles sempre — deixa o laço verde sem ter verificado nada.
+    expect(comparacoes, 'formas que realmente compararam caixas').toBeGreaterThan(0)
+    expect(suprimidas, 'formas que resolveram por supressão').toBeGreaterThan(0)
   })
 
   // ── Divulgação da escala comprimida ─────────────────────────────────────
