@@ -912,6 +912,32 @@ fallback nunca é exercitado nesta base. O que ocorre é `p50 = 0` com `teto > 0
 mais branda. O `teto` continua correto e necessário como contrato (o backend pode produzir o caso
 divergente noutra base), mas vale saber que ele é hoje um cinto de segurança, não um caminho quente.
 
+### 2026-08-05 — resultado da escala raiz e a regressão que ela trouxe
+
+**Funcionou.** Medido no dado real, a cauda do KPI-07B foi de 3,5px para **14,0px**, contra vizinhas
+de 4,25–7,53px. O verificador retirou explicitamente o veredito anterior: "tire a cor e o rótulo e
+você ainda vê o pico". KPI-01 e KPI-05, que eram 16 tocos idênticos, ganharam estrutura visível.
+
+**Limite honesto:** o decaimento intermediário do KPI-07B (7,22px → 4,25px ao longo de 15 barras)
+é discriminável ampliado, mas no tamanho real do card a faixa do meio lê como plana. A escala raiz
+removeu a leitura *contra-informativa* ("depois do zero é tudo igualmente raro" deixou de ser o que
+o gráfico diz, porque a cauda visivelmente não é) — mas não entregou decaimento legível no 07B. Nos
+demais KPIs a forma ficou óbvia. Valor exato segue no tooltip e na tabela `sr-only`.
+
+**Regressão introduzida e corrigida na mesma rodada:** a frase de disclosure levou a legenda da
+tabela `sr-only` de 43 para 138 caracteres, e com isso a página ganhou **658px de rolagem
+horizontal**. Causa: a classe `sr-only` estava direto no `<table>`, e sob `table-layout: auto` a
+largura especificada é só um mínimo — a tabela estica para caber o conteúdo, e `white-space: nowrap`
+faz a maior linha mandar. O `clip` esconde visualmente, mas **um elemento clipado continua ampliando
+a área rolável**. Corrigido envolvendo a tabela num `<div class="sr-only">` (uma div honra
+`width: 1px`). Vale a lição: screenshot não pega esse bug — só medir `scrollWidth` contra
+`innerWidth` pega.
+
+Também nesta rodada: colisão entre o rótulo da mediana e o da cauda (a mudança de escala tornou as
+duas condições positivamente correlacionadas, invalidando um julgamento anterior que estava correto
+quando foi feito), a ordem de pintura do rótulo da cauda (o oclusor é a barra *vizinha*, não a
+própria cauda), e "1 casos" → "1 caso".
+
 ## Fora de escopo (reafirmado)
 
 Biblioteca de gráficos · tendência temporal · gráficos em Ciclicidade/Gargalos · mudanças nos `.sql`

@@ -32,6 +32,9 @@ backend/.env
 # MCP local (config de servidor MCP específico desta máquina/projeto — não compartilhar)
 .mcp.json
 
+# Saida de ferramenta (snapshots do Playwright MCP durante verificacao no browser)
+.playwright-mcp/
+
 # IDE
 .vscode/
 .idea/
