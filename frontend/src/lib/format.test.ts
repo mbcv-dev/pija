@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDuration, formatCount } from './format'
+import { formatDuration, formatCount, pluralCasos, formatCasos } from './format'
 
 describe('formatDuration', () => {
   it('null vira "sem dados"', () => {
@@ -51,5 +51,34 @@ describe('formatCount', () => {
   })
   it('milhões com "mi" e vírgula', () => {
     expect(formatCount(1_200_000)).toBe('1,2 mi')
+  })
+})
+
+describe('pluralCasos', () => {
+  it('singular só no 1 exato', () => {
+    expect(pluralCasos(1)).toBe('caso')
+  })
+  it('plural no zero — "0 casos" é a forma certa em pt-BR', () => {
+    expect(pluralCasos(0)).toBe('casos')
+  })
+  it('plural em qualquer outro número', () => {
+    expect(pluralCasos(2)).toBe('casos')
+    expect(pluralCasos(1475)).toBe('casos')
+  })
+})
+
+describe('formatCasos', () => {
+  it('um caso só não vira "1 casos"', () => {
+    // O defeito que motivou extrair a regra: o card dizia "baseado em 1 casos"
+    // logo acima do histograma, que já dizia "1 caso".
+    expect(formatCasos(1)).toBe('1 caso')
+  })
+  it('mantém a contagem compacta do formatCount', () => {
+    expect(formatCasos(850)).toBe('850 casos')
+    expect(formatCasos(45230)).toBe('45 mil casos')
+    expect(formatCasos(1_200_000)).toBe('1,2 mi casos')
+  })
+  it('zero fica no plural', () => {
+    expect(formatCasos(0)).toBe('0 casos')
   })
 })

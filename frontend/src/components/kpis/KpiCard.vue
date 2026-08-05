@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import type { KpiDistribuicao, KpiItem } from '@/types/api.types'
 import { KPI_META } from '@/types/api.types'
-import { formatDuration, formatCount } from '@/lib/format'
+import { formatDuration, formatCasos } from '@/lib/format'
 import { intensityLevel, intensityBarClass } from '@/lib/intensity'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import Icon from '@/components/ui/Icon.vue'
@@ -78,7 +78,7 @@ const subMeetsTarget = computed(() => {
       </div>
       <span v-else class="text-sm italic text-text-faint dark:text-text-dark-muted">sem dados no recorte</span>
       <p class="text-xs text-text-muted dark:text-text-dark-muted mt-1">
-        {{ kpi.n_global > 0 ? `baseado em ${formatCount(kpi.n_global)} casos` : 'nenhum caso no recorte' }}
+        {{ kpi.n_global > 0 ? `baseado em ${formatCasos(kpi.n_global)}` : 'nenhum caso no recorte' }}
       </p>
     </div>
 

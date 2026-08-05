@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { KpiDistribuicao } from '@/types/api.types'
-import { formatCount, formatDuration } from '@/lib/format'
+import { formatCasos, formatDuration, pluralCasos } from '@/lib/format'
 
 /**
  * Histograma compacto da distribuição de tempos de um KPI.
@@ -132,11 +132,6 @@ function caminhoBarra(x: number, largura: number, altura: number): string {
   )
 }
 
-/** "caso" no singular só quando n é exatamente 1 — "1 casos" denuncia gerador. */
-function pluralCasos(n: number): string {
-  return n === 1 ? 'caso' : 'casos'
-}
-
 /**
  * Largura aproximada de um texto no viewBox. SVG não mede texto sem renderizar,
  * então a estimativa é deliberadamente generosa: ela decide se dois rótulos se
@@ -226,7 +221,7 @@ const barraCauda = computed(() => {
 const rotuloCauda = computed(() => {
   const b = barraCauda.value
   if (!b) return null
-  const texto = `${formatCount(b.n)} ${pluralCasos(b.n)}`
+  const texto = formatCasos(b.n)
   // O rótulo é bem mais largo que o slot da cauda (~15 un.), então ele sempre
   // invade as colunas vizinhas. Por isso a altura que importa não é a da cauda,
   // e sim a da barra MAIS ALTA que ele cobre — um filtro estreito deixa o

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { KpiItem } from '@/types/api.types'
 import { KPI_META } from '@/types/api.types'
-import { formatDuration, formatCount } from '@/lib/format'
+import { formatDuration, formatCasos } from '@/lib/format'
 import { intensityLevel, intensityBarClass } from '@/lib/intensity'
 import Icon from '@/components/ui/Icon.vue'
 import RankBar from '@/components/ui/RankBar.vue'
@@ -78,7 +78,7 @@ onUnmounted(() => {
             <h2 class="text-sm font-semibold text-text dark:text-text-dark leading-snug">{{ kpi.descricao }}</h2>
             <p class="text-xs text-text-muted dark:text-text-dark-muted mt-0.5">
               <span class="font-mono tabular-nums font-semibold text-text dark:text-text-dark">{{ formatDuration(kpi.media_global, kpi.unidade_tempo) }}</span>
-              · {{ formatCount(kpi.n_global) }} casos · {{ kpi.breakdown.length }} dimensões
+              · {{ formatCasos(kpi.n_global) }} · {{ kpi.breakdown.length }} dimensões
             </p>
           </div>
           <button
@@ -121,7 +121,7 @@ onUnmounted(() => {
             :value="formatDuration(item.media, kpi.unidade_tempo)"
             :ratio="item.media / maxMedia"
             :bar-class="barClass(item.media)"
-            :caption="`${formatCount(item.n)} casos`"
+            :caption="formatCasos(item.n)"
           />
         </div>
 
