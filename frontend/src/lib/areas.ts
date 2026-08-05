@@ -36,7 +36,7 @@ export const AREAS_JORNADA: AreaJornada[] = [
   },
   {
     id: 'exames', label: 'Exames', icon: 'exame',
-    descricao: 'Solicitação e realização de exames',
+    descricao: 'Da solicitação do exame à liberação do resultado',
     kpis: ['KPI-05'], gargalosKpi: 'KPI-05',
   },
   {
