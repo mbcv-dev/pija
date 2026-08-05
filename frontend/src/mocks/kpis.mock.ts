@@ -23,7 +23,7 @@ const N_GLOBAL: Record<KpiCode, number> = {
 const DESCRICOES: Record<KpiCode, string> = {
   'KPI-01': 'Tempo prontuário → 1º evento assistencial',
   'KPI-03': 'Tempo agendamento → realização (consulta)',
-  'KPI-05': 'Tempo solicitação → realização (exame)',
+  'KPI-05': 'Solicitação → liberação (exame)',
   'KPI-06': 'Tempo última consulta → internação',
   'KPI-07': 'Tempo de permanência no leito',
   'KPI-07B': 'Tempo alta médica → saída do leito',

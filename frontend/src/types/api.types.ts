@@ -175,11 +175,16 @@ export const KPI_META: Record<KpiCode, KpiMeta> = {
     regras: 'Eventos do tipo CONSULTA com agendamento e realização preenchidos. Exclui realização anterior ao agendamento e unidades inativas.',
   },
   'KPI-05': {
-    label: 'Solicitação → realização do exame', icon: 'flask',
+    label: 'Solicitação → liberação do exame', icon: 'flask',
     aviso: 'Dados de exames limitados a jan–mai/2026',
-    ancora: 'Da solicitação do exame até a sua realização.',
+    ancora: 'Da solicitação do exame até a liberação do resultado.',
     unidadeTempo: 'dias',
-    regras: 'Eventos do tipo EXAME com solicitação e realização preenchidos. Exclui realização anterior à solicitação e unidades inativas.',
+    regras:
+      'Eventos do tipo EXAME com solicitação e liberação preenchidas — ou seja, apenas exames ' +
+      'cujo resultado já foi liberado. Exclui liberação anterior à solicitação e unidades inativas. ' +
+      'Atenção: 55% dos exames ainda não foram liberados (a coletar, a executar, cancelados) e ' +
+      'NÃO entram na conta. O indicador responde "dos exames liberados, quanto tempo levou" e não ' +
+      'enxerga a fila parada: um exame aguardando coleta há dois anos contribui com zero para este número.',
   },
   'KPI-06': {
     label: 'Última consulta → internação', icon: 'hospital',
