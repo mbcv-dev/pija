@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import RankBar from '@/components/ui/RankBar.vue'
-import { formatDuration, formatCount } from '@/lib/format'
+import { formatDuration, formatCasos } from '@/lib/format'
 import { intensityLevel, intensityBarClass } from '@/lib/intensity'
 import { KPI_META } from '@/types/api.types'
 import type { GargaloItem as GargaloItemType } from '@/types/api.types'
@@ -19,6 +19,6 @@ const transicaoLabel = computed(() => KPI_META[props.item.transicao]?.label ?? p
     :value="formatDuration(item.media, 'dias')"
     :ratio="maxMedia > 0 ? item.media / maxMedia : 0"
     :bar-class="barClass"
-    :caption="`${transicaoLabel} · ${formatCount(item.n)} casos`"
+    :caption="`${transicaoLabel} · ${formatCasos(item.n)}`"
   />
 </template>

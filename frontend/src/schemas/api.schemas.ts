@@ -26,6 +26,31 @@ export const KpiResponseSchema = z.object({
   kpis: z.array(KpiItemSchema),
 })
 
+// ── Distribuição de tempos (histograma) ───────────────────────
+
+export const DistBucketSchema = z.object({
+  de: z.number().nonnegative(),
+  // null = balde de cauda aberta (todos os casos >= `de`), sempre o último.
+  ate: z.number().nonnegative().nullable(),
+  n: z.number().int().nonnegative(),
+})
+
+export const KpiDistribuicaoSchema = z.object({
+  codigo: KpiCodeSchema,
+  unidade_tempo: z.enum(['dias', 'horas']),
+  p50: z.number().nullable(),
+  p95: z.number().nullable(),
+  // Teto do eixo linear (= buckets[last].de), não necessariamente o p95.
+  teto: z.number().nullable(),
+  n_total: z.number().int().nonnegative(),
+  // Vazio quando n_total = 0; 1 balde quando todos os casos são zero.
+  buckets: z.array(DistBucketSchema),
+})
+
+export const DistribuicoesResponseSchema = z.object({
+  distribuicoes: z.array(KpiDistribuicaoSchema),
+})
+
 // ── Gargalos ──────────────────────────────────────────────────
 
 export const GargaloItemSchema = z.object({
@@ -107,6 +132,8 @@ export const CiclicidadeResponseSchema = z.object({
 
 export type KpiItemValidated = z.infer<typeof KpiItemSchema>
 export type KpiResponseValidated = z.infer<typeof KpiResponseSchema>
+export type KpiDistribuicaoValidated = z.infer<typeof KpiDistribuicaoSchema>
+export type DistribuicoesResponseValidated = z.infer<typeof DistribuicoesResponseSchema>
 export type GargaloItemValidated = z.infer<typeof GargaloItemSchema>
 export type GargalosResponseValidated = z.infer<typeof GargalosResponseSchema>
 export type EventoItemValidated = z.infer<typeof EventoItemSchema>

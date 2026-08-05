@@ -844,6 +844,121 @@ git commit -m "feat(front): histograma de tempos nos cards de KPI" -m "Card most
 - Tipos consistentes: `DistBucket/KpiDistribuicao/DistribuicoesResponse` idênticos entre schema Pydantic (Task 1), zod (Task 3) e consumo (Tasks 4–6); `data-balde`/`data-mediana`/`data-cauda` idênticos entre Task 5 (componente) e Tasks 5–6 (testes); `_N_BUCKETS` exportado (Task 1) e usado no teste.
 - Placeholders: os pontos onde o implementador precisa LER o repo antes (nome de fixture do client HTTP, shape de `activeFilters`, assinatura de `formatDuration`, unidade que existe na fixture de teste) estão marcados explicitamente como verificação, não como lacuna.
 
+## Registro de execução
+
+### 2026-08-03 — base da branch: `feat/dashboard-areas`, não `main`
+
+O prompt de abertura manda criar `feat/indicadores-graficos` a partir de `main`. Ao conferir o repo,
+`main` **não contém** o trabalho do dashboard por áreas do qual este plano depende: não há
+`AreaNav.vue`, nem as seções `data-area` do `KpiGrid` (usadas nos testes da Task 6), nem `lib/layout`
+— e os próprios arquivos deste plano e da spec só existem em `feat/dashboard-areas` (a Task 7 pediria
+para editar um arquivo inexistente). A instrução era premissa desatualizada, escrita supondo o merge
+de `feat/dashboard-areas` já feito.
+
+**Decisão (confirmada com o usuário):** branch criada a partir de `feat/dashboard-areas`
+(`7469357`). Nenhuma outra alteração no plano.
+
+### 2026-08-03 — Task 1: o teto dos baldes não é o p95 (emenda ao plano)
+
+O código-baseline da Task 1 assumia que `p95 <= 0` significa "todos os valores são 0" e colapsava a
+distribuição num balde só. Isso está **errado** e mordia justamente o caso-âncora: `p95 <= 0` só
+significa que ≥95% dos casos são zero — os outros ≤5% podem ser uma cauda longa. Verificado: 96 zeros
++ `[10, 20, 50, 400]` produzia um único `{de: 0, ate: 0, n: 100}`, apagando a cauda que a feature
+existe para mostrar. É o cenário do KPI-07B (alta médica → saída do leito).
+
+**Correções (commits `663da66` e `cf415bb`):**
+
+1. O SQL calcula `teto = p95 se p95 > 0, senão MAX(valor)` e bucketiza contra o `teto`. O balde
+   degenerado único só ocorre quando o máximo também é 0, e agora é `{de: 0, ate: null}` (cauda
+   aberta) — `[0, 0)` era um intervalo vazio contendo casos, contradizendo o schema.
+2. **`teto` virou campo da resposta** (`KpiDistribuicao.teto`). Consequência para o frontend:
+   **o teto do eixo é `teto` (== `buckets[-1].de`), nunca `p95`** — os dois divergem exatamente no
+   caso do KPI-07B. O cálculo de `medianaX` na Task 5 (`p50 / p95`) foi corrigido para usar `teto`.
+3. `_MEDIAN_SQL` ganhou o mesmo `WHERE valor IS NOT NULL` do `_DIST_SQL` — sem isso card e gráfico
+   podiam divergir (SQLite ordena NULL primeiro, deslocando o elemento central). No-op no dado real,
+   provado por igualdade exata; de quebra remove um 500 latente no breakdown do `compute`.
+4. Índice de balde negativo passou a ser clampado em SQL (`MAX(0, ...)`): antes sumia em silêncio,
+   quebrando `sum(n) == n_total`.
+
+Testes: 160 → 182 no backend.
+
+### 2026-08-05 — Task 7: verificação no browser e a escala de altura
+
+Os 7 itens do checklist passaram contra o backend real (base de 2,26M eventos). A linha da mediana
+bate com o valor grande do card em todos os KPIs medidos (fração renderizada × `p50/teto`, exata na
+precisão de renderização); filtro atualiza os gráficos junto com os cards; backend morto produz UMA
+superfície de erro só (a dos cards) e o histograma some com um `console.warn`; exatamente 1 chamada a
+`/kpis/distribuicoes` por mudança de filtro, disparada 0,3 ms depois da `/kpis/tempos-medios` — em
+paralelo, não em série; a 390px não há rolagem horizontal.
+
+**Mas o caso-âncora não se sustentava pela geometria.** Números reais do KPI-07B: `p50 = 0`,
+`p95 = teto = 8,2667 h`, `n_total = 124.558`, e **o primeiro balde sozinho tem 99.710 casos (80%)**.
+Numa escala linear de altura isso achata todo o resto no piso de 3px: a cauda (6.231 casos) saía com
+3,5px, e baldes de 574 e 1.805 casos ficavam pixel-idênticos. A cauda aparecia pela cor e pelo
+rótulo, **não pela altura** — e um leitor que lê alturas concluiria "depois do zero é tudo igualmente
+raro", o que é falso (a distribuição decai de 1.658 para 574 ao longo de 8 horas). O canal de altura
+não era só pouco informativo: era levemente contra-verdadeiro, justamente no gráfico que motivou a
+feature. KPI-01 e KPI-05 degeneram igual.
+
+**Decisão (do usuário, 2026-08-05): altura em escala raiz quadrada.** Troca proporcionalidade por
+legibilidade — e por isso **a troca é declarada no gráfico**, no `aria-label` e na legenda da tabela
+`sr-only`; as contagens exatas seguem nos tooltips e na tabela. Alternativas descartadas: manter
+linear (cauda ilegível) e cortar o balde dominante com marcador de quebra (mais convenção visual para
+o leitor aprender). Baldes de contagem zero continuam sem barra nenhuma — a distinção zero/não-zero é
+absoluta e não entra na compressão.
+
+**Sobre o campo `teto`:** com o dado real `p95 > 0` em todos os KPIs, então `teto == p95` e o
+fallback nunca é exercitado nesta base. O que ocorre é `p50 = 0` com `teto > 0` — degeneração bem
+mais branda. O `teto` continua correto e necessário como contrato (o backend pode produzir o caso
+divergente noutra base), mas vale saber que ele é hoje um cinto de segurança, não um caminho quente.
+
+### 2026-08-05 — resultado da escala raiz e a regressão que ela trouxe
+
+**Funcionou.** Medido no dado real, a cauda do KPI-07B foi de 3,5px para **14,0px**, contra vizinhas
+de 4,25–7,53px. O verificador retirou explicitamente o veredito anterior: "tire a cor e o rótulo e
+você ainda vê o pico". KPI-01 e KPI-05, que eram 16 tocos idênticos, ganharam estrutura visível.
+
+**Limite honesto:** o decaimento intermediário do KPI-07B (7,22px → 4,25px ao longo de 15 barras)
+é discriminável ampliado, mas no tamanho real do card a faixa do meio lê como plana. A escala raiz
+removeu a leitura *contra-informativa* ("depois do zero é tudo igualmente raro" deixou de ser o que
+o gráfico diz, porque a cauda visivelmente não é) — mas não entregou decaimento legível no 07B. Nos
+demais KPIs a forma ficou óbvia. Valor exato segue no tooltip e na tabela `sr-only`.
+
+**Regressão introduzida e corrigida na mesma rodada:** a frase de disclosure levou a legenda da
+tabela `sr-only` de 43 para 138 caracteres, e com isso a página ganhou **658px de rolagem
+horizontal**. Causa: a classe `sr-only` estava direto no `<table>`, e sob `table-layout: auto` a
+largura especificada é só um mínimo — a tabela estica para caber o conteúdo, e `white-space: nowrap`
+faz a maior linha mandar. O `clip` esconde visualmente, mas **um elemento clipado continua ampliando
+a área rolável**. Corrigido envolvendo a tabela num `<div class="sr-only">` (uma div honra
+`width: 1px`). Vale a lição: screenshot não pega esse bug — só medir `scrollWidth` contra
+`innerWidth` pega.
+
+Também nesta rodada: colisão entre o rótulo da mediana e o da cauda (a mudança de escala tornou as
+duas condições positivamente correlacionadas, invalidando um julgamento anterior que estava correto
+quando foi feito), a ordem de pintura do rótulo da cauda (o oclusor é a barra *vizinha*, não a
+própria cauda), e "1 casos" → "1 caso".
+
+### 2026-08-05 — estado final da branch
+
+As 7 tasks estão feitas. Cada uma passou por duas reviews (conformidade com a spec, depois qualidade
+de código), com correções e re-review quando houve achado. Suítes: **backend 186** (era 160),
+**frontend 189** (era 126), `vue-tsc` limpo.
+
+Ficam registrados três pontos para quem abrir o PR:
+
+1. **A branch parte de `feat/dashboard-areas`, não de `main`** — motivo na primeira entrada deste
+   registro. Se `feat/dashboard-areas` entrar antes, isso é invisível; se a ordem de merge for
+   questionada, a razão está aqui.
+2. **Esta branch muda o comportamento do `/kpis/tempos-medios` existente**, não só o endpoint novo:
+   `_MEDIAN_SQL` ganhou `WHERE valor IS NOT NULL` para ler as mesmas linhas que o `_DIST_SQL`.
+   No-op no dado real (provado por igualdade exata), e de quebra remove um 500 latente no breakdown
+   do `compute` quando uma dimensão tem todos os valores nulos. Merece uma linha na descrição do PR.
+3. **O que sobrou está no backlog**, não perdido: ver
+   [2026-08-03-backlog-duplicacao-filtros.md](2026-08-03-backlog-duplicacao-filtros.md) — duplicação
+   dos filtros nos controllers, fixture `client` duplicada, requisições obsoletas não canceladas,
+   submétrica sem dado reportada como "acima da meta" (pré-existente), invariantes estruturais
+   validadas só no mock, e o parse tudo-ou-nada da distribuição.
+
 ## Fora de escopo (reafirmado)
 
 Biblioteca de gráficos · tendência temporal · gráficos em Ciclicidade/Gargalos · mudanças nos `.sql`
