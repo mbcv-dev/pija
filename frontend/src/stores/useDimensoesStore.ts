@@ -47,26 +47,53 @@ export const useDimensoesStore = defineStore('dimensoes', () => {
     }
   }
 
+  /**
+   * Cancelam a requisição da cascata anterior. Um por nível, porque os dois
+   * níveis reagem a filtros diferentes (grupo e unidade) e podem estar no ar ao
+   * mesmo tempo. Sem isso, mexer no filtro duas vezes seguidas custa duas
+   * varreduras completas no backend e só a última é usada.
+   */
+  let abortGrupo: AbortController | null = null
+  let abortEspecialidades: AbortController | null = null
+
   /** Cascata nível 1: escopa unidades E especialidades pelos grupos (ou restaura tudo). */
   async function scopeByGrupo(grupo: string[]): Promise<void> {
+    abortGrupo?.abort()
     if (grupo.length === 0) {
       unidades.value = unidadesFull.value
       especialidades.value = especialidadesFull.value
       return
     }
-    const d = await getDimensoes({ grupo })
-    unidades.value = d.unidades
-    especialidades.value = d.especialidades
+    const controller = new AbortController()
+    abortGrupo = controller
+    try {
+      const d = await getDimensoes({ grupo }, { signal: controller.signal })
+      unidades.value = d.unidades
+      especialidades.value = d.especialidades
+    } catch (e) {
+      // Cancelamento nosso não é falha — engolir. Falha de verdade continua
+      // propagando como antes (os chamadores são `void`, então vira unhandled
+      // rejection visível no console, que é o comportamento que já existia).
+      if (!controller.signal.aborted) throw e
+    }
   }
 
   /** Cascata nível 2: escopa especialidades pelas unidades (ou volta ao escopo do grupo). */
   async function scopeEspecialidades(unidade: string[]): Promise<void> {
+    abortEspecialidades?.abort()
     if (unidade.length === 0) {
       especialidades.value = especialidadesFull.value
       return
     }
-    const d = await getDimensoes({ unidade })
-    especialidades.value = d.especialidades
+    const controller = new AbortController()
+    abortEspecialidades = controller
+    try {
+      const d = await getDimensoes({ unidade }, { signal: controller.signal })
+      especialidades.value = d.especialidades
+    } catch (e) {
+      // Idem scopeByGrupo: só o cancelamento é engolido.
+      if (!controller.signal.aborted) throw e
+    }
   }
 
   return {

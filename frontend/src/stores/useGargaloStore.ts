@@ -19,10 +19,19 @@ export const useGargaloStore = defineStore('gargalo', () => {
   // aqui corromperia a fonte única compartilhada com GargaloList.
   const metricas = ref<KpiCode[]>([...METRIC_OPTIONS])
 
+  /**
+   * Cancela a requisição da busca anterior: sem isso, duas mudanças de filtro
+   * seguidas custam duas varreduras completas no backend e só a última é usada.
+   */
+  let abortAtual: AbortController | null = null
+
   // ── Actions ───────────────────────────────────────────────────
 
   async function fetchGargalos(): Promise<void> {
     const filterStore = useFilterStore()
+    abortAtual?.abort()
+    const controller = new AbortController()
+    abortAtual = controller
     loading.value = true
     error.value   = null
 
@@ -31,13 +40,20 @@ export const useGargaloStore = defineStore('gargalo', () => {
         ...filterStore.activeFilters,
         kpi_codes: metricas.value,
         limit: limit.value,
-      })
+      }, { signal: controller.signal })
       items.value = response.items
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Erro ao carregar gargalos'
-      items.value = []
+      // Cancelamento nosso não é falha: acontece toda vez que o filtro muda
+      // antes da resposta chegar. Sem este guarda, cada mudança rápida de
+      // filtro pintaria um ErrorState na tela.
+      if (!controller.signal.aborted) {
+        error.value = e instanceof Error ? e.message : 'Erro ao carregar gargalos'
+        items.value = []
+      }
     } finally {
-      loading.value = false
+      // Idem: a busca cancelada não pode apagar o skeleton — quem está no ar é
+      // a mais recente, e ela ainda não respondeu.
+      if (!controller.signal.aborted) loading.value = false
     }
   }
 

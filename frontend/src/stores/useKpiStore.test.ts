@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import type { DistribuicoesResponse, KpiCode, KpiDistribuicao } from '@/types/api.types'
+import type { DistribuicoesParams, DistribuicoesResponse, KpiCode, KpiDistribuicao } from '@/types/api.types'
 
 const dist = (codigo: KpiCode): KpiDistribuicao => ({
   codigo,
@@ -16,7 +16,11 @@ const dist = (codigo: KpiCode): KpiDistribuicao => ({
 // para nenhum teste tocar axios.
 vi.mock('@/services/api', () => ({
   getKpis: vi.fn(async () => ({ kpis: [] })),
-  getDistribuicoes: vi.fn(async () => ({ distribuicoes: [dist('KPI-01')] })),
+  // Assinatura com o 2º argumento: é por ele que o store passa o AbortSignal.
+  getDistribuicoes: vi.fn(
+    async (_params: DistribuicoesParams, _opts?: { signal?: AbortSignal }) =>
+      ({ distribuicoes: [dist('KPI-01')] }),
+  ),
 }))
 
 import { getDistribuicoes, getKpis } from '@/services/api'
@@ -115,5 +119,33 @@ describe('useKpiStore — distribuições', () => {
 
     expect(store.distribuicoes.has('KPI-05')).toBe(true)
     expect(store.distribuicoes.has('KPI-01')).toBe(false)
+  })
+
+  it('mudanca de filtro aborta a busca anterior', async () => {
+    const abortadas: AbortSignal[] = []
+    vi.mocked(getDistribuicoes).mockImplementation(async (_p, opts) => {
+      if (opts?.signal) abortadas.push(opts.signal)
+      return new Promise(() => {}) as never  // nunca resolve
+    })
+
+    const store = useKpiStore()
+    void store.fetchDistribuicoes()
+    void store.fetchDistribuicoes()
+
+    await vi.waitFor(() => expect(abortadas.length).toBe(2))
+    expect(abortadas[0].aborted).toBe(true)   // a primeira foi cancelada
+    expect(abortadas[1].aborted).toBe(false)  // a mais recente segue viva
+  })
+
+  it('abort nao vira erro visivel', async () => {
+    // Um AbortError e cancelamento nosso, nao falha do backend: nao pode setar
+    // `error` nem deixar o store num estado de falha.
+    const erroAbort = Object.assign(new Error('canceled'), { name: 'CanceledError' })
+    vi.mocked(getDistribuicoes).mockRejectedValueOnce(erroAbort)
+
+    const store = useKpiStore()
+    await store.fetchDistribuicoes()
+
+    expect(store.error).toBeNull()
   })
 })

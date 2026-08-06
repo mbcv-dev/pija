@@ -81,15 +81,22 @@ function delay(ms = 400): Promise<void> {
 // ── Serviços de API ───────────────────────────────────────────
 
 /**
+ * `signal` das buscas que reagem a filtro: deixa o store cancelar a requisição
+ * obsoleta. Sem isso, duas mudanças de filtro seguidas custam duas varreduras
+ * completas no backend e só a última é usada. Modo mock ignora (não há rede).
+ */
+type ReqOpts = { signal?: AbortSignal }
+
+/**
  * GET /api/v1/kpis/tempos-medios
  * Retorna os 5 KPIs de tempo médio com breakdown por dimensão.
  */
-export async function getKpis(params: KpiParams): Promise<KpiResponse> {
+export async function getKpis(params: KpiParams, opts?: ReqOpts): Promise<KpiResponse> {
   if (USE_MOCK) {
     await delay(500)
     return mockKpis(params)
   }
-  const { data } = await client.get<KpiResponse>('/kpis/tempos-medios', { params })
+  const { data } = await client.get<KpiResponse>('/kpis/tempos-medios', { params, signal: opts?.signal })
   return KpiResponseSchema.parse(data)
 }
 
@@ -106,12 +113,15 @@ export async function getKpis(params: KpiParams): Promise<KpiResponse> {
  * gráficos de uma vez se o parse fosse tudo-ou-nada.
  * O ENVELOPE continua estrito: se a forma externa está errada, não há o que salvar.
  */
-export async function getDistribuicoes(params: DistribuicoesParams): Promise<DistribuicoesResponse> {
+export async function getDistribuicoes(
+  params: DistribuicoesParams,
+  opts?: ReqOpts,
+): Promise<DistribuicoesResponse> {
   if (USE_MOCK) {
     await delay(300)
     return mockDistribuicoes(params)
   }
-  const { data } = await client.get<unknown>('/kpis/distribuicoes', { params })
+  const { data } = await client.get<unknown>('/kpis/distribuicoes', { params, signal: opts?.signal })
 
   const envelope = z.object({ distribuicoes: z.array(z.unknown()) }).parse(data)
 
@@ -135,12 +145,12 @@ export async function getDistribuicoes(params: DistribuicoesParams): Promise<Dis
  * GET /api/v1/gargalos
  * Retorna o ranking dos piores tempos médios, do pior para o melhor.
  */
-export async function getGargalos(params: GargaloParams): Promise<GargalosResponse> {
+export async function getGargalos(params: GargaloParams, opts?: ReqOpts): Promise<GargalosResponse> {
   if (USE_MOCK) {
     await delay(400)
     return mockGargalos(params)
   }
-  const { data } = await client.get<GargalosResponse>('/gargalos', { params })
+  const { data } = await client.get<GargalosResponse>('/gargalos', { params, signal: opts?.signal })
   return GargalosResponseSchema.parse(data)
 }
 
@@ -164,6 +174,7 @@ export async function getEventos(params: EventosParams): Promise<EventosResponse
  */
 export async function getDimensoes(
   params: { grupo?: string[]; unidade?: string[] } = {},
+  opts?: ReqOpts,
 ): Promise<DimensoesResponse> {
   if (USE_MOCK) {
     await delay(200)
@@ -178,7 +189,7 @@ export async function getDimensoes(
       especialidades: [...ESPECIALIDADES],
     }
   }
-  const { data } = await client.get<DimensoesResponse>('/dimensoes', { params })
+  const { data } = await client.get<DimensoesResponse>('/dimensoes', { params, signal: opts?.signal })
   return DimensoesResponseSchema.parse(data)
 }
 
@@ -203,7 +214,10 @@ export async function getJornada(pacienteId: string): Promise<EventoItem[]> {
  * GET /api/v1/ciclicidade/transicoes
  * Fluxo agregado de transições entre etapas (coorte) ou de um paciente (paciente_id).
  */
-export async function getCiclicidade(params: CiclicidadeParams = {}): Promise<CiclicidadeResponse> {
+export async function getCiclicidade(
+  params: CiclicidadeParams = {},
+  opts?: ReqOpts,
+): Promise<CiclicidadeResponse> {
   if (USE_MOCK) {
     await delay(400)
     return {
@@ -221,6 +235,9 @@ export async function getCiclicidade(params: CiclicidadeParams = {}): Promise<Ci
       ],
     }
   }
-  const { data } = await client.get<CiclicidadeResponse>('/ciclicidade/transicoes', { params })
+  const { data } = await client.get<CiclicidadeResponse>('/ciclicidade/transicoes', {
+    params,
+    signal: opts?.signal,
+  })
   return CiclicidadeResponseSchema.parse(data)
 }
