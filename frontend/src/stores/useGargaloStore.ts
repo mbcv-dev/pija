@@ -20,8 +20,21 @@ export const useGargaloStore = defineStore('gargalo', () => {
   const metricas = ref<KpiCode[]>([...METRIC_OPTIONS])
 
   /**
-   * Cancela a requisição da busca anterior: sem isso, duas mudanças de filtro
-   * seguidas custam duas varreduras completas no backend e só a última é usada.
+   * Controller da busca MAIS RECENTE. Faz dois papéis:
+   *
+   * 1. `abort()` na anterior — ECONOMIA: sem isso, duas mudanças de filtro
+   *    seguidas custam duas varreduras completas no backend e só a última é usada.
+   * 2. Identidade (`abortAtual === controller`) — CORREÇÃO: é ele que decide
+   *    quem pode escrever no estado. Abortar não garante nada — a resposta pode
+   *    já estar a caminho quando o abort chega, e em modo mock o signal é
+   *    ignorado por completo; nos dois casos a busca velha voltaria e pintaria
+   *    um ranking que não bate com os filtros da tela.
+   *
+   * Não trocar por `!controller.signal.aborted`: além de não cobrir (2), essa
+   * forma só não deixa o skeleton preso porque hoje todo `abort()` é seguido
+   * imediatamente do `try/finally` que zera `loading` — invariante frágil.
+   * Comparar identidade é seguro por construção: a requisição mais nova É o
+   * `abortAtual`, então o `finally` dela sempre roda.
    */
   let abortAtual: AbortController | null = null
 
@@ -32,6 +45,8 @@ export const useGargaloStore = defineStore('gargalo', () => {
     abortAtual?.abort()
     const controller = new AbortController()
     abortAtual = controller
+    /** Esta busca ainda é a mais recente? Se não, nada dela pode tocar o estado. */
+    const isCurrent = (): boolean => abortAtual === controller
     loading.value = true
     error.value   = null
 
@@ -41,19 +56,20 @@ export const useGargaloStore = defineStore('gargalo', () => {
         kpi_codes: metricas.value,
         limit: limit.value,
       }, { signal: controller.signal })
+      if (!isCurrent()) return  // obsoleta: já há busca mais nova no ar
       items.value = response.items
     } catch (e) {
       // Cancelamento nosso não é falha: acontece toda vez que o filtro muda
       // antes da resposta chegar. Sem este guarda, cada mudança rápida de
       // filtro pintaria um ErrorState na tela.
-      if (!controller.signal.aborted) {
+      if (isCurrent()) {
         error.value = e instanceof Error ? e.message : 'Erro ao carregar gargalos'
         items.value = []
       }
     } finally {
-      // Idem: a busca cancelada não pode apagar o skeleton — quem está no ar é
+      // Idem: a busca obsoleta não pode apagar o skeleton — quem está no ar é
       // a mais recente, e ela ainda não respondeu.
-      if (!controller.signal.aborted) loading.value = false
+      if (isCurrent()) loading.value = false
     }
   }
 

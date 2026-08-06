@@ -87,4 +87,31 @@ describe('useCiclicidadeStore', () => {
     expect(s.error).toBe('backend caiu')
     expect(s.loading).toBe(false)
   })
+
+  it('resposta atrasada de um filtro antigo não sobrescreve a mais recente', async () => {
+    // `abort()` é ECONOMIA, não correção: a resposta pode já estar a caminho
+    // quando ele chega — e no modo mock (VITE_USE_MOCK) o signal é ignorado
+    // por completo, então a req 1 resolve NORMALMENTE mesmo cancelada. Quem
+    // garante que só a busca mais recente escreve no estado é o guarda de
+    // identidade (`abortAtual === controller`). Este mock não olha o signal
+    // justamente para reproduzir esse caso.
+    const resp = (tipo: 'CONSULTA' | 'EXAME'): CiclicidadeResponse => ({
+      nos: [{ tipo, total_entradas: 1, total_saidas: 1 }],
+      transicoes: [{ origem: 'PRONTUARIO', destino: tipo, volume: 1, tempo_medio_s: 10, n: 1 }],
+    })
+    let resolveLenta!: (r: CiclicidadeResponse) => void
+    vi.mocked(getCiclicidade)
+      .mockImplementationOnce(() => new Promise<CiclicidadeResponse>((r) => { resolveLenta = r }))
+      .mockResolvedValueOnce(resp('EXAME'))
+
+    const s = useCiclicidadeStore()
+    void s.fetch()   // req 1 — lenta
+    await s.fetch()  // req 2 — chega primeiro
+    resolveLenta(resp('CONSULTA'))
+    await flush()
+
+    expect(s.nos.map((n) => n.tipo)).toEqual(['EXAME'])
+    expect(s.transicoes.map((t) => t.destino)).toEqual(['EXAME'])
+    expect(s.loading).toBe(false)
+  })
 })

@@ -8,10 +8,18 @@ vi.mock('@/services/api', () => ({
 
 import { useGargaloStore } from './useGargaloStore'
 import { getGargalos } from '@/services/api'
-import type { GargaloParams, GargalosResponse, KpiCode } from '@/types/api.types'
+import type { GargaloItem, GargaloParams, GargalosResponse, KpiCode } from '@/types/api.types'
 
 /** Deixa a fila de microtasks drenar. */
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+
+const item = (transicao: KpiCode): GargaloItem => ({
+  dimensao_tipo: 'unidade',
+  dimensao: 'UTI ADULTO',
+  transicao,
+  media: 3,
+  n: 42,
+})
 
 /** Imita o axios: a promise só rejeita quando o signal é abortado. */
 const pendenteAteAbortar = (_p: GargaloParams, opts?: { signal?: AbortSignal }) =>
@@ -106,6 +114,28 @@ describe('useGargaloStore — cancelamento', () => {
     await store.fetchGargalos()
 
     expect(store.error).toBe('backend caiu')
+    expect(store.loading).toBe(false)
+  })
+
+  it('resposta atrasada de um filtro antigo não sobrescreve a mais recente', async () => {
+    // `abort()` é ECONOMIA, não correção: a resposta pode já estar a caminho
+    // quando ele chega — e no modo mock (VITE_USE_MOCK) o signal é ignorado
+    // por completo, então a req 1 resolve NORMALMENTE mesmo cancelada. Quem
+    // garante que só a busca mais recente escreve no estado é o guarda de
+    // identidade (`abortAtual === controller`). Este mock não olha o signal
+    // justamente para reproduzir esse caso.
+    let resolveLenta!: (r: GargalosResponse) => void
+    vi.mocked(getGargalos)
+      .mockImplementationOnce(() => new Promise<GargalosResponse>((r) => { resolveLenta = r }))
+      .mockResolvedValueOnce({ items: [item('KPI-05')] })
+
+    const store = useGargaloStore()
+    void store.fetchGargalos()   // req 1 — lenta
+    await store.fetchGargalos()  // req 2 — chega primeiro
+    resolveLenta({ items: [item('KPI-01')] })
+    await flush()
+
+    expect(store.items.map((i) => i.transicao)).toEqual(['KPI-05'])
     expect(store.loading).toBe(false)
   })
 })

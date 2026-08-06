@@ -30,6 +30,14 @@ import { useKpiStore } from './useKpiStore'
 /** Deixa a fila de microtasks (e o watcher do Vue) drenar. */
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
 
+/** Imita o axios: a promise só rejeita quando o signal é abortado de verdade. */
+const pendenteAteAbortar = (_p: DistribuicoesParams, opts?: { signal?: AbortSignal }) =>
+  new Promise<DistribuicoesResponse>((_resolve, reject) => {
+    opts?.signal?.addEventListener('abort', () => {
+      reject(Object.assign(new Error('canceled'), { name: 'CanceledError' }))
+    })
+  })
+
 describe('useKpiStore — distribuições', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -137,15 +145,29 @@ describe('useKpiStore — distribuições', () => {
     expect(abortadas[1].aborted).toBe(false)  // a mais recente segue viva
   })
 
-  it('abort nao vira erro visivel', async () => {
-    // Um AbortError e cancelamento nosso, nao falha do backend: nao pode setar
-    // `error` nem deixar o store num estado de falha.
-    const erroAbort = Object.assign(new Error('canceled'), { name: 'CanceledError' })
-    vi.mocked(getDistribuicoes).mockRejectedValueOnce(erroAbort)
+  it('cancelamento nao vira ruido no console nem apaga o histograma', async () => {
+    // ABORT DE VERDADE: a req 1 fica pendente até a req 2 cancelá-la, como o
+    // axios faz. Rejeitar com um CanceledError fabricado NÃO testa o guarda —
+    // `controller.signal.aborted` continuaria false e o guarda seria pulado
+    // sem ninguém notar. Também não adianta afirmar sobre `store.error`:
+    // `fetchDistribuicoes` nunca escreve nesse ref (ele é do `fetchKpis`),
+    // então o assert passaria mesmo com o guarda removido.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.mocked(getDistribuicoes)
+      .mockImplementationOnce(pendenteAteAbortar)
+      .mockResolvedValueOnce({ distribuicoes: [dist('KPI-05')] })
 
     const store = useKpiStore()
-    await store.fetchDistribuicoes()
+    void store.fetchDistribuicoes()   // req 1 — será cancelada
+    await store.fetchDistribuicoes()  // req 2 — cancela a anterior
+    await flush()
 
-    expect(store.error).toBeNull()
+    // Cancelar é rotina (toda mudança de filtro gera um): logar viraria ruído
+    // e afogaria a falha de verdade que este warn existe para denunciar.
+    expect(warn).not.toHaveBeenCalled()
+    // E a req 1 cancelada não pode apagar o histograma da req 2.
+    expect(store.distribuicoes.has('KPI-05')).toBe(true)
+    expect(store.loadingDist).toBe(false)
+    warn.mockRestore()
   })
 })
