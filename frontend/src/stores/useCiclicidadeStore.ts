@@ -28,8 +28,7 @@ export const useCiclicidadeStore = defineStore('ciclicidade', () => {
     loading.value = true
     error.value = null
     try {
-      const { group_by: _gb, ...coorte } = filterStore.activeFilters
-      const resp = await getCiclicidade(coorte, { signal: controller.signal })
+      const resp = await getCiclicidade(filterStore.activeFilters, { signal: controller.signal })
       nos.value = resp.nos
       transicoes.value = resp.transicoes
     } catch (e) {

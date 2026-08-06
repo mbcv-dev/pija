@@ -67,9 +67,7 @@ export const useKpiStore = defineStore('kpi', () => {
     loadingDist.value = true
 
     try {
-      // Mesmos filtros dos KPIs; `group_by` não se aplica (sem breakdown aqui).
-      const { group_by: _semBreakdown, ...params } = filterStore.activeFilters
-      const response = await getDistribuicoes(params, { signal: controller.signal })
+      const response = await getDistribuicoes(filterStore.activeFilters, { signal: controller.signal })
       if (!isCurrent()) return  // obsoleta: já há busca mais nova no ar
       distribuicoes.value = new Map(response.distribuicoes.map((d) => [d.codigo, d]))
     } catch (e) {

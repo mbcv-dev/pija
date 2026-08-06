@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { GroupBy } from '@/types/api.types'
 
 /**
  * useFilterStore — Filtros globais da plataforma PIJA.
@@ -19,7 +18,6 @@ export const useFilterStore = defineStore('filter', () => {
   const especialidadeSubtipo = ref<string[]>([])
   const dataInicio    = ref<string | null>(null)
   const dataFim       = ref<string | null>(null)
-  const groupBy       = ref<GroupBy>('unidade')
 
   // Lista vazia é omitida da query (undefined) — o backend trata ausência como "sem filtro".
   const orUndefined = (l: string[]) => (l.length > 0 ? l : undefined)
@@ -30,7 +28,6 @@ export const useFilterStore = defineStore('filter', () => {
     especialidade: orUndefined(especialidade.value),
     data_inicio:   dataInicio.value ?? undefined,
     data_fim:      dataFim.value ?? undefined,
-    group_by:      groupBy.value,
   }))
 
   const activeCount = computed(() => {
@@ -77,7 +74,6 @@ export const useFilterStore = defineStore('filter', () => {
 
   function setDataInicio(d: string | null): void { dataInicio.value = d }
   function setDataFim(d: string | null): void { dataFim.value = d }
-  function setGroupBy(g: GroupBy): void { groupBy.value = g }
 
   function reset(): void {
     unidade.value = []
@@ -87,15 +83,14 @@ export const useFilterStore = defineStore('filter', () => {
     especialidadeSubtipo.value = []
     dataInicio.value = null
     dataFim.value = null
-    // groupBy mantém a preferência do usuário
   }
 
   return {
     unidade, grupo, especialidade, especialidadeBase, especialidadeSubtipo,
-    dataInicio, dataFim, groupBy,
+    dataInicio, dataFim,
     activeFilters, activeCount,
     toggleUnidade, toggleGrupo, toggleEspecialidade,
     setUnidades, setGrupos, setEspecialidades, setEspecialidadeSelecao,
-    setDataInicio, setDataFim, setGroupBy, reset,
+    setDataInicio, setDataFim, reset,
   }
 })
