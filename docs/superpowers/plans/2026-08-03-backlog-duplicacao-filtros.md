@@ -108,3 +108,22 @@ ampliada do primeiro balde — mudança de componente que afeta todos os KPIs de
 tradeoff próprio (log no eixo do tempo é difícil de ler para quem não é técnico).
 
 **Escopo quando for feito:** frente própria, com brainstorm — não emendar num plano existente.
+
+## 9. `fetchKpis` continua sem cancelamento
+
+Achado durante a execução da frente de endurecimento (2026-08-05/06), Task 5.
+
+A Task 5 do plano de [endurecimento](2026-08-05-endurecimento-backlog.md) mandou `getKpis` aceitar
+`opts.signal` (Step 3), mas os Steps 4-5 só mandaram ligar o `AbortController` em
+`fetchDistribuicoes`, `useGargaloStore`, `useCiclicidadeStore` e `useDimensoesStore`. O parâmetro
+existe em `getKpis` e **ninguém passa** — é superfície morta hoje.
+
+`fetchKpis` é a query mais cara do dashboard (seis KPIs com breakdown), então é justamente onde o
+cancelamento economizaria mais. Não foi ligado porque ampliar o escopo no meio da execução é o tipo
+de decisão que o plano existe para evitar.
+
+**Escopo quando for feito:** os mesmos quatro elementos do Step 4 daquele plano. Atenção: `fetchKpis`
+**seta `error`** e **não tem guarda de sequência**, então cai na mesma armadilha que
+`useGargaloStore`/`useCiclicidadeStore` — o guarda `if (!controller.signal.aborted)` precisa
+envolver tanto a atribuição de `error` quanto o `finally` que baixa o `loading`, senão toda troca
+rápida de filtro pinta um ErrorState ou faz o skeleton piscar.

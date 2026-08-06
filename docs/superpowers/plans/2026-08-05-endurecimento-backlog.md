@@ -737,7 +737,73 @@ Confirmar: `https://pija-backend-production.up.railway.app/docs` mostra os filtr
 
 ## Registro de execução
 
-_(preencher durante a execução)_
+Executado em **2026-08-05/06** na branch `feat/endurecimento-e-cirurgia`, via
+`superpowers:subagent-driven-development` (implementador + revisão de spec + revisão de qualidade
+por task).
+
+### Contagens de teste
+
+| Momento | Backend | Frontend |
+|---|---|---|
+| Baseline | 188 | 189 |
+| Depois da Task 1 | 194 (+6) | — |
+| Depois da Task 2 | 194 (fixture move, sem delta) | — |
+| Depois da Task 3 | — | 196 (+7) |
+| Depois da Task 4 | — | 198 (+2) |
+| Depois da Task 5 | — | 206 (+8) |
+
+### Commits
+
+`dd488ba` Task 1 · `6a5e8f7` Task 2 · `c5a289b`+`07447d1` Task 3 · `10cdb13` Task 4 · `fc5fd83` Task 5.
+
+### Desvios do plano — todos deliberados e revisados
+
+1. **Task 1 — rota corrigida.** O mapa do plano dizia `/api/v1/ciclicidade`; a rota real é
+   `/api/v1/ciclicidade/transicoes`. O próprio Step 2 autorizava corrigir o mapa.
+2. **Task 1 — ordem dos params no OpenAPI mudou** em `/eventos` e `/gargalos` (os comuns passaram
+   para o fim). Query param é endereçado por nome: é mudança de apresentação no Swagger UI, não de
+   contrato. Verificado que `name`/`in`/`required`/`schema` são idênticos antes e depois.
+3. **Task 2 — `test_integration_f2.py` NÃO foi achatado.** A fixture dele dependia só de
+   `async_engine`, não de `fixture_db_session`: os seis smoke tests rodam contra um banco **vazio**
+   de propósito, e é a única cobertura de banco vazio via HTTP na suíte. Foi renomeada para
+   `client_banco_vazio` e mantida local. Achatá-la teria populado 17 eventos e apagado essa
+   cobertura passando verde.
+4. **Task 3 — um sétimo teste.** O terceiro caso de rejeição do plano viola as **duas** invariantes
+   ao mesmo tempo, então continuaria verde mesmo com a regra de posição da cauda deletada — não era
+   load-bearing. O teste extra isola só a ordenação. Confirmado por experimento na revisão.
+5. **Task 5 — o `finally` também precisou do guarda.** `useGargaloStore` e `useCiclicidadeStore` não
+   têm guarda de sequência; sem proteger o `finally`, o `loading` da requisição cancelada caía para
+   `false` com a nova ainda em voo e o skeleton piscava para EmptyState. Mesma classe de bug que o
+   ErrorState, introduzida pelo próprio abort.
+6. **Task 5 — `getKpis` aceita `signal` mas ninguém passa.** O plano lista `getKpis` no Step 3 mas
+   só manda ligar os quatro stores dos Steps 4-5. `fetchKpis` segue sem cancelamento — é a query
+   mais cara do dashboard. **Vai para o backlog**, não foi ampliado o escopo aqui.
+
+### Armadilha que quase tornou a Task 4 vácua
+
+`frontend/.env.local` tem `VITE_USE_MOCK=true` e o vitest **carrega** esse arquivo em modo `test`.
+O teste do plano, como escrito, teria exercitado o caminho do mock e passado sem testar nada. A
+solução (`vi.stubEnv('VITE_USE_MOCK', 'false')` antes do import dinâmico) virou o padrão do
+`api.test.ts` e foi provada por mutação. **Qualquer teste futuro que precise do caminho HTTP real
+tem que fazer o mesmo.**
+
+### Verificação no browser (backend real, `data/pija_demo.db`, 516 MB)
+
+- **Abort confirmado:** com três mudanças de filtro em sequência, as duas primeiras requisições de
+  `/kpis/distribuicoes` saíram com `status: 0` e `aborted: true`; só a terceira completou 200.
+  Observação: o filtro é **debounced**, então duas mudanças muito rápidas geram *uma só*
+  requisição — para exercitar o abort é preciso mudar de novo com a requisição já em voo.
+- **Nenhum ErrorState** apareceu durante a troca rápida de filtros.
+- **Histogramas intactos** — 102 baldes renderizados depois da sequência de cancelamentos.
+- **OpenAPI:** as cinco rotas listam `unidade`, `especialidade`, `grupo`, `data_inicio`, `data_fim`,
+  com os params próprios preservados e `group_by` corretamente **ausente** de `/kpis/distribuicoes`.
+
+### Deploy
+
+O `railway up` **não** foi feito ao final desta frente: as três frentes desta sessão foram
+executadas em sequência na mesma branch e o backend sobe **uma vez só**, no final (ver o plano de
+cirurgia). A ordem continua correta — o frontend com o parse por KPI (Task 4) entra em produção no
+merge para `main`, **antes** de o backend ganhar KPI-10/10B.
 
 ## Self-review (do plano, já aplicado)
 
