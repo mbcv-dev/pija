@@ -76,3 +76,35 @@ backend, então é latente — mas é um acoplamento para saber antes de adicion
 
 **Escopo quando for feito:** decidir se vale degradar por KPI em vez de por resposta. Só faz sentido
 se o conjunto de códigos passar a variar entre backend e frontend.
+
+## 7. O halo da linha da mediana repinta a barra por cima (bug de desenho)
+
+Achado na verificação no browser do KPI-05 (2026-08-05), com dado real.
+
+A linha da mediana no `HistogramaTempos.vue` tem um halo de `stroke-width="3.5"` na cor da
+superfície, desenhado **depois** — e portanto por cima — das barras. Quando a mediana cai perto da
+origem, o halo cobre parte da primeira barra e a repinta com a cor de fundo.
+
+No KPI-05 é o pior caso: mediana em `x = 1,655` de um eixo de 259,76 unidades (**0,64%**), halo
+cobrindo `x ∈ [-0,1; 3,4]` contra uma barra que ocupa `[0; 14,735]` — **23% da largura da barra
+mais alta é repintada de fundo**. A barra que concentra 66,75% dos casos renderiza visivelmente
+mais estreita e com um entalhe, nos dois temas. É geometria sendo lida como dado.
+
+Pré-existente e mais brando em KPI-01 e KPI-07B (~12%), onde metade do halo cai fora do viewBox.
+
+**Escopo quando for feito:** recortar o halo contra a barra, ou suprimi-lo quando a mediana cai
+dentro do primeiro balde. É bug de desenho, não decisão de spec — não confundir com o item 8.
+
+## 8. O histograma não sustenta a mediana quando a assimetria é extrema
+
+Mesmo achado, mas é **decisão de produto, não bug**. No KPI-05, `p95/p50 = 157×`: a mediana de
+9,6 h fica a 1,9 px da origem num eixo que vai até 62,9 dias. O gráfico comunica bem a cauda
+("21 mil exames levaram mais de 2 meses") e o decaimento — a escala raiz é o que salva isso —,
+mas **não dá nenhum apoio geométrico ao número grande do card**. O leitor não chega em 9,6 h
+olhando o desenho.
+
+Vale para KPI-01 e KPI-07B também, em grau menor. A saída seria eixo X logarítmico ou uma visão
+ampliada do primeiro balde — mudança de componente que afeta todos os KPIs de uma vez, com
+tradeoff próprio (log no eixo do tempo é difícil de ler para quem não é técnico).
+
+**Escopo quando for feito:** frente própria, com brainstorm — não emendar num plano existente.
