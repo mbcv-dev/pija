@@ -86,7 +86,7 @@ const meta = computed(() => KPI_META[props.kpi.codigo])
       <Icon name="chevron" :size="13" />
     </button>
 
-    <!-- Sub-métrica aninhada (KPI-07B: alta médica → saída do leito) -->
+    <!-- Sub-métrica aninhada (07B no card do 07, 10B no do 10 — ver SUBMETRICA_DE em KpiGrid.vue) -->
     <div v-if="submetric" data-submetrica class="border-t border-border dark:border-border-dark pt-3">
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-medium text-text-muted dark:text-text-dark-muted">{{ submetric.descricao }}</span>
@@ -113,7 +113,7 @@ const meta = computed(() => KPI_META[props.kpi.codigo])
       </button>
     </div>
 
-    <!-- Drill-down da sub-métrica (KPI-07B) — mesma lista completa das outras KPIs -->
+    <!-- Drill-down da sub-métrica — mesma lista completa das outras KPIs -->
     <KpiDetailModal v-if="subDetalheAberto && submetric" :kpi="submetric" @close="subDetalheAberto = false" />
 
     <!-- Drill-down: lista completa do breakdown (Teleport → body, não dispara o click do card) -->

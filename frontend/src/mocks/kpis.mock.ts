@@ -9,6 +9,8 @@ const BASE_MEDIAS: Record<KpiCode, number> = {
   'KPI-06': 21.3,
   'KPI-07': 4.8,
   'KPI-07B': 2.4, // horas (alta médica → saída efetiva)
+  'KPI-10': 0.95, // horas — acima da mediana real (0,65 h), puxada pela cauda
+  'KPI-10B': 0.21, // horas — mediana real 5 min, mas a cauda chega a 1 h
 }
 
 const N_GLOBAL: Record<KpiCode, number> = {
@@ -18,6 +20,10 @@ const N_GLOBAL: Record<KpiCode, number> = {
   'KPI-06': 8920,
   'KPI-07': 12300,
   'KPI-07B': 12300,
+  // Volumes medidos na base de produção: o 10B perde as cirurgias sem a entrada
+  // na sala registrada, por isso fica 26 casos abaixo do 10.
+  'KPI-10': 19321,
+  'KPI-10B': 19295,
 }
 
 const DESCRICOES: Record<KpiCode, string> = {
@@ -27,7 +33,18 @@ const DESCRICOES: Record<KpiCode, string> = {
   'KPI-06': 'Tempo última consulta → internação',
   'KPI-07': 'Tempo de permanência no leito',
   'KPI-07B': 'Tempo alta médica → saída do leito',
+  'KPI-10': 'Duração da cirurgia',
+  'KPI-10B': 'Entrada na sala → início da cirurgia',
 }
+
+/** KPIs medidos em horas; os demais, em dias. */
+const EM_HORAS: KpiCode[] = ['KPI-07B', 'KPI-10', 'KPI-10B']
+
+/**
+ * Submétricas: renderizam dentro do card do KPI pai, que já mostra o breakdown
+ * da área — por isso o mock não gera um segundo para elas.
+ */
+const SUBMETRICAS: KpiCode[] = ['KPI-07B', 'KPI-10B']
 
 // ── Gerador de breakdown dinâmico por seed ────────────────────
 // Usa seed determinístico para que os valores sejam estáveis
@@ -41,7 +58,7 @@ function seededRandom(seed: number): () => number {
   }
 }
 
-function gerarBreakdown(baseMedia: number, kpiCode: string, groupBy: string): BreakdownItem[] {
+function gerarBreakdown(baseMedia: number, kpiCode: string, groupBy: string, casas: number): BreakdownItem[] {
   const dimensoes = groupBy === 'especialidade'
     ? ['CARDIOLOGIA', 'ORTOPEDIA', 'NEUROLOGIA', 'PEDIATRIA', 'GINECOLOGIA', 'CLÍNICA MÉDICA']
     : [...UNIDADES]
@@ -52,7 +69,7 @@ function gerarBreakdown(baseMedia: number, kpiCode: string, groupBy: string): Br
   return dimensoes
     .map((dimensao) => ({
       dimensao,
-      media: +(baseMedia * (0.55 + rng() * 0.9)).toFixed(1),
+      media: +(baseMedia * (0.55 + rng() * 0.9)).toFixed(casas),
       n: Math.floor(800 + rng() * 6000),
     }))
     .sort((a, b) => b.media - a.media)
@@ -74,7 +91,9 @@ export function mockKpis(params: KpiParams): KpiResponse {
     fator *= 0.9
   }
 
-  const allCodes: KpiCode[] = ['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B']
+  const allCodes: KpiCode[] = [
+    'KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B', 'KPI-10', 'KPI-10B',
+  ]
   const codes = params.kpi_codes && params.kpi_codes.length > 0
     ? params.kpi_codes
     : allCodes
@@ -83,15 +102,20 @@ export function mockKpis(params: KpiParams): KpiResponse {
   const kpis = codes.map((codigo) => {
     const baseMedia = BASE_MEDIAS[codigo] * fator
     const isKpi05NoData = codigo === 'KPI-05' && !!params.especialidade?.includes('CIRURGIA GERAL')
-    const isHoras = codigo === 'KPI-07B'
+    const isHoras = EM_HORAS.includes(codigo)
+    // Duas casas nos KPIs em horas: o 10B tem mediana de minutos e uma casa só
+    // arredondaria tudo para 0,2 h — o mock esconderia a escala do indicador.
+    const casas = isHoras ? 2 : 1
 
     return {
       codigo,
       descricao: DESCRICOES[codigo],
       unidade_tempo: (isHoras ? 'horas' : 'dias') as 'dias' | 'horas',
-      media_global: isKpi05NoData ? null : +baseMedia.toFixed(1),
+      media_global: isKpi05NoData ? null : +baseMedia.toFixed(casas),
       n_global: isKpi05NoData ? 0 : Math.floor(N_GLOBAL[codigo] * fator),
-      breakdown: isKpi05NoData || isHoras ? [] : gerarBreakdown(baseMedia, codigo, groupBy),
+      breakdown: isKpi05NoData || SUBMETRICAS.includes(codigo)
+        ? []
+        : gerarBreakdown(baseMedia, codigo, groupBy, casas),
     }
   })
 

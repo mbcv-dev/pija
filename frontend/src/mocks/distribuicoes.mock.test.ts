@@ -33,10 +33,12 @@ function verificarInvariantes(d: KpiDistribuicao): void {
   }
 }
 
-const TODOS_OS_CODIGOS = ['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B']
+const TODOS_OS_CODIGOS = [
+  'KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B', 'KPI-10', 'KPI-10B',
+]
 
 describe('mockDistribuicoes', () => {
-  it('devolve os 6 KPIs e valida contra o schema do backend', () => {
+  it('devolve os 8 KPIs e valida contra o schema do backend', () => {
     const res = mockDistribuicoes({})
     expect(res.distribuicoes.map((d) => d.codigo)).toEqual(TODOS_OS_CODIGOS)
     expect(() => DistribuicoesResponseSchema.parse(res)).not.toThrow()

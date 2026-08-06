@@ -4,8 +4,13 @@ import type { KpiCode } from '@/types/api.types'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import Icon from '@/components/ui/Icon.vue'
 
-// Ordem de exibição dos KPIs
-const ordem: KpiCode[] = ['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B']
+// Ordem de exibição dos KPIs. Precisa crescer junto com `KpiCode`: um código novo
+// com metadados prontos mas ausente daqui simplesmente não é listado — sem erro,
+// sem aviso, e a página passa a documentar menos do que o Dashboard mostra.
+// MetodologiaView.test.ts é o que transforma esse esquecimento em falha visível.
+const ordem: KpiCode[] = [
+  'KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B', 'KPI-10', 'KPI-10B',
+]
 const kpis = ordem.map((codigo) => ({ codigo, ...KPI_META[codigo] }))
 </script>
 

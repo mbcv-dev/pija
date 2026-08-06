@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { DistribuicoesResponseSchema } from './api.schemas'
+import { KPI_META } from '@/types/api.types'
 
 /** Distribuição válida no formato que o backend devolve: 2 lineares + cauda aberta. */
 const valida = {
@@ -14,6 +15,17 @@ const valida = {
 }
 
 const parse = (d: unknown) => DistribuicoesResponseSchema.safeParse({ distribuicoes: [d] })
+
+// `KpiCode` (types/api.types.ts) e o `KpiCodeSchema` daqui são DUAS listas de
+// códigos mantidas à mão. Se um KPI novo entrar só nos tipos, o TypeScript fica
+// feliz e o zod rejeita a resposta em runtime — o indicador some da tela inteira.
+describe('KpiCodeSchema acompanha os códigos declarados nos tipos', () => {
+  it('aceita todo código que tem metadados em KPI_META', () => {
+    for (const codigo of Object.keys(KPI_META)) {
+      expect(parse({ ...valida, codigo }).success, codigo).toBe(true)
+    }
+  })
+})
 
 describe('KpiDistribuicaoSchema — invariantes estruturais', () => {
   it('aceita a forma normal', () => {

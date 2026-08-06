@@ -4,8 +4,9 @@ import { setActivePinia, createPinia, type Pinia } from 'pinia'
 import { nextTick } from 'vue'
 import type { KpiCode, KpiDistribuicao, KpiItem } from '@/types/api.types'
 
-const K = (codigo: KpiItem['codigo']): KpiItem => ({
+const K = (codigo: KpiItem['codigo'], over: Partial<KpiItem> = {}): KpiItem => ({
   codigo, descricao: '', unidade_tempo: 'dias', media_global: 1.5, n_global: 10, breakdown: [],
+  ...over,
 })
 
 const D = (codigo: KpiCode, over: Partial<KpiDistribuicao> = {}): KpiDistribuicao => ({
@@ -17,16 +18,24 @@ const D = (codigo: KpiCode, over: Partial<KpiDistribuicao> = {}): KpiDistribuica
 // O store agora consome getKpis E getDistribuicoes; o mock precisa cobrir as duas,
 // senão a segunda estoura um TypeError que o catch do store engole em silêncio e
 // os cards nunca veem distribuição nenhuma.
-// Recorte proposital: KPI-05 e KPI-07B com dados, KPI-03 com n_total = 0 (guarda),
-// KPI-01/06/07 sem distribuição (garantia de enhancement).
+// Recorte proposital: KPI-05, KPI-07B e KPI-10B com dados, KPI-03 com n_total = 0
+// (guarda), KPI-01/06/07/10 sem distribuição (garantia de enhancement).
 vi.mock('@/services/api', () => ({
   getKpis: vi.fn(async () => ({
-    kpis: [K('KPI-01'), K('KPI-03'), K('KPI-05'), K('KPI-06'), K('KPI-07'), K('KPI-07B')],
+    kpis: [
+      K('KPI-01'), K('KPI-03'), K('KPI-05'), K('KPI-06'), K('KPI-07'),
+      // Descrições reais nas submétricas: é por elas que os testes distinguem
+      // qual bloco `[data-submetrica]` caiu em qual card.
+      K('KPI-07B', { unidade_tempo: 'horas', descricao: 'Alta médica → saída do leito' }),
+      K('KPI-10', { unidade_tempo: 'horas', descricao: 'Duração da cirurgia' }),
+      K('KPI-10B', { unidade_tempo: 'horas', descricao: 'Entrada na sala → início da cirurgia' }),
+    ],
   })),
   getDistribuicoes: vi.fn(async () => ({
     distribuicoes: [
       D('KPI-05'),
       D('KPI-07B', { unidade_tempo: 'horas' }),
+      D('KPI-10B', { unidade_tempo: 'horas' }),
       D('KPI-03', { p50: null, p95: null, teto: null, n_total: 0, buckets: [] }),
     ],
   })),
@@ -70,13 +79,13 @@ describe('KpiGrid — seções por área da jornada', () => {
     expect(ids).toEqual(['entrada', 'consultas', 'exames', 'internacao', 'cirurgias'])
   })
 
-  it('cada seção mostra os cards da sua área (07B não é card próprio)', async () => {
+  it('cada seção mostra os cards da sua área (07B e 10B não são card próprio)', async () => {
     const w = await montar()
     const codigosPorSecao = w.findAll('[data-area]').map((s) =>
       s.findAllComponents(KpiCard).map((c: VueWrapper<InstanceType<typeof KpiCard>>) => (c.props('kpi') as KpiItem).codigo),
     )
     expect(codigosPorSecao).toEqual([
-      ['KPI-01'], ['KPI-03'], ['KPI-05'], ['KPI-06', 'KPI-07'], [],
+      ['KPI-01'], ['KPI-03'], ['KPI-05'], ['KPI-06', 'KPI-07'], ['KPI-10'],
     ])
   })
 
@@ -96,10 +105,32 @@ describe('KpiGrid — seções por área da jornada', () => {
     expect(secao.findAllComponents(KpiCard)[0]!.find('h2').exists()).toBe(false)
   })
 
-  it('Cirurgias mostra estado vazio honesto', async () => {
+  it('Cirurgias deixou de prometer indicadores futuros — o card do KPI-10 está lá', async () => {
     const w = await montar()
     const cirurgias = w.findAll('[data-area]').find((s) => s.attributes('data-area') === 'cirurgias')!
-    expect(cirurgias.text()).toContain('Sem indicadores nesta área ainda')
+    expect(cirurgias.findAllComponents(KpiCard)).toHaveLength(1)
+    expect(cirurgias.text()).not.toContain('Sem indicadores nesta área')
+  })
+
+  it('a submétrica do KPI-10 renderiza no card do KPI-10, não em outro', async () => {
+    const w = await montar()
+    const cirurgias = w.findAll('[data-area]').find((s) => s.attributes('data-area') === 'cirurgias')!
+    const bloco = cirurgias.find('[data-submetrica]')
+    expect(bloco.exists()).toBe(true)
+    expect(bloco.text()).toContain('sala')
+    // O par 07/07B não pode ter migrado para cá junto com a extração do mapa.
+    expect(bloco.text()).not.toContain('leito')
+  })
+
+  // A `<section>` sem cards não some do DOM: `cards` vem da RESPOSTA, então uma
+  // área com KPI mapeado ainda cai no vazio quando o recorte não devolve aquele
+  // código. Este teste mantém esse ramo vivo agora que nenhuma área nasce vazia.
+  it('área cujo KPI não veio na resposta cai no estado vazio', async () => {
+    vi.mocked(getKpis).mockResolvedValueOnce({ kpis: [K('KPI-01')] })
+    const w = await montar()
+    const cirurgias = w.findAll('[data-area]').find((s) => s.attributes('data-area') === 'cirurgias')!
+    expect(cirurgias.findAllComponents(KpiCard)).toHaveLength(0)
+    expect(cirurgias.text()).toContain('Sem indicadores nesta área')
   })
 
   it('cross-link de gargalos só nas áreas com gargalosKpi', async () => {

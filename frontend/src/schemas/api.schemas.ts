@@ -2,7 +2,9 @@ import { z } from 'zod'
 
 // ── Schemas compartilhados ─────────────────────────────────────
 
-const KpiCodeSchema = z.enum(['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B'])
+// Espelha `KpiCode` em types/api.types.ts — um código que só entre lá é rejeitado
+// aqui em tempo de execução, com o dado já na mão.
+const KpiCodeSchema = z.enum(['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B', 'KPI-10', 'KPI-10B'])
 const GroupBySchema = z.enum(['unidade', 'especialidade'])
 
 // ── KPIs ──────────────────────────────────────────────────────
