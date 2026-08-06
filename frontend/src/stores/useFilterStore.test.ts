@@ -44,13 +44,19 @@ describe('useFilterStore (multiseleção)', () => {
     expect(s.unidade).toEqual(['X', 'Y'])
   })
 
-  it('reset limpa tudo menos groupBy', () => {
+  it('activeFilters nao carrega group_by', () => {
+    // O breakdown e fixo em unidade executora: sem escolha na tela, o store nao
+    // deve carregar o estado dela. O backend mantem o parametro com default.
+    const store = useFilterStore()
+    expect('group_by' in store.activeFilters).toBe(false)
+  })
+
+  it('reset limpa grupo e unidade', () => {
     const s = useFilterStore()
-    s.toggleGrupo('G'); s.toggleUnidade('U'); s.setGroupBy('especialidade')
+    s.toggleGrupo('G'); s.toggleUnidade('U')
     s.reset()
     expect(s.grupo).toEqual([])
     expect(s.unidade).toEqual([])
-    expect(s.groupBy).toBe('especialidade')
   })
 })
 

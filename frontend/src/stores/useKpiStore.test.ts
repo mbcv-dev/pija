@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import type { DistribuicoesResponse, KpiCode, KpiDistribuicao } from '@/types/api.types'
+import type { DistribuicoesParams, DistribuicoesResponse, KpiCode, KpiDistribuicao } from '@/types/api.types'
 
 const dist = (codigo: KpiCode): KpiDistribuicao => ({
   codigo,
@@ -16,7 +16,11 @@ const dist = (codigo: KpiCode): KpiDistribuicao => ({
 // para nenhum teste tocar axios.
 vi.mock('@/services/api', () => ({
   getKpis: vi.fn(async () => ({ kpis: [] })),
-  getDistribuicoes: vi.fn(async () => ({ distribuicoes: [dist('KPI-01')] })),
+  // Assinatura com o 2º argumento: é por ele que o store passa o AbortSignal.
+  getDistribuicoes: vi.fn(
+    async (_params: DistribuicoesParams, _opts?: { signal?: AbortSignal }) =>
+      ({ distribuicoes: [dist('KPI-01')] }),
+  ),
 }))
 
 import { getDistribuicoes, getKpis } from '@/services/api'
@@ -25,6 +29,14 @@ import { useKpiStore } from './useKpiStore'
 
 /** Deixa a fila de microtasks (e o watcher do Vue) drenar. */
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0))
+
+/** Imita o axios: a promise só rejeita quando o signal é abortado de verdade. */
+const pendenteAteAbortar = (_p: DistribuicoesParams, opts?: { signal?: AbortSignal }) =>
+  new Promise<DistribuicoesResponse>((_resolve, reject) => {
+    opts?.signal?.addEventListener('abort', () => {
+      reject(Object.assign(new Error('canceled'), { name: 'CanceledError' }))
+    })
+  })
 
 describe('useKpiStore — distribuições', () => {
   beforeEach(() => {
@@ -115,5 +127,47 @@ describe('useKpiStore — distribuições', () => {
 
     expect(store.distribuicoes.has('KPI-05')).toBe(true)
     expect(store.distribuicoes.has('KPI-01')).toBe(false)
+  })
+
+  it('mudanca de filtro aborta a busca anterior', async () => {
+    const abortadas: AbortSignal[] = []
+    vi.mocked(getDistribuicoes).mockImplementation(async (_p, opts) => {
+      if (opts?.signal) abortadas.push(opts.signal)
+      return new Promise(() => {}) as never  // nunca resolve
+    })
+
+    const store = useKpiStore()
+    void store.fetchDistribuicoes()
+    void store.fetchDistribuicoes()
+
+    await vi.waitFor(() => expect(abortadas.length).toBe(2))
+    expect(abortadas[0].aborted).toBe(true)   // a primeira foi cancelada
+    expect(abortadas[1].aborted).toBe(false)  // a mais recente segue viva
+  })
+
+  it('cancelamento nao vira ruido no console nem apaga o histograma', async () => {
+    // ABORT DE VERDADE: a req 1 fica pendente até a req 2 cancelá-la, como o
+    // axios faz. Rejeitar com um CanceledError fabricado NÃO testa o guarda —
+    // `controller.signal.aborted` continuaria false e o guarda seria pulado
+    // sem ninguém notar. Também não adianta afirmar sobre `store.error`:
+    // `fetchDistribuicoes` nunca escreve nesse ref (ele é do `fetchKpis`),
+    // então o assert passaria mesmo com o guarda removido.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.mocked(getDistribuicoes)
+      .mockImplementationOnce(pendenteAteAbortar)
+      .mockResolvedValueOnce({ distribuicoes: [dist('KPI-05')] })
+
+    const store = useKpiStore()
+    void store.fetchDistribuicoes()   // req 1 — será cancelada
+    await store.fetchDistribuicoes()  // req 2 — cancela a anterior
+    await flush()
+
+    // Cancelar é rotina (toda mudança de filtro gera um): logar viraria ruído
+    // e afogaria a falha de verdade que este warn existe para denunciar.
+    expect(warn).not.toHaveBeenCalled()
+    // E a req 1 cancelada não pode apagar o histograma da req 2.
+    expect(store.distribuicoes.has('KPI-05')).toBe(true)
+    expect(store.loadingDist).toBe(false)
+    warn.mockRestore()
   })
 })

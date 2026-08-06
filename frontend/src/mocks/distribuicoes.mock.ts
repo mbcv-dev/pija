@@ -45,6 +45,11 @@ const PERFIS: Record<KpiCode, PerfilDist> = {
   'KPI-06': { teto: 96, nTotal: 8920, decaimento: 0.88, unidade: 'dias' },
   'KPI-07': { teto: 24, nTotal: 12300, decaimento: 0.68, unidade: 'dias' },
   'KPI-07B': { teto: 6.3, nTotal: 12300, decaimento: 0.35, unidade: 'horas' },
+  // Perfis calibrados sobre a base de produção: o teto é o p95 medido e o
+  // decaimento foi escolhido para a mediana estimada cair no valor real —
+  // 0,65 h no KPI-10 e 0,08 h (5 min) no KPI-10B.
+  'KPI-10': { teto: 3.08, nTotal: 19321, decaimento: 0.81, unidade: 'horas' },
+  'KPI-10B': { teto: 1.03, nTotal: 19295, decaimento: 0.555, unidade: 'horas' },
 }
 
 const arred = (v: number): number => +v.toFixed(2)
@@ -99,7 +104,9 @@ export function mockDistribuicoes(params: DistribuicoesParams): DistribuicoesRes
     fator *= 0.9
   }
 
-  const allCodes: KpiCode[] = ['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B']
+  const allCodes: KpiCode[] = [
+    'KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-07B', 'KPI-10', 'KPI-10B',
+  ]
   const codes = params.kpi_codes && params.kpi_codes.length > 0 ? params.kpi_codes : allCodes
 
   const distribuicoes: KpiDistribuicao[] = codes.map((codigo) => {

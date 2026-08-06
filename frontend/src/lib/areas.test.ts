@@ -9,15 +9,17 @@ describe('AREAS_JORNADA', () => {
     ])
   })
 
-  it('todo KPI de card aparece em exatamente uma área (07B é submétrica, não entra)', () => {
+  it('todo KPI de card aparece em exatamente uma área (07B e 10B são submétricas, não entram)', () => {
     const todos = AREAS_JORNADA.flatMap((a) => a.kpis)
-    expect([...todos].sort()).toEqual(['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07'])
+    expect([...todos].sort()).toEqual(['KPI-01', 'KPI-03', 'KPI-05', 'KPI-06', 'KPI-07', 'KPI-10'])
     expect(new Set(todos).size).toBe(todos.length)
   })
 
-  it('cirurgias não tem KPI ainda (indicadores operacionais são outra frente)', () => {
+  it('cirurgias tem o KPI de duração (a submétrica 10B mora dentro do card)', () => {
     const cirurgias = AREAS_JORNADA.find((a) => a.id === 'cirurgias')!
-    expect(cirurgias.kpis).toEqual([])
+    expect(cirurgias.kpis).toEqual(['KPI-10'])
+    // Sem gargalosKpi de propósito: duração longa costuma ser característica do
+    // procedimento, não gargalo — ranqueá-la acusaria a especialidade errada.
     expect(cirurgias.gargalosKpi).toBeUndefined()
   })
 

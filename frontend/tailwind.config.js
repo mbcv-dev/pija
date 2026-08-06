@@ -45,14 +45,6 @@ export default {
         warning: '#da7101',
         caution: '#d19900',
         success: '#437a22',
-        // Escala de intensidade (termômetro de tempos): 0=ótimo … 4=crítico
-        intensity: {
-          0: '#437a22', // verde (ótimo)
-          1: '#9aa61f', // verde-amarelado
-          2: '#d19900', // âmbar
-          3: '#da7101', // laranja
-          4: '#a13544', // vermelho (crítico)
-        },
         // KPI tipo cores
         kpi: {
           '01': '#0F4C81', // atualizado para a brand

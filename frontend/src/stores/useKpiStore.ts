@@ -41,6 +41,13 @@ export const useKpiStore = defineStore('kpi', () => {
    * com os cards.
    */
   let distReqId = 0
+  /**
+   * Cancela a requisição da busca anterior. O guarda de sequência continua sendo
+   * a proteção de CORREÇÃO (abort não é garantia: a resposta pode já estar a
+   * caminho quando ele chega); isto aqui é economia — sem ele, duas mudanças de
+   * filtro seguidas custam duas varreduras completas no backend e só uma é usada.
+   */
+  let distAbort: AbortController | null = null
 
   // ── Actions ───────────────────────────────────────────────────
 
@@ -54,20 +61,25 @@ export const useKpiStore = defineStore('kpi', () => {
     const reqId = ++distReqId
     /** Esta busca ainda é a mais recente? Se não, nada dela pode tocar o estado. */
     const isCurrent = (): boolean => reqId === distReqId
+    distAbort?.abort()
+    const controller = new AbortController()
+    distAbort = controller
     loadingDist.value = true
 
     try {
-      // Mesmos filtros dos KPIs; `group_by` não se aplica (sem breakdown aqui).
-      const { group_by: _semBreakdown, ...params } = filterStore.activeFilters
-      const response = await getDistribuicoes(params)
+      const response = await getDistribuicoes(filterStore.activeFilters, { signal: controller.signal })
       if (!isCurrent()) return  // obsoleta: já há busca mais nova no ar
       distribuicoes.value = new Map(response.distribuicoes.map((d) => [d.codigo, d]))
     } catch (e) {
-      // Silencioso para o USUÁRIO (enhancement: sem `error`, sem ErrorState) —
-      // mas não para o dev: sem este warn, um histograma que some não deixa
-      // rastro nenhum fora da aba Network.
-      console.warn('[useKpiStore] falha ao buscar distribuicoes; histograma oculto', e)
-      if (isCurrent()) distribuicoes.value = new Map()
+      // Cancelamento nosso não é falha: acontece toda vez que o filtro muda
+      // antes da resposta chegar. Warn só para falha de verdade — silencioso
+      // para o USUÁRIO (enhancement: sem `error`, sem ErrorState), mas não para
+      // o dev: sem este warn, um histograma que some não deixa rastro nenhum
+      // fora da aba Network.
+      if (!controller.signal.aborted) {
+        console.warn('[useKpiStore] falha ao buscar distribuicoes; histograma oculto', e)
+        if (isCurrent()) distribuicoes.value = new Map()
+      }
     } finally {
       if (isCurrent()) loadingDist.value = false
     }

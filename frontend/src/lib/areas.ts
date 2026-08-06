@@ -9,7 +9,8 @@ export type AreaId = 'entrada' | 'consultas' | 'exames' | 'internacao' | 'cirurg
  * Ordem = ordem canônica da jornada (mesma do grafo de ciclicidade:
  * consulta antes de exame), não a ordem de citação do doc de feedback.
  * KPI-06 mora em Internação: a âncora do indicador é a internação.
- * KPI-07B não aparece aqui — é submétrica renderizada dentro do card do KPI-07.
+ * KPI-07B e KPI-10B não aparecem aqui — são submétricas renderizadas dentro do
+ * card do seu KPI pai (ver `SUBMETRICA_DE` em KpiGrid.vue).
  */
 export interface AreaJornada {
   id: AreaId
@@ -36,7 +37,7 @@ export const AREAS_JORNADA: AreaJornada[] = [
   },
   {
     id: 'exames', label: 'Exames', icon: 'exame',
-    descricao: 'Solicitação e realização de exames',
+    descricao: 'Da solicitação do exame à liberação do resultado',
     kpis: ['KPI-05'], gargalosKpi: 'KPI-05',
   },
   {
@@ -46,7 +47,10 @@ export const AREAS_JORNADA: AreaJornada[] = [
   },
   {
     id: 'cirurgias', label: 'Cirurgias', icon: 'cirurgia',
-    descricao: 'Procedimentos cirúrgicos — indicadores em desenvolvimento',
-    kpis: [],
+    descricao: 'Do preparo da sala à conclusão do procedimento',
+    // Sem `gargalosKpi`: duração longa costuma ser característica do procedimento,
+    // não ineficiência — ranquear o KPI-10 acusaria a especialidade de cirurgias
+    // pesadas como se fosse gargalo. Decisão deliberadamente em aberto na spec §8.
+    kpis: ['KPI-10'],
   },
 ]

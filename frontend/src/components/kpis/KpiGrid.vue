@@ -16,7 +16,22 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 const store = useKpiStore()
 
 const porCodigo = computed(() => new Map(store.kpis.map((k) => [k.codigo, k])))
-const submetric = computed(() => porCodigo.value.get('KPI-07B'))
+
+/**
+ * Qual KPI é submétrica de qual. Renderiza dentro do card do "pai", não como
+ * card próprio — por isso nenhum destes aparece em `AREAS_JORNADA[].kpis`.
+ * Virou mapa quando o segundo par (cirurgia) chegou; com um só, três literais
+ * espalhados ainda cabiam na cabeça.
+ */
+const SUBMETRICA_DE: Partial<Record<KpiCode, KpiCode>> = {
+  'KPI-07': 'KPI-07B',
+  'KPI-10': 'KPI-10B',
+}
+
+const submetricaDe = (codigo: KpiCode) => {
+  const sub = SUBMETRICA_DE[codigo]
+  return sub ? porCodigo.value.get(sub) : undefined
+}
 
 /** Áreas com os KPIs já resolvidos a partir da resposta da API (ausentes são pulados). */
 const areasComCards = computed(() =>
@@ -38,6 +53,11 @@ const nenhumKpi = computed(() => areasComCards.value.every(({ cards }) => cards.
  * não há espera nem estado de erro — só a ausência do gráfico.
  */
 const distDe = (codigo: KpiCode) => store.distribuicoes.get(codigo)
+
+const subDistDe = (codigo: KpiCode) => {
+  const sub = SUBMETRICA_DE[codigo]
+  return sub ? distDe(sub) : undefined
+}
 
 onMounted(() => {
   store.initWatcher()
@@ -85,16 +105,21 @@ onMounted(() => {
         <div v-if="cards.length > 0" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <KpiCard
             v-for="kpi in cards" :key="kpi.codigo" :kpi="kpi"
-            :submetric="kpi.codigo === 'KPI-07' ? submetric : undefined"
+            :submetric="submetricaDe(kpi.codigo)"
             :dist="distDe(kpi.codigo)"
-            :sub-dist="kpi.codigo === 'KPI-07' ? distDe('KPI-07B') : undefined"
+            :sub-dist="subDistDe(kpi.codigo)"
           />
         </div>
+        <!--
+          Toda área já tem KPI mapeado, mas `cards` vem da RESPOSTA: quando o
+          recorte não devolve o código da área, a seção fica sem card. O texto
+          fala do recorte — prometer roadmap aqui seria mentira desde o KPI-10.
+        -->
         <BaseCard v-else>
           <EmptyState
             :icon="area.icon"
-            title="Sem indicadores nesta área ainda"
-            description="Os indicadores operacionais (cirurgias/partos, cancelamentos…) estão no roadmap — implementação futura."
+            title="Sem indicadores nesta área no recorte"
+            description="Nenhum dos indicadores desta etapa da jornada veio na resposta. Ajuste os filtros."
           />
         </BaseCard>
       </section>

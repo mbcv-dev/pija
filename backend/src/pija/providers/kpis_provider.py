@@ -35,17 +35,25 @@ from pija.unidades import (
 KPI_META: dict[str, tuple[str, str]] = {
     "KPI-01": ("kpis/kpi_01.sql", "Prontuário → 1º evento assistencial"),
     "KPI-03": ("kpis/kpi_03.sql", "Agendamento → realização (consulta)"),
-    "KPI-05": ("kpis/kpi_05.sql", "Solicitação → realização (exame)"),
+    "KPI-05": ("kpis/kpi_05.sql", "Solicitação → liberação (exame)"),
     "KPI-06": ("kpis/kpi_06.sql", "Última consulta → internação subsequente"),
     "KPI-07": ("kpis/kpi_07.sql", "Tempo de permanência no leito"),
     "KPI-07B": ("kpis/kpi_07b.sql", "Alta médica → saída do leito"),
+    "KPI-10": ("kpis/kpi_10.sql", "Duração da cirurgia"),
+    "KPI-10B": ("kpis/kpi_10b.sql", "Entrada na sala → início da cirurgia"),
 }
 
 # code → unidade de tempo das médias (default "dias")
-KPI_UNIDADE_TEMPO: dict[str, str] = {"KPI-07B": "horas"}
+KPI_UNIDADE_TEMPO: dict[str, str] = {"KPI-07B": "horas", "KPI-10": "horas", "KPI-10B": "horas"}
 
 # Recorte fixo de grupos por KPI (decisão HC 2026-06-26). Valores vêm de
 # constantes (whitelist) — nunca de entrada do usuário.
+#
+# KPI-10/KPI-10B ficam DE FORA de propósito: `tipo_entidade = 'CIRURGIA'` no
+# .sql já é um recorte mais estrito que qualquer grupo (evidência em
+# DADOS-ESTADO §13 — praticamente toda cirurgia é "Procedimental", e as poucas
+# exceções não têm por que ser descartadas). `_scope_fragment` devolve string
+# vazia para código ausente, que é exatamente o comportamento desejado.
 KPI_GRUPO_SCOPE: dict[str, list[str]] = {
     "KPI-01": [GRUPO_AMBULATORIAL],
     "KPI-03": [GRUPO_AMBULATORIAL],

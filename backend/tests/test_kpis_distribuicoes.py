@@ -9,24 +9,11 @@ A fixture do banco tem 2–5 casos por KPI, o que não exercita 17 baldes. Por i
 sintético (lista de valores conhecidos), onde dá para conferir balde a balde.
 """
 import pytest
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from pija.main import app
 from pija.providers.kpis_provider import _MEDIAN_SQL, _N_BUCKETS, KpisProvider
 from pija.schemas.common import GroupBy
 from pija.sql_filtros import Filtros
-
-
-@pytest.fixture
-async def client(async_engine, fixture_db_session):
-    """HTTP client (ASGI) apontando para o mesmo engine populado usado por
-    `fixture_db_session` — replica o padrão de test_kpis_multiselect.py para
-    exercitar a rota real /kpis/distribuicoes."""
-    app.state.session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        yield ac
 
 
 def _filtros(**kwargs) -> Filtros:
@@ -56,7 +43,9 @@ async def _medianas(session):
 class TestDistribuicoes:
     async def test_retorna_todos_os_codigos(self, fixture_db_session):
         dists = await _dist(fixture_db_session)
-        assert set(dists) == {"KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B"}
+        assert set(dists) == {
+            "KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B", "KPI-10", "KPI-10B"
+        }
 
     async def test_unidade_tempo_igual_a_do_kpi(self, fixture_db_session):
         dists = await _dist(fixture_db_session)
@@ -292,7 +281,9 @@ class TestDistribuicoesApi:
         resp = await client.get("/api/v1/kpis/distribuicoes")
         assert resp.status_code == 200
         dados = resp.json()["distribuicoes"]
-        assert {d["codigo"] for d in dados} == {"KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B"}
+        assert {d["codigo"] for d in dados} == {
+            "KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B", "KPI-10", "KPI-10B"
+        }
 
     async def test_kpi_codes_invalido_da_400(self, client):
         resp = await client.get("/api/v1/kpis/distribuicoes", params={"kpi_codes": "KPI-99"})

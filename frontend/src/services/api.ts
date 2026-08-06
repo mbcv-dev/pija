@@ -1,7 +1,8 @@
 import axios from 'axios'
+import { z } from 'zod'
 import type { KpiParams, KpiResponse, DistribuicoesParams, DistribuicoesResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem, DimensoesResponse, CiclicidadeParams, CiclicidadeResponse } from '@/types/api.types'
 import { GRUPOS, UNIDADES, ESPECIALIDADES } from '@/types/api.types'
-import { KpiResponseSchema, DistribuicoesResponseSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema, CiclicidadeResponseSchema } from '@/schemas/api.schemas'
+import { KpiResponseSchema, KpiDistribuicaoSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema, CiclicidadeResponseSchema } from '@/schemas/api.schemas'
 import { mockKpis } from '@/mocks/kpis.mock'
 import { mockDistribuicoes } from '@/mocks/distribuicoes.mock'
 import { mockGargalos } from '@/mocks/gargalos.mock'
@@ -80,15 +81,22 @@ function delay(ms = 400): Promise<void> {
 // ── Serviços de API ───────────────────────────────────────────
 
 /**
+ * `signal` das buscas que reagem a filtro: deixa o store cancelar a requisição
+ * obsoleta. Sem isso, duas mudanças de filtro seguidas custam duas varreduras
+ * completas no backend e só a última é usada. Modo mock ignora (não há rede).
+ */
+type ReqOpts = { signal?: AbortSignal }
+
+/**
  * GET /api/v1/kpis/tempos-medios
  * Retorna os 5 KPIs de tempo médio com breakdown por dimensão.
  */
-export async function getKpis(params: KpiParams): Promise<KpiResponse> {
+export async function getKpis(params: KpiParams, opts?: ReqOpts): Promise<KpiResponse> {
   if (USE_MOCK) {
     await delay(500)
     return mockKpis(params)
   }
-  const { data } = await client.get<KpiResponse>('/kpis/tempos-medios', { params })
+  const { data } = await client.get<KpiResponse>('/kpis/tempos-medios', { params, signal: opts?.signal })
   return KpiResponseSchema.parse(data)
 }
 
@@ -97,26 +105,52 @@ export async function getKpis(params: KpiParams): Promise<KpiResponse> {
  * Histograma dos tempos de cada KPI — mostra a cauda que a média/mediana escondem.
  * Batch: uma requisição traz todos os códigos. Mesmos filtros do getKpis;
  * `group_by` não se aplica (a distribuição não tem breakdown por dimensão).
+ *
+ * Valida ENTRADA POR ENTRADA, não a resposta inteira: o histograma é
+ * enhancement e enhancement degrada em partes. Um código desconhecido
+ * (backend com KPI novo, frontend ainda não deployado — janela real, porque o
+ * backend sobe manualmente e o front sobe automático) descartaria os seis
+ * gráficos de uma vez se o parse fosse tudo-ou-nada.
+ * O ENVELOPE continua estrito: se a forma externa está errada, não há o que salvar.
  */
-export async function getDistribuicoes(params: DistribuicoesParams): Promise<DistribuicoesResponse> {
+export async function getDistribuicoes(
+  params: DistribuicoesParams,
+  opts?: ReqOpts,
+): Promise<DistribuicoesResponse> {
   if (USE_MOCK) {
     await delay(300)
     return mockDistribuicoes(params)
   }
-  const { data } = await client.get<DistribuicoesResponse>('/kpis/distribuicoes', { params })
-  return DistribuicoesResponseSchema.parse(data)
+  const { data } = await client.get<unknown>('/kpis/distribuicoes', { params, signal: opts?.signal })
+
+  const envelope = z.object({ distribuicoes: z.array(z.unknown()) }).parse(data)
+
+  const distribuicoes: DistribuicoesResponse['distribuicoes'] = []
+  for (const bruta of envelope.distribuicoes) {
+    const r = KpiDistribuicaoSchema.safeParse(bruta)
+    if (r.success) {
+      distribuicoes.push(r.data)
+    } else {
+      const codigo = (bruta as { codigo?: unknown })?.codigo ?? '(sem codigo)'
+      console.warn(
+        `[api] distribuicao descartada para ${String(codigo)}; os demais graficos seguem`,
+        r.error.issues,
+      )
+    }
+  }
+  return { distribuicoes }
 }
 
 /**
  * GET /api/v1/gargalos
  * Retorna o ranking dos piores tempos médios, do pior para o melhor.
  */
-export async function getGargalos(params: GargaloParams): Promise<GargalosResponse> {
+export async function getGargalos(params: GargaloParams, opts?: ReqOpts): Promise<GargalosResponse> {
   if (USE_MOCK) {
     await delay(400)
     return mockGargalos(params)
   }
-  const { data } = await client.get<GargalosResponse>('/gargalos', { params })
+  const { data } = await client.get<GargalosResponse>('/gargalos', { params, signal: opts?.signal })
   return GargalosResponseSchema.parse(data)
 }
 
@@ -140,6 +174,7 @@ export async function getEventos(params: EventosParams): Promise<EventosResponse
  */
 export async function getDimensoes(
   params: { grupo?: string[]; unidade?: string[] } = {},
+  opts?: ReqOpts,
 ): Promise<DimensoesResponse> {
   if (USE_MOCK) {
     await delay(200)
@@ -154,7 +189,7 @@ export async function getDimensoes(
       especialidades: [...ESPECIALIDADES],
     }
   }
-  const { data } = await client.get<DimensoesResponse>('/dimensoes', { params })
+  const { data } = await client.get<DimensoesResponse>('/dimensoes', { params, signal: opts?.signal })
   return DimensoesResponseSchema.parse(data)
 }
 
@@ -179,7 +214,10 @@ export async function getJornada(pacienteId: string): Promise<EventoItem[]> {
  * GET /api/v1/ciclicidade/transicoes
  * Fluxo agregado de transições entre etapas (coorte) ou de um paciente (paciente_id).
  */
-export async function getCiclicidade(params: CiclicidadeParams = {}): Promise<CiclicidadeResponse> {
+export async function getCiclicidade(
+  params: CiclicidadeParams = {},
+  opts?: ReqOpts,
+): Promise<CiclicidadeResponse> {
   if (USE_MOCK) {
     await delay(400)
     return {
@@ -197,6 +235,9 @@ export async function getCiclicidade(params: CiclicidadeParams = {}): Promise<Ci
       ],
     }
   }
-  const { data } = await client.get<CiclicidadeResponse>('/ciclicidade/transicoes', { params })
+  const { data } = await client.get<CiclicidadeResponse>('/ciclicidade/transicoes', {
+    params,
+    signal: opts?.signal,
+  })
   return CiclicidadeResponseSchema.parse(data)
 }

@@ -15,7 +15,10 @@ export interface BaseFilterParams {
 
 // ── KPIs ─────────────────────────────────────────────────────
 
-export type KpiCode = 'KPI-01' | 'KPI-03' | 'KPI-05' | 'KPI-06' | 'KPI-07' | 'KPI-07B'
+// Esta lista tem duas irmãs que precisam andar junto: `KpiCodeSchema`
+// (schemas/api.schemas.ts) e o array `ordem` de MetodologiaView.vue — o último
+// falha em SILÊNCIO, a página só deixa de listar o indicador.
+export type KpiCode = 'KPI-01' | 'KPI-03' | 'KPI-05' | 'KPI-06' | 'KPI-07' | 'KPI-07B' | 'KPI-10' | 'KPI-10B'
 export type GroupBy = 'unidade' | 'especialidade'
 
 export interface KpiParams extends BaseFilterParams {
@@ -153,8 +156,6 @@ export interface KpiMeta {
   icon: string
   aviso?: string
   nota?: string
-  /** meta em horas (só KPI-07B) */
-  metaHoras?: number
   /** Metodologia (página "Como calculamos") */
   ancora?: string
   unidadeTempo?: 'dias' | 'horas'
@@ -175,11 +176,16 @@ export const KPI_META: Record<KpiCode, KpiMeta> = {
     regras: 'Eventos do tipo CONSULTA com agendamento e realização preenchidos. Exclui realização anterior ao agendamento e unidades inativas.',
   },
   'KPI-05': {
-    label: 'Solicitação → realização do exame', icon: 'flask',
+    label: 'Solicitação → liberação do exame', icon: 'flask',
     aviso: 'Dados de exames limitados a jan–mai/2026',
-    ancora: 'Da solicitação do exame até a sua realização.',
+    ancora: 'Da solicitação do exame até a liberação do resultado.',
     unidadeTempo: 'dias',
-    regras: 'Eventos do tipo EXAME com solicitação e realização preenchidos. Exclui realização anterior à solicitação e unidades inativas.',
+    regras:
+      'Eventos do tipo EXAME com solicitação e liberação preenchidas — ou seja, apenas exames ' +
+      'cujo resultado já foi liberado. Exclui liberação anterior à solicitação e unidades inativas. ' +
+      'Atenção: 55% dos exames ainda não foram liberados (a coletar, a executar, cancelados) e ' +
+      'NÃO entram na conta. O indicador responde "dos exames liberados, quanto tempo levou" e não ' +
+      'enxerga a fila parada: um exame aguardando coleta há dois anos contribui com zero para este número.',
   },
   'KPI-06': {
     label: 'Última consulta → internação', icon: 'hospital',
@@ -196,10 +202,30 @@ export const KPI_META: Record<KpiCode, KpiMeta> = {
   },
   'KPI-07B': {
     label: 'Alta médica → saída do leito', icon: 'bed',
-    metaHoras: 4,
     ancora: 'Da alta médica até a saída efetiva do leito (alta administrativa).',
     unidadeTempo: 'horas',
-    regras: 'Meta de 4 horas. Exclui saída anterior à alta médica e unidades inativas.',
+    // Sem menção a meta: a barra de 4h saiu do card porque uma meta única exibida
+    // num único KPI cria assimetria sem explicação na tela. Esta frase era o último
+    // lugar do app que ainda afirmava a meta — e ela nunca foi regra de cálculo.
+    regras: 'Exclui saída anterior à alta médica e unidades inativas.',
+  },
+  'KPI-10': {
+    label: 'Duração da cirurgia', icon: 'cirurgia',
+    ancora: 'Do início ao fim da cirurgia, para cirurgias realizadas.',
+    unidadeTempo: 'horas',
+    regras:
+      'Eventos do tipo CIRURGIA com situação RZDA (realizada) e início e fim preenchidos. ' +
+      'Cirurgias canceladas ou apenas agendadas não entram. Exclui fim anterior ao início e ' +
+      'unidades inativas. Duração longa costuma ser característica do procedimento, não ' +
+      'ineficiência — compare dentro da mesma especialidade.',
+  },
+  'KPI-10B': {
+    label: 'Entrada na sala → início da cirurgia', icon: 'cirurgia',
+    ancora: 'Do momento em que o paciente entra na sala até a cirurgia começar.',
+    unidadeTempo: 'horas',
+    regras:
+      'Mesmo recorte do KPI-10, exigindo também a entrada na sala preenchida. É o tempo com a ' +
+      'sala ocupada sem procedimento em curso — depende da organização, não do procedimento.',
   },
 }
 

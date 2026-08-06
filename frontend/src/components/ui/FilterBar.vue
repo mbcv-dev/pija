@@ -4,7 +4,6 @@ import { useFilterStore } from '@/stores/useFilterStore'
 import { useDimensoesStore } from '@/stores/useDimensoesStore'
 import { expandirEspecialidades, separarEspecialidade } from '@/lib/dimensoes'
 import FilterSelect from './FilterSelect.vue'
-import SegmentedControl from './SegmentedControl.vue'
 import BaseButton from './BaseButton.vue'
 
 const filter = useFilterStore()
@@ -60,11 +59,6 @@ watch(
   },
   { deep: true },
 )
-
-const groupByOptions = [
-  { value: 'unidade', label: 'Por unidade' },
-  { value: 'especialidade', label: 'Por especialidade' },
-]
 </script>
 
 <template>
@@ -111,10 +105,6 @@ const groupByOptions = [
         />
       </label>
       <div class="ml-auto flex items-center gap-3">
-        <SegmentedControl
-          :model-value="filter.groupBy" :options="groupByOptions"
-          @update:model-value="filter.setGroupBy($event as 'unidade' | 'especialidade')"
-        />
         <BaseButton v-if="filter.activeCount > 0" variant="ghost" @click="filter.reset()">
           Limpar ({{ filter.activeCount }})
         </BaseButton>

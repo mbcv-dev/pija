@@ -1,58 +1,37 @@
-from datetime import date
-
 from fastapi import Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pija.db import get_db
+from pija.deps.filtros_dep import filtros_comuns
 from pija.providers.kpis_provider import ALL_KPIS, KpisProvider
 from pija.schemas.common import GroupBy
 from pija.schemas.kpis_schema import DistribuicoesResponse, KpisResponse
 from pija.sql_filtros import Filtros
 
 
-async def get_kpis(
-    kpi_codes: list[str] | None = Query(None, description="Subconjunto de KPIs a retornar (repita o parâmetro). Default: todos."),
-    group_by: GroupBy = Query(GroupBy.unidade, description="Dimensão do breakdown: `unidade` (default) ou `especialidade`."),
-    unidade: list[str] | None = Query(None, description="Restringe a uma ou mais unidades (repita o parâmetro)."),
-    especialidade: list[str] | None = Query(None, description="Restringe a uma ou mais especialidades (repita o parâmetro)."),
-    grupo: list[str] | None = Query(None, description="Restringe a um ou mais grupos assistenciais (repita o parâmetro)."),
-    data_inicio: date | None = Query(None, description="Considera apenas eventos a partir desta data. Formato: `YYYY-MM-DD`"),
-    data_fim: date | None = Query(None, description="Considera apenas eventos até esta data. Formato: `YYYY-MM-DD`"),
-    session: AsyncSession = Depends(get_db),
-) -> KpisResponse:
+def _validar_kpi_codes(kpi_codes: list[str] | None) -> None:
+    """400 em código desconhecido — mesma regra dos dois endpoints."""
     if kpi_codes:
         invalidos = [c for c in kpi_codes if c not in ALL_KPIS]
         if invalidos:
             raise HTTPException(status_code=400, detail=f"kpi_codes inválidos: {invalidos}")
-    filtros = Filtros(
-        unidade=unidade,
-        especialidade=especialidade,
-        grupo=grupo,
-        data_inicio=data_inicio.isoformat() if data_inicio else None,
-        data_fim=data_fim.isoformat() if data_fim else None,
-    )
+
+
+async def get_kpis(
+    kpi_codes: list[str] | None = Query(None, description="Subconjunto de KPIs a retornar (repita o parâmetro). Default: todos."),
+    group_by: GroupBy = Query(GroupBy.unidade, description="Dimensão do breakdown: `unidade` (default) ou `especialidade`."),
+    filtros: Filtros = Depends(filtros_comuns),
+    session: AsyncSession = Depends(get_db),
+) -> KpisResponse:
+    _validar_kpi_codes(kpi_codes)
     return await KpisProvider(session).get_kpis(kpi_codes=kpi_codes, group_by=group_by, filtros=filtros)
 
 
 async def get_distribuicoes(
     kpi_codes: list[str] | None = Query(None, description="Subconjunto de KPIs a retornar (repita o parâmetro). Default: todos."),
-    unidade: list[str] | None = Query(None, description="Restringe a uma ou mais unidades (repita o parâmetro)."),
-    especialidade: list[str] | None = Query(None, description="Restringe a uma ou mais especialidades (repita o parâmetro)."),
-    grupo: list[str] | None = Query(None, description="Restringe a um ou mais grupos assistenciais (repita o parâmetro)."),
-    data_inicio: date | None = Query(None, description="Considera apenas eventos a partir desta data. Formato: `YYYY-MM-DD`"),
-    data_fim: date | None = Query(None, description="Considera apenas eventos até esta data. Formato: `YYYY-MM-DD`"),
+    filtros: Filtros = Depends(filtros_comuns),
     session: AsyncSession = Depends(get_db),
 ) -> DistribuicoesResponse:
     # Sem group_by: a distribuição não tem breakdown por dimensão, só o histograma global.
-    if kpi_codes:
-        invalidos = [c for c in kpi_codes if c not in ALL_KPIS]
-        if invalidos:
-            raise HTTPException(status_code=400, detail=f"kpi_codes inválidos: {invalidos}")
-    filtros = Filtros(
-        unidade=unidade,
-        especialidade=especialidade,
-        grupo=grupo,
-        data_inicio=data_inicio.isoformat() if data_inicio else None,
-        data_fim=data_fim.isoformat() if data_fim else None,
-    )
+    _validar_kpi_codes(kpi_codes)
     return await KpisProvider(session).get_distribuicoes(kpi_codes=kpi_codes, filtros=filtros)

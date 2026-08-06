@@ -76,3 +76,93 @@ backend, então é latente — mas é um acoplamento para saber antes de adicion
 
 **Escopo quando for feito:** decidir se vale degradar por KPI em vez de por resposta. Só faz sentido
 se o conjunto de códigos passar a variar entre backend e frontend.
+
+## 7. O halo da linha da mediana repinta a barra por cima (bug de desenho)
+
+Achado na verificação no browser do KPI-05 (2026-08-05), com dado real.
+
+A linha da mediana no `HistogramaTempos.vue` tem um halo de `stroke-width="3.5"` na cor da
+superfície, desenhado **depois** — e portanto por cima — das barras. Quando a mediana cai perto da
+origem, o halo cobre parte da primeira barra e a repinta com a cor de fundo.
+
+No KPI-05 é o pior caso: mediana em `x = 1,655` de um eixo de 259,76 unidades (**0,64%**), halo
+cobrindo `x ∈ [-0,1; 3,4]` contra uma barra que ocupa `[0; 14,735]` — **23% da largura da barra
+mais alta é repintada de fundo**. A barra que concentra 66,75% dos casos renderiza visivelmente
+mais estreita e com um entalhe, nos dois temas. É geometria sendo lida como dado.
+
+Pré-existente e mais brando em KPI-01 e KPI-07B (~12%), onde metade do halo cai fora do viewBox.
+
+**Escopo quando for feito:** recortar o halo contra a barra, ou suprimi-lo quando a mediana cai
+dentro do primeiro balde. É bug de desenho, não decisão de spec — não confundir com o item 8.
+
+## 8. O histograma não sustenta a mediana quando a assimetria é extrema
+
+Mesmo achado, mas é **decisão de produto, não bug**. No KPI-05, `p95/p50 = 157×`: a mediana de
+9,6 h fica a 1,9 px da origem num eixo que vai até 62,9 dias. O gráfico comunica bem a cauda
+("21 mil exames levaram mais de 2 meses") e o decaimento — a escala raiz é o que salva isso —,
+mas **não dá nenhum apoio geométrico ao número grande do card**. O leitor não chega em 9,6 h
+olhando o desenho.
+
+Vale para KPI-01 e KPI-07B também, em grau menor. A saída seria eixo X logarítmico ou uma visão
+ampliada do primeiro balde — mudança de componente que afeta todos os KPIs de uma vez, com
+tradeoff próprio (log no eixo do tempo é difícil de ler para quem não é técnico).
+
+**Escopo quando for feito:** frente própria, com brainstorm — não emendar num plano existente.
+
+## 9. `fetchKpis` continua sem cancelamento
+
+Achado durante a execução da frente de endurecimento (2026-08-05/06), Task 5.
+
+A Task 5 do plano de [endurecimento](2026-08-05-endurecimento-backlog.md) mandou `getKpis` aceitar
+`opts.signal` (Step 3), mas os Steps 4-5 só mandaram ligar o `AbortController` em
+`fetchDistribuicoes`, `useGargaloStore`, `useCiclicidadeStore` e `useDimensoesStore`. O parâmetro
+existe em `getKpis` e **ninguém passa** — é superfície morta hoje.
+
+`fetchKpis` é a query mais cara do dashboard (seis KPIs com breakdown), então é justamente onde o
+cancelamento economizaria mais. Não foi ligado porque ampliar o escopo no meio da execução é o tipo
+de decisão que o plano existe para evitar.
+
+**Escopo quando for feito:** os mesmos quatro elementos do Step 4 daquele plano. Atenção: `fetchKpis`
+**seta `error`** e **não tem guarda de sequência**, então cai na mesma armadilha que
+`useGargaloStore`/`useCiclicidadeStore` — o guarda `if (!controller.signal.aborted)` precisa
+envolver tanto a atribuição de `error` quanto o `finally` que baixa o `loading`, senão toda troca
+rápida de filtro pinta um ErrorState ou faz o skeleton piscar.
+
+## 10. O parse por KPI protege o histograma, mas não os cards
+
+Achado na review final da branch `feat/endurecimento-e-cirurgia` (2026-08-06).
+
+A Task 4 da frente de endurecimento fez `getDistribuicoes` validar entrada por entrada, para que um
+código de KPI desconhecido derrube **um** gráfico e não os seis. Mas `getKpis` e `getGargalos`
+continuam com `.parse` tudo-ou-nada contra o **mesmo** `KpiCodeSchema` — e `activeFilters` não manda
+`kpi_codes`, então o frontend pede **todos** os KPIs e o backend devolve tudo que estiver em
+`KPI_META`.
+
+Na mesma janela de skew que o comentário do `api.ts` descreve (backend sobe manual, front sobe
+automático), um KPI-11 futuro faria `KpiResponseSchema.parse` lançar → `useKpiStore` seta `error` →
+`KpiGrid` troca o **dashboard inteiro** por `ErrorState`. A rede de segurança foi instalada no
+enhancement e esquecida no caminho crítico.
+
+**Não é risco nesta branch:** o KPI-10/10B entrou no enum junto, então o skew não acontece aqui. É o
+próximo KPI que morde.
+
+**Escopo quando for feito:** aplicar o mesmo loop de `safeParse` por entrada que já existe em
+`getDistribuicoes`, ou afrouxar `codigo`/`transicao` para `z.string()` e filtrar desconhecidos na
+camada de render. Fazer junto com o item 9 — é o mesmo arquivo e o mesmo store.
+
+## 11. `fetchKpis` guarda o histograma e deixa os cards
+
+Mesma review. Complementa o item 9 com o motivo pelo qual ele ficou pior do que era.
+
+A branch colocou `AbortController` + guarda de identidade em quatro buscas e deixou de fora
+justamente `fetchKpis`, que alimenta os cards principais. O comentário do próprio `useKpiStore` diz
+que uma resposta atrasada pintaria "um histograma que não bate com os cards" — agora o **histograma
+está protegido e os cards não**, então duas trocas rápidas de filtro produzem exatamente a
+inconsistência que o comentário queria evitar, só que com os papéis invertidos.
+
+`getKpis` já aceita `opts?: ReqOpts`; o store simplesmente nunca passa.
+
+**Escopo quando for feito:** guarda de **identidade** (`abortAtual === controller`), não de
+`signal.aborted` — `fetchKpis` seta `error` e não tem guarda de sequência, então precisa cobrir os
+três pontos (escrita de sucesso, `catch` e `finally`), como foi feito em `useGargaloStore` e
+`useCiclicidadeStore` no commit `ae67fe7`.
