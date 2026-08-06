@@ -43,7 +43,9 @@ async def _medianas(session):
 class TestDistribuicoes:
     async def test_retorna_todos_os_codigos(self, fixture_db_session):
         dists = await _dist(fixture_db_session)
-        assert set(dists) == {"KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B"}
+        assert set(dists) == {
+            "KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B", "KPI-10", "KPI-10B"
+        }
 
     async def test_unidade_tempo_igual_a_do_kpi(self, fixture_db_session):
         dists = await _dist(fixture_db_session)
@@ -279,7 +281,9 @@ class TestDistribuicoesApi:
         resp = await client.get("/api/v1/kpis/distribuicoes")
         assert resp.status_code == 200
         dados = resp.json()["distribuicoes"]
-        assert {d["codigo"] for d in dados} == {"KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B"}
+        assert {d["codigo"] for d in dados} == {
+            "KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B", "KPI-10", "KPI-10B"
+        }
 
     async def test_kpi_codes_invalido_da_400(self, client):
         resp = await client.get("/api/v1/kpis/distribuicoes", params={"kpi_codes": "KPI-99"})

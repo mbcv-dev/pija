@@ -36,7 +36,7 @@ async def test_kpis_retorna_200(client_banco_vazio):
     r = await client_banco_vazio.get("/api/v1/kpis/tempos-medios")
     assert r.status_code == 200
     data = r.json()
-    assert len(data["kpis"]) == 6
+    assert len(data["kpis"]) == 8
     assert all("breakdown" in k for k in data["kpis"])
 
 

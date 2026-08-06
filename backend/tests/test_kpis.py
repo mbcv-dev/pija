@@ -27,12 +27,27 @@ async def _kpis(session, *, unidade=None, especialidade=None, grupo=None,
 
 
 class TestKpisProvider:
-    async def test_retorna_6_kpis(self, fixture_db_session):
+    async def test_retorna_todos_os_kpis(self, fixture_db_session):
         kpis = await _kpis(fixture_db_session)
-        assert set(kpis) == {"KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B"}
+        assert set(kpis) == {
+            "KPI-01", "KPI-03", "KPI-05", "KPI-06", "KPI-07", "KPI-07B", "KPI-10", "KPI-10B"
+        }
         for code, k in kpis.items():
-            expected_unit = "horas" if code == "KPI-07B" else "dias"
+            expected_unit = "horas" if code in {"KPI-07B", "KPI-10", "KPI-10B"} else "dias"
             assert k.unidade_tempo == expected_unit
+
+    async def test_kpis_de_cirurgia_estao_registrados(self, fixture_db_session):
+        """Os dois códigos novos entram na resposta batch, mesmo sem dado na fixture.
+
+        A fixture não tem cirurgias — sem dado o KPI vem com media_global None e
+        n_global 0, que é o contrato de "KPI sem dados no recorte". O que este
+        teste fixa é o REGISTRO: se alguém esquecer de adicionar ao KPI_META, os
+        endpoints batch simplesmente não devolvem o código e ninguém percebe.
+        """
+        kpis = await _kpis(fixture_db_session)
+        assert {"KPI-10", "KPI-10B"} <= set(kpis)
+        assert kpis["KPI-10"].n_global == 0
+        assert kpis["KPI-10"].media_global is None
 
     async def test_kpi_07b_alta_saida_horas(self, fixture_db_session):
         k = (await _kpis(fixture_db_session))["KPI-07B"]
@@ -116,6 +131,31 @@ class TestKpisProvider:
         assert "timestamp_liberacao" in sem_comentarios
         assert "timestamp_realizacao" not in sem_comentarios
 
+    async def test_kpis_de_cirurgia_medem_duracao_e_espera_em_sala(self, session_cirurgias):
+        """KPI-10 = início→fim; KPI-10B = entrada na sala→início; ambos em horas.
+
+        Fixa o significado das colunas genéricas do fato para CIRURGIA
+        (DADOS-ESTADO §4.6): `timestamp_agendamento` é a ENTRADA NA SALA, não um
+        agendamento. Trocar as colunas por engano continuaria devolvendo número —
+        só que o número errado, e ninguém notaria.
+        """
+        kpis = await _kpis(session_cirurgias)
+        # Realizadas: durações 2h e 4h → mediana 3h; esperas 1h e 0,5h → mediana 0,75h.
+        assert kpis["KPI-10"].n_global == 2
+        assert kpis["KPI-10"].media_global == pytest.approx(3.0, abs=1e-9)
+        assert kpis["KPI-10B"].n_global == 2
+        assert kpis["KPI-10B"].media_global == pytest.approx(0.75, abs=1e-9)
+
+    async def test_kpi_10_ignora_cirurgia_nao_realizada(self, session_cirurgias):
+        """Cancelada/agendada não tem duração — só `situacao='RZDA'` entra.
+
+        A cancelada da fixture tem os três timestamps preenchidos de propósito:
+        sem o filtro de situação ela passaria pelas guardas de nulo e de ordem e
+        entraria na conta em silêncio.
+        """
+        k = (await _kpis(session_cirurgias))["KPI-10"]
+        assert k.n_global == 2  # 4 cirurgias na fixture, 2 realizadas e coerentes
+
     async def test_kpi_05_so_conta_exame_com_resultado_liberado(self, session_exames_liberacao):
         """Só entra exame liberado — os outros dois são excluídos por motivos diferentes.
 
@@ -160,6 +200,49 @@ async def session_exames_liberacao(async_engine):
                    timestamp_realizacao="2024-05-10", timestamp_liberacao="2024-05-01",
                    unidade="UAC: BIOQUÍMICA", grupo="Análises Clínicas", especialidade="CARDIOLOGIA",
                    situacao="LIBERADO", dt_carga="2024-01-01"),
+    ]
+    async with factory() as session:
+        session.add_all(eventos)
+        await session.commit()
+    async with factory() as session:
+        yield session
+
+
+@pytest.fixture
+async def session_cirurgias(async_engine):
+    """Banco próprio com 4 cirurgias: 2 realizadas coerentes, 1 cancelada, 1 incoerente.
+
+    Banco separado pelo mesmo motivo de `session_exames_liberacao`: a fixture
+    compartilhada tem contagem de eventos fixada por `test_eventos.py`.
+
+    Timestamps no formato que o ETL grava (`%Y-%m-%dT%H:%M:%S`, ver
+    `etl/parsers.py`) — se um dia esse formato mudar para algo que o JULIANDAY
+    do SQLite não entenda, o KPI viraria NULL em silêncio e estes testes caem.
+    """
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from pija.models.fato import FatoEvento
+
+    factory = async_sessionmaker(async_engine, expire_on_commit=False)
+
+    def cirurgia(cid, entrada, inicio, fim, situacao):
+        return FatoEvento(
+            evento_id=f"X-{cid}", paciente_id=f"9{cid}", tipo_entidade="CIRURGIA",
+            entidade_id=str(cid), timestamp_agendamento=entrada,
+            timestamp_principal=inicio, timestamp_realizacao=fim,
+            unidade="BLOCO CIRURGICO", grupo="Procedimental", especialidade="CARDIOLOGIA",
+            tipo_evento="CIRURGIA/ELETIVA", situacao=situacao, dt_carga="2024-01-01",
+        )
+
+    eventos = [
+        # Realizadas: duração 2h/4h (mediana 3h), espera em sala 1h/0,5h (mediana 0,75h).
+        cirurgia(1, "2024-05-01T08:00:00", "2024-05-01T09:00:00", "2024-05-01T11:00:00", "RZDA"),
+        cirurgia(2, "2024-05-02T13:30:00", "2024-05-02T14:00:00", "2024-05-02T18:00:00", "RZDA"),
+        # Cancelada com os três timestamps preenchidos: só o filtro de situação a exclui.
+        cirurgia(3, "2024-05-03T07:00:00", "2024-05-03T08:00:00", "2024-05-03T10:00:00", "CANC"),
+        # Realizada, mas incoerente: sem fim (fora do KPI-10) e entrada DEPOIS do
+        # início (fora do KPI-10B, pela guarda de ordem).
+        cirurgia(4, "2024-05-04T12:00:00", "2024-05-04T10:00:00", None, "RZDA"),
     ]
     async with factory() as session:
         session.add_all(eventos)
