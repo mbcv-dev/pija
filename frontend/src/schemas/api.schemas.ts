@@ -45,6 +45,36 @@ export const KpiDistribuicaoSchema = z.object({
   n_total: z.number().int().nonnegative(),
   // Vazio quando n_total = 0; 1 balde quando todos os casos são zero.
   buckets: z.array(DistBucketSchema),
+}).superRefine((d, ctx) => {
+  // O mock já era testado contra estas duas invariantes; aqui elas passam a
+  // valer para o dado REAL, que é de onde o gráfico realmente lê.
+  if (d.buckets.length === 0) return // sem dados: nada a verificar
+
+  const caudas = d.buckets.filter((b) => b.ate === null)
+  if (caudas.length !== 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `esperava exatamente 1 balde de cauda aberta, veio ${caudas.length}`,
+      path: ['buckets'],
+    })
+  } else if (d.buckets[d.buckets.length - 1].ate !== null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'a cauda aberta precisa ser o ultimo balde',
+      path: ['buckets'],
+    })
+  }
+
+  // HistogramaTempos escala o eixo por `teto` e desenha a cauda a partir de
+  // buckets[last].de — divergência aqui faz o gráfico mentir sobre a cauda.
+  const ultimo = d.buckets[d.buckets.length - 1]
+  if (d.teto !== null && d.teto !== ultimo.de) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `teto (${d.teto}) precisa ser igual ao inicio do ultimo balde (${ultimo.de})`,
+      path: ['teto'],
+    })
+  }
 })
 
 export const DistribuicoesResponseSchema = z.object({
