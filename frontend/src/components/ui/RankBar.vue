@@ -25,6 +25,7 @@ defineProps<{
       </div>
       <div class="mt-1.5 h-2 rounded-full bg-surface-offset dark:bg-surface-dark-offset overflow-hidden">
         <div
+          data-barra
           class="h-full rounded-full transition-all duration-500"
           :class="barClass"
           :style="{ width: `${Math.max(2, Math.min(100, ratio * 100)).toFixed(1)}%` }"

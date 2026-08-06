@@ -2,13 +2,20 @@
 import { computed } from 'vue'
 import RankBar from '@/components/ui/RankBar.vue'
 import { formatDuration, formatCasos } from '@/lib/format'
-import { intensityLevel, intensityBarClass } from '@/lib/intensity'
 import { KPI_META } from '@/types/api.types'
 import type { GargaloItem as GargaloItemType } from '@/types/api.types'
 
 const props = defineProps<{ item: GargaloItemType; position: number; maxMedia: number }>()
 
-const barClass = computed(() => intensityBarClass(intensityLevel(props.item.media, 0, props.maxMedia)))
+/**
+ * Cor única, de propósito. A escala por magnitude que existia aqui afirmava
+ * "tempo maior = pior", e isso nem sempre é verdade: parte das unidades leva
+ * mais tempo pela natureza do que faz, e isso é o hospital funcionando. O
+ * comprimento da barra continua codificando o tempo — a informação não se
+ * perde, só deixa de vir com julgamento embutido.
+ */
+const BARRA = 'bg-primary dark:bg-accent'
+
 const transicaoLabel = computed(() => KPI_META[props.item.transicao]?.label ?? props.item.transicao)
 </script>
 
@@ -18,7 +25,7 @@ const transicaoLabel = computed(() => KPI_META[props.item.transicao]?.label ?? p
     :label="item.dimensao"
     :value="formatDuration(item.media, 'dias')"
     :ratio="maxMedia > 0 ? item.media / maxMedia : 0"
-    :bar-class="barClass"
+    :bar-class="BARRA"
     :caption="`${transicaoLabel} · ${formatCasos(item.n)}`"
   />
 </template>

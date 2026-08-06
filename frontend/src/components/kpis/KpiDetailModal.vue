@@ -3,7 +3,6 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { KpiItem } from '@/types/api.types'
 import { KPI_META } from '@/types/api.types'
 import { formatDuration, formatCasos } from '@/lib/format'
-import { intensityLevel, intensityBarClass } from '@/lib/intensity'
 import Icon from '@/components/ui/Icon.vue'
 import RankBar from '@/components/ui/RankBar.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
@@ -41,9 +40,13 @@ watch([busca, ordem], () => { pagina.value = 1 })
 // Clamp se a lista encolher.
 watch(totalPaginas, (t) => { if (pagina.value > t) pagina.value = t })
 
-function barClass(media: number): string {
-  return intensityBarClass(intensityLevel(media, 0, maxMedia.value))
-}
+/**
+ * Cor única — mesma razão do ranking de Gargalos: a escala por magnitude
+ * afirmava "tempo maior = pior", e nem todo tempo maior é problema. O
+ * comprimento da barra segue proporcional à média (via `maxMedia`, que
+ * mantém a escala comum entre as páginas do modal).
+ */
+const BARRA = 'bg-primary dark:bg-accent'
 
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
@@ -120,7 +123,7 @@ onUnmounted(() => {
             :label="item.dimensao"
             :value="formatDuration(item.media, kpi.unidade_tempo)"
             :ratio="item.media / maxMedia"
-            :bar-class="barClass(item.media)"
+            :bar-class="BARRA"
             :caption="formatCasos(item.n)"
           />
         </div>
