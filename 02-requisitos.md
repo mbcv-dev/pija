@@ -65,8 +65,19 @@
 | KPI-05 | Tempo médio solicitação → liberação (exame) | `AVG(ts_liberacao - ts_solicitacao)` | Exames | ✅ |
 | KPI-06 | Tempo médio solicitação → internação | `AVG(ts_internacao - ts_solicitacao)` | Internações | ✅ |
 | KPI-07 | Tempo médio de internação | `AVG(ts_alta_administrativa - ts_internacao)` | Internações + Altas | ✅ |
+| KPI-07B | Alta médica → saída do leito (submétrica do KPI-07) | `MEDIAN(ts_alta_administrativa - ts_alta_medica)` | Internações + Altas | ✅ |
 | KPI-08 | Volume de eventos por período/unidade/especialidade | `COUNT(eventos) GROUP BY filtro` | Todas | ⏸ Pós-MVP |
 | KPI-09 | Proporção de encaminhamentos por tipo | `COUNT(por_tipo) / COUNT(total)` | Consultas | ⏸ Pós-MVP |
+| KPI-10 | Tempo de duração da cirurgia | `MEDIAN(ts_fim_cirurgia - ts_inicio_cirurgia)` | Cirurgias | ✅ |
+| KPI-10B | Espera em sala (entrada → início), submétrica do KPI-10 | `MEDIAN(ts_inicio_cirurgia - ts_entrada_sala)` | Cirurgias | ✅ |
+
+> **Sobre a fórmula:** a coluna diz `AVG` por herança do desenho original, mas os KPIs implementados
+> reportam **mediana**, não média — decisão tomada porque as distribuições têm cauda longa e a média
+> era puxada por outliers extremos (o KPI-10B, por exemplo, tem um caso de 366 dias). O campo da API
+> continua se chamando `media_global` por compatibilidade.
+>
+> **Submétricas** (`KPI-07B`, `KPI-10B`) não têm card próprio: renderizam dentro do card do KPI pai.
+> Por isso não aparecem em `AREAS_JORNADA[].kpis` no frontend.
 
 ---
 

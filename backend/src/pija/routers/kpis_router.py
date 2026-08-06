@@ -11,17 +11,26 @@ router.add_api_route(
     response_model=KpisResponse,
     summary="Tempos médios da jornada (KPIs)",
     description=(
-        "Calcula os 5 KPIs de tempo médio que medem a eficiência da jornada assistencial.\n\n"
-        "| Código | O que mede |\n"
-        "|--------|------------|\n"
-        "| KPI-01 | Dias entre abertura do prontuário e o 1º evento clínico |\n"
-        "| KPI-03 | Dias entre agendamento e realização da consulta |\n"
-        "| KPI-05 | Dias entre solicitação e liberação do resultado do exame |\n"
-        "| KPI-06 | Dias entre a última consulta e a internação subsequente |\n"
-        "| KPI-07 | Dias de permanência no leito (inclui período pós-alta médica) |\n\n"
+        "Calcula os KPIs de tempo que medem a eficiência da jornada assistencial.\n\n"
+        "O valor reportado é a **mediana**, não a média — as distribuições têm cauda longa e a "
+        "média era puxada por outliers extremos. O campo continua se chamando `media_global` por "
+        "compatibilidade.\n\n"
+        "| Código | O que mede | Unidade |\n"
+        "|--------|------------|---------|\n"
+        "| KPI-01 | Da abertura do prontuário ao 1º evento clínico | dias |\n"
+        "| KPI-03 | Do agendamento à realização da consulta | dias |\n"
+        "| KPI-05 | Da solicitação à liberação do resultado do exame | dias |\n"
+        "| KPI-06 | Da última consulta à internação subsequente | dias |\n"
+        "| KPI-07 | Permanência no leito (inclui período pós-alta médica) | dias |\n"
+        "| KPI-07B | Da alta médica à saída do leito — submétrica do KPI-07 | horas |\n"
+        "| KPI-10 | Do início ao fim da cirurgia, só cirurgias realizadas | horas |\n"
+        "| KPI-10B | Da entrada na sala ao início da cirurgia — submétrica do KPI-10 | horas |\n\n"
         "Todos os filtros são opcionais. Sem filtros, o cálculo considera toda a base."
     ),
-    response_description="Lista dos 5 KPIs com média em dias, volume de registros e avisos quando aplicável",
+    response_description=(
+        "Lista dos KPIs com a mediana na unidade de cada um, volume de registros e avisos "
+        "quando aplicável"
+    ),
 )
 router.add_api_route(
     "/kpis/distribuicoes",

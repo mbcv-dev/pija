@@ -114,13 +114,26 @@ Frontend (Fase 4) só inicia após o usuário definir o desenho das telas.
 
 ## KPIs do MVP
 
-5 KPIs de tempo médio (validados com HC na reunião 29-05-2026):
+**8 códigos** em produção — 5 KPIs validados com o HC na reunião 29-05-2026, mais 3 que vieram
+depois. Todos reportam **mediana**, não média (cauda longa; o campo da API ainda se chama
+`media_global` por compatibilidade).
 
 1. **KPI-01** prontuário → 1º evento
 2. **KPI-03** agendamento → realização (consulta)
-3. **KPI-05** solicitação → liberação (exame)
+3. **KPI-05** solicitação → **liberação** (exame) — mudou de "realização" para "liberação" em 2026-08-05, porque `data_hora_realizacao` é anterior à solicitação em 61% das linhas (ver [docs/DADOS-ESTADO.md §12](docs/DADOS-ESTADO.md))
 4. **KPI-06** última consulta → internação subsequente (reformulado)
 5. **KPI-07** tempo de permanência no leito (= `dthr_fim - dthr_inicio` — inclui gap pós-alta médica relevante na obstetrícia)
+6. **KPI-07B** alta médica → saída do leito — **submétrica** do KPI-07, em horas
+7. **KPI-10** duração da cirurgia (início → fim), em horas — só `situacao = 'RZDA'`
+8. **KPI-10B** entrada na sala → início da cirurgia — **submétrica** do KPI-10, em horas
+
+**Submétricas** (`07B`, `10B`) não têm card próprio: renderizam dentro do card do KPI pai, via o
+mapa `SUBMETRICA_DE` em `KpiGrid.vue`. Por isso não aparecem em `AREAS_JORNADA[].kpis`.
+
+> **Ao adicionar um KPI:** cinco listas de códigos precisam andar juntas — `KPI_META` (backend),
+> `KpiCode` e `KPI_META` (`api.types.ts`), `KpiCodeSchema` (`api.schemas.ts`), o array `ordem` do
+> `MetodologiaView.vue`, e os `allCodes` dos dois mocks. As três últimas **falham em silêncio**: os
+> metadados ficam prontos e a página simplesmente não lista o KPI, sem erro nenhum.
 
 ---
 
