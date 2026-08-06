@@ -127,3 +127,42 @@ de decisão que o plano existe para evitar.
 `useGargaloStore`/`useCiclicidadeStore` — o guarda `if (!controller.signal.aborted)` precisa
 envolver tanto a atribuição de `error` quanto o `finally` que baixa o `loading`, senão toda troca
 rápida de filtro pinta um ErrorState ou faz o skeleton piscar.
+
+## 10. O parse por KPI protege o histograma, mas não os cards
+
+Achado na review final da branch `feat/endurecimento-e-cirurgia` (2026-08-06).
+
+A Task 4 da frente de endurecimento fez `getDistribuicoes` validar entrada por entrada, para que um
+código de KPI desconhecido derrube **um** gráfico e não os seis. Mas `getKpis` e `getGargalos`
+continuam com `.parse` tudo-ou-nada contra o **mesmo** `KpiCodeSchema` — e `activeFilters` não manda
+`kpi_codes`, então o frontend pede **todos** os KPIs e o backend devolve tudo que estiver em
+`KPI_META`.
+
+Na mesma janela de skew que o comentário do `api.ts` descreve (backend sobe manual, front sobe
+automático), um KPI-11 futuro faria `KpiResponseSchema.parse` lançar → `useKpiStore` seta `error` →
+`KpiGrid` troca o **dashboard inteiro** por `ErrorState`. A rede de segurança foi instalada no
+enhancement e esquecida no caminho crítico.
+
+**Não é risco nesta branch:** o KPI-10/10B entrou no enum junto, então o skew não acontece aqui. É o
+próximo KPI que morde.
+
+**Escopo quando for feito:** aplicar o mesmo loop de `safeParse` por entrada que já existe em
+`getDistribuicoes`, ou afrouxar `codigo`/`transicao` para `z.string()` e filtrar desconhecidos na
+camada de render. Fazer junto com o item 9 — é o mesmo arquivo e o mesmo store.
+
+## 11. `fetchKpis` guarda o histograma e deixa os cards
+
+Mesma review. Complementa o item 9 com o motivo pelo qual ele ficou pior do que era.
+
+A branch colocou `AbortController` + guarda de identidade em quatro buscas e deixou de fora
+justamente `fetchKpis`, que alimenta os cards principais. O comentário do próprio `useKpiStore` diz
+que uma resposta atrasada pintaria "um histograma que não bate com os cards" — agora o **histograma
+está protegido e os cards não**, então duas trocas rápidas de filtro produzem exatamente a
+inconsistência que o comentário queria evitar, só que com os papéis invertidos.
+
+`getKpis` já aceita `opts?: ReqOpts`; o store simplesmente nunca passa.
+
+**Escopo quando for feito:** guarda de **identidade** (`abortAtual === controller`), não de
+`signal.aborted` — `fetchKpis` seta `error` e não tem guarda de sequência, então precisa cobrir os
+três pontos (escrita de sucesso, `catch` e `finally`), como foi feito em `useGargaloStore` e
+`useCiclicidadeStore` no commit `ae67fe7`.

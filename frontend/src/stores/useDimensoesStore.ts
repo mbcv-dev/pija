@@ -60,6 +60,10 @@ export const useDimensoesStore = defineStore('dimensoes', () => {
   async function scopeByGrupo(grupo: string[]): Promise<void> {
     abortGrupo?.abort()
     if (grupo.length === 0) {
+      // Zerar o controller junto: senão o abortado continua sendo o "atual" e a
+      // resposta que já estava resolvida quando o abort chegou passaria na guarda
+      // de identidade abaixo, sobrescrevendo as listas cheias que acabamos de restaurar.
+      abortGrupo = null
       unidades.value = unidadesFull.value
       especialidades.value = especialidadesFull.value
       return
@@ -68,6 +72,10 @@ export const useDimensoesStore = defineStore('dimensoes', () => {
     abortGrupo = controller
     try {
       const d = await getDimensoes({ grupo }, { signal: controller.signal })
+      // Guarda de IDENTIDADE, igual aos outros stores: `abort()` não impede a
+      // continuação de uma promise que já resolveu, então sem isto uma resposta
+      // obsoleta ainda vence no caminho de sucesso.
+      if (abortGrupo !== controller) return
       unidades.value = d.unidades
       especialidades.value = d.especialidades
     } catch (e) {
@@ -82,6 +90,7 @@ export const useDimensoesStore = defineStore('dimensoes', () => {
   async function scopeEspecialidades(unidade: string[]): Promise<void> {
     abortEspecialidades?.abort()
     if (unidade.length === 0) {
+      abortEspecialidades = null  // idem scopeByGrupo
       especialidades.value = especialidadesFull.value
       return
     }
@@ -89,6 +98,7 @@ export const useDimensoesStore = defineStore('dimensoes', () => {
     abortEspecialidades = controller
     try {
       const d = await getDimensoes({ unidade }, { signal: controller.signal })
+      if (abortEspecialidades !== controller) return
       especialidades.value = d.especialidades
     } catch (e) {
       // Idem scopeByGrupo: só o cancelamento é engolido.
