@@ -40,6 +40,21 @@ describe('KpiDistribuicaoSchema — invariantes estruturais', () => {
     }).success).toBe(false)
   })
 
+  it('rejeita cauda fora de ordem mesmo com o teto consistente', () => {
+    // O caso acima tambem viola o teto (10 != 5), entao passaria ainda que a
+    // regra de posicao da cauda sumisse. Aqui o teto bate com o ultimo balde e
+    // so a posicao da cauda esta errada — isola a invariante de que o
+    // HistogramaTempos depende.
+    const r = parse({
+      ...valida,
+      buckets: [{ de: 0, ate: null, n: 60 }, { de: 10, ate: 20, n: 40 }],
+    })
+    expect(r.success).toBe(false)
+    expect(r.error?.issues.map((i) => i.message)).toEqual([
+      'a cauda aberta precisa ser o ultimo balde',
+    ])
+  })
+
   it('aceita o degenerado sem dados', () => {
     expect(parse({
       ...valida, p50: null, p95: null, teto: null, n_total: 0, buckets: [],
