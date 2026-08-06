@@ -204,7 +204,10 @@ export const KPI_META: Record<KpiCode, KpiMeta> = {
     label: 'Alta médica → saída do leito', icon: 'bed',
     ancora: 'Da alta médica até a saída efetiva do leito (alta administrativa).',
     unidadeTempo: 'horas',
-    regras: 'Meta de 4 horas. Exclui saída anterior à alta médica e unidades inativas.',
+    // Sem menção a meta: a barra de 4h saiu do card porque uma meta única exibida
+    // num único KPI cria assimetria sem explicação na tela. Esta frase era o último
+    // lugar do app que ainda afirmava a meta — e ela nunca foi regra de cálculo.
+    regras: 'Exclui saída anterior à alta médica e unidades inativas.',
   },
   'KPI-10': {
     label: 'Duração da cirurgia', icon: 'cirurgia',
