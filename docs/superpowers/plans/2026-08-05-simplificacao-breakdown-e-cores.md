@@ -435,7 +435,61 @@ Sem deploy de backend nesta frente.
 
 ## Registro de execução
 
-_(preencher durante a execução — incluir a contagem final de testes e quantos foram removidos)_
+Executado em **2026-08-05/06** na branch `feat/endurecimento-e-cirurgia`, logo após a frente de
+endurecimento. Commits: `c46c3f1` Task 1 · `3f5d244` Task 2 · `99d23a6` Task 3 · `07d1def` Task 4 ·
+`7957467` (correção encontrada na verificação, ver abaixo).
+
+### Contagem de testes — a queda prevista não aconteceu como previsto
+
+| Momento | Total | Delta |
+|---|---:|---|
+| Entrada da frente | 206 | — |
+| Task 1 | 207 | **+1** |
+| Task 2 | 209 | +2 |
+| Task 3 | 204 | **−5** |
+| Task 4 | 205 | +1 |
+
+O plano previa queda. Na Task 1 **subiu**: o teste `reset limpa tudo menos groupBy` era o **único**
+que cobria `reset()` limpando `grupo` e `unidade`. Apagá-lo inteiro teria perdido cobertura que o
+plano explicitamente dizia não estar perdendo — foi reduzido às asserções que continuam válidas e
+renomeado. Nenhum teste foi deletado nesta task.
+
+A queda real veio na Task 3: **−7** de `lib/intensity.test.ts`, que some junto com o arquivo, **+2**
+dos testes novos da submétrica. **Nenhum teste afirmava "dentro da meta"/"acima da meta"** — a
+legenda de meta nunca teve cobertura, o que é parte do motivo de ela ter passado tanto tempo
+afirmando algo que o produto não sustentava.
+
+### Achados que o plano não previa
+
+1. **`lib/intensity.ts` tinha quatro consumidores, não três.** O plano listou `GargaloItem.vue`,
+   `KpiDetailModal.vue` e `KpiCard.vue`. Faltou `lib/intensity.test.ts` — que precisa sair junto,
+   senão a suíte quebra no import.
+2. **Os tokens `intensity` do `tailwind.config.js` saíram também.** Depois das três remoções não
+   sobrou nenhum produtor de `bg-intensity-*`, e nenhum era construído por concatenação de string.
+3. **O teste sugerido pelo plano para a Task 4 estava no arquivo errado.** O plano mandava testar
+   em `GargaloList.test.ts` um texto que mora em `GargalosView.vue` — componentes irmãos. O teste
+   passaria só se o texto fosse movido para o componente errado. Foi criado
+   `views/GargalosView.test.ts`, que exigiu `// @vitest-environment jsdom` no topo porque o
+   `environmentMatchGlobs` do `vite.config.ts` só cobre `src/components/**`.
+4. **`SegmentedControl` continua em uso** em três lugares (`CiclicidadeView`, `TransitionGraph`,
+   `KpiDetailModal`) — o arquivo do componente ficou onde está, só o import do `FilterBar` saiu.
+5. **A meta de 4h sobreviveu num quarto lugar.** Descoberto na verificação em browser: o campo
+   `regras` do `KPI-07B` abria com "Meta de 4 horas." e isso renderiza na página de Metodologia.
+   Não era regra de cálculo, era o julgamento — o último lugar do app que ainda sustentava a
+   assimetria que a remoção existia para tirar. Removido em `7957467`.
+
+### Verificação no browser (backend real, os dois temas, 390px)
+
+- Barra de filtros **sem** o par de botões, sem buraco onde eles estavam.
+- Ranking de Gargalos: 10 barras, **uma única classe CSS distinta** entre todas
+  (`bg-primary dark:bg-accent`), e as larguras continuam variando (100% → 69,5%) — o comprimento
+  segue codificando o tempo. **Contraste conferido nos dois temas**: azul escuro sobre trilho claro
+  no tema claro, ciano sobre card escuro no tema escuro. Legível nos dois.
+- A ressalva aparece na tela de Gargalos, abaixo do subtítulo.
+- Card do KPI-07: bloco da submétrica **sem** barra de meta e **sem** legenda, **com** descrição,
+  valor (`< 1 min`) e histograma. Sem espaçamento órfão — o `mt-2` do histograma continua servindo.
+- Breakdown dos cards continua por unidade executora.
+- Sem rolagem horizontal a 390px (`scrollWidth == clientWidth`).
 
 ## Self-review (do plano, já aplicado)
 

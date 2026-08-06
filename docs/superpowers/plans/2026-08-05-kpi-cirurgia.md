@@ -613,7 +613,73 @@ entradas, e `https://pija-alpha.vercel.app/dashboard` deve mostrar a área Cirur
 
 ## Registro de execução
 
-_(preencher durante a execução)_
+Executado em **2026-08-05/06** na branch `feat/endurecimento-e-cirurgia`, depois das frentes de
+endurecimento e simplificação. Commits: `f512dd3` Task 1 · `1c2759e` Task 2 · `0dc9ee6` Task 3 ·
+`9b9b24b` Task 4 · `76bc74a` Task 5.
+
+**Pré-requisito confirmado antes de começar:** a Task 4 do plano de endurecimento (parse por KPI)
+entrou em `10cdb13`, antes de qualquer código de cirurgia.
+
+### Task 1 — a investigação bloqueante LIBEROU a frente
+
+Resultado completo em [docs/DADOS-ESTADO.md §13](../../DADOS-ESTADO.md). Em resumo: das 19.351
+cirurgias `RZDA`, **100%** têm entrada na sala e início, **99,8%** têm os três timestamps, e a ordem
+é coerente em 99,7%. A duplicação de ~32% existe, mas **a linha que sobrevive ao upsert está
+completa** — nenhuma correção de ETL foi necessária. O ramo de exceção do plano ("pare e reporte")
+não foi acionado.
+
+`KPI_GRUPO_SCOPE`: **sem escopo**, com evidência. `tipo_entidade = 'CIRURGIA'` já é um recorte mais
+estrito que `grupo`; acrescentar `GRUPO_PROCEDIMENTAL` só descartaria 3 linhas classificadas como
+`Ambulatorial`, sem razão.
+
+### Contagens de teste
+
+Backend 197 → **202**. Frontend 207 → **211**.
+
+Os números do dado real batem exatamente com a investigação — `KPI-10` n=19.321 mediana 0,65 h;
+`KPI-10B` n=19.295 mediana 0,0833 h (5 min).
+
+### Achados que o plano não previa
+
+1. **A mutação que o plano sugeriu para validar o `.sql` é um no-op.** O plano dizia: "se
+   `test_kpi_10b` der `n_global == 3`, o `.sql` não está exigindo `timestamp_agendamento IS NOT
+   NULL`". Testado: remover essa linha sozinha **não quebra teste nenhum**. `JULIANDAY(NULL)` é
+   NULL, então `valor` é NULL e o envelope da mediana (`WHERE valor IS NOT NULL`) descarta a linha
+   de qualquer jeito. Aquelas cláusulas são redundância defensiva, não comportamento. A regra foi
+   fixada mutando o **comportamento** (`COALESCE` + remover a cláusula juntos), que aí sim falha.
+2. **A fixture da Task 2 conflava dois motivos de exclusão** num evento só (sem `fim` **e** ordem
+   invertida), então não isolava nenhum dos dois. A Task 3 reescreveu para **7 cirurgias, um motivo
+   por linha**, cada uma numa `unidade` própria — porque os dois KPIs caem em `n_global == 4` e só
+   a contagem não distingue os recortes. Cinco mutações no `.sql` confirmam que cada guarda tem um
+   teste que a segura.
+3. **Duas listas de códigos a mais** além das três que o plano nomeou: os arrays `allCodes` dentro
+   de `kpis.mock.ts` e `distribuicoes.mock.ts`. Os `Record<KpiCode, …>` desses arquivos são pegos
+   pelo `type-check`; os `allCodes` **não são** — devolveriam 6 KPIs em silêncio. **Cinco listas no
+   total**, agora registradas no `CLAUDE.md`.
+4. **A prosa do OpenAPI estava vencida.** `kpis_router.py` anunciava "os 5 KPIs" com uma tabela de
+   cinco linhas — nem o KPI-07B, que está em produção há semanas, aparecia. Corrigido na Task 5,
+   junto com a tabela do `02-requisitos.md`, que também nunca listou o 07B.
+5. **O estado vazio não virou código morto.** Nenhuma área é estaticamente vazia agora, mas o
+   `v-else` continua alcançável — um recorte filtrado que não devolva o código de uma área cai
+   nele. O texto foi reescrito para falar do recorte em vez de prometer roadmap, e ganhou teste.
+
+### Verificação no browser (backend real, os dois temas, 390px)
+
+- `/api/v1/kpis/tempos-medios?group_by=unidade` devolve **8 códigos**.
+- A área **Cirurgias deixou de mostrar o estado vazio**: card "Duração da cirurgia · 39 minutos ·
+  19 mil casos", com histograma (34 baldes) e breakdown por unidade (BLOCO CIRURGICO 1,1 h, CENTRO
+  OBSTETRICO 50 min, CARDIOLOGIA PDT 46 min, BRONCOSCOPIA 34 min, HEMODINAMICA 33 min).
+- O bloco da submétrica traz o **KPI-10B com histograma próprio** — "Entrada na sala → início da
+  cirurgia · 5 minutos".
+- **Card do KPI-07 continua íntegro** — a extração do `SUBMETRICA_DE` não quebrou o par antigo.
+- Metodologia lista os **oito** códigos.
+- Sem rolagem horizontal a 390px.
+
+### Deploy
+
+Feito **uma vez só, no final das três frentes** (ver a seção final desta sessão), não ao final de
+cada plano. A ordem exigida foi respeitada: o frontend com o parse por KPI entra em produção no
+merge para `main`, **antes** de o backend passar a devolver KPI-10/10B.
 
 ## Self-review (do plano, já aplicado)
 
