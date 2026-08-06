@@ -1,7 +1,8 @@
 import axios from 'axios'
+import { z } from 'zod'
 import type { KpiParams, KpiResponse, DistribuicoesParams, DistribuicoesResponse, GargaloParams, GargalosResponse, EventosParams, EventosResponse, EventoItem, DimensoesResponse, CiclicidadeParams, CiclicidadeResponse } from '@/types/api.types'
 import { GRUPOS, UNIDADES, ESPECIALIDADES } from '@/types/api.types'
-import { KpiResponseSchema, DistribuicoesResponseSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema, CiclicidadeResponseSchema } from '@/schemas/api.schemas'
+import { KpiResponseSchema, KpiDistribuicaoSchema, GargalosResponseSchema, EventosResponseSchema, DimensoesResponseSchema, CiclicidadeResponseSchema } from '@/schemas/api.schemas'
 import { mockKpis } from '@/mocks/kpis.mock'
 import { mockDistribuicoes } from '@/mocks/distribuicoes.mock'
 import { mockGargalos } from '@/mocks/gargalos.mock'
@@ -97,14 +98,37 @@ export async function getKpis(params: KpiParams): Promise<KpiResponse> {
  * Histograma dos tempos de cada KPI — mostra a cauda que a média/mediana escondem.
  * Batch: uma requisição traz todos os códigos. Mesmos filtros do getKpis;
  * `group_by` não se aplica (a distribuição não tem breakdown por dimensão).
+ *
+ * Valida ENTRADA POR ENTRADA, não a resposta inteira: o histograma é
+ * enhancement e enhancement degrada em partes. Um código desconhecido
+ * (backend com KPI novo, frontend ainda não deployado — janela real, porque o
+ * backend sobe manualmente e o front sobe automático) descartaria os seis
+ * gráficos de uma vez se o parse fosse tudo-ou-nada.
+ * O ENVELOPE continua estrito: se a forma externa está errada, não há o que salvar.
  */
 export async function getDistribuicoes(params: DistribuicoesParams): Promise<DistribuicoesResponse> {
   if (USE_MOCK) {
     await delay(300)
     return mockDistribuicoes(params)
   }
-  const { data } = await client.get<DistribuicoesResponse>('/kpis/distribuicoes', { params })
-  return DistribuicoesResponseSchema.parse(data)
+  const { data } = await client.get<unknown>('/kpis/distribuicoes', { params })
+
+  const envelope = z.object({ distribuicoes: z.array(z.unknown()) }).parse(data)
+
+  const distribuicoes: DistribuicoesResponse['distribuicoes'] = []
+  for (const bruta of envelope.distribuicoes) {
+    const r = KpiDistribuicaoSchema.safeParse(bruta)
+    if (r.success) {
+      distribuicoes.push(r.data)
+    } else {
+      const codigo = (bruta as { codigo?: unknown })?.codigo ?? '(sem codigo)'
+      console.warn(
+        `[api] distribuicao descartada para ${String(codigo)}; os demais graficos seguem`,
+        r.error.issues,
+      )
+    }
+  }
+  return { distribuicoes }
 }
 
 /**
