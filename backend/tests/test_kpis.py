@@ -140,21 +140,83 @@ class TestKpisProvider:
         só que o número errado, e ninguém notaria.
         """
         kpis = await _kpis(session_cirurgias)
-        # Realizadas: durações 2h e 4h → mediana 3h; esperas 1h e 0,5h → mediana 0,75h.
-        assert kpis["KPI-10"].n_global == 2
-        assert kpis["KPI-10"].media_global == pytest.approx(3.0, abs=1e-9)
-        assert kpis["KPI-10B"].n_global == 2
-        assert kpis["KPI-10B"].media_global == pytest.approx(0.75, abs=1e-9)
+        # Durações das salas 1, 2, 4 e 7: 2h, 4h, 3h, 3h → mediana 3h.
+        # Tolerância 1e-6 (e não 1e-9 como nos KPIs em dias): JULIANDAY devolve
+        # dia fracionário em float, e multiplicar por 24 amplia o erro de
+        # arredondamento — 1h sai como 0,999999996.
+        assert kpis["KPI-10"].n_global == 4
+        assert kpis["KPI-10"].media_global == pytest.approx(3.0, abs=1e-6)
+        # Esperas das salas 1, 2, 5 e 6: 1h, 0,5h, 1h, 1h → mediana 1h.
+        assert kpis["KPI-10B"].n_global == 4
+        assert kpis["KPI-10B"].media_global == pytest.approx(1.0, abs=1e-6)
 
-    async def test_kpi_10_ignora_cirurgia_nao_realizada(self, session_cirurgias):
-        """Cancelada/agendada não tem duração — só `situacao='RZDA'` entra.
+    async def test_kpis_de_cirurgia_contam_as_salas_certas(self, session_cirurgias):
+        """Fixa QUAIS cirurgias entram em cada KPI, não só quantas.
 
-        A cancelada da fixture tem os três timestamps preenchidos de propósito:
-        sem o filtro de situação ela passaria pelas guardas de nulo e de ordem e
-        entraria na conta em silêncio.
+        Os dois KPIs têm n=4 nesta fixture, por coincidência de desenho: dois
+        recortes diferentes cabem no mesmo número. O breakdown por unidade (uma
+        sala por cirurgia) é o que distingue um do outro — sem ele, trocar um
+        caso incluído por um excluído passaria despercebido.
         """
-        k = (await _kpis(session_cirurgias))["KPI-10"]
-        assert k.n_global == 2  # 4 cirurgias na fixture, 2 realizadas e coerentes
+        kpis = await _kpis(session_cirurgias)
+        assert set(_bd(kpis["KPI-10"])) == {"CC SALA 1", "CC SALA 2", "CC SALA 4", "CC SALA 7"}
+        assert set(_bd(kpis["KPI-10B"])) == {"CC SALA 1", "CC SALA 2", "CC SALA 5", "CC SALA 6"}
+
+    async def test_kpis_de_cirurgia_ignoram_cirurgia_nao_realizada(self, session_cirurgias):
+        """Cancelada não tem duração nem espera — só `situacao='RZDA'` entra.
+
+        A cancelada (sala 3) tem os três timestamps preenchidos e coerentes de
+        propósito: sem o filtro de situação ela passaria por todas as guardas de
+        nulo e de ordem e entraria nas duas contas em silêncio.
+        """
+        kpis = await _kpis(session_cirurgias)
+        assert "CC SALA 3" not in _bd(kpis["KPI-10"])
+        assert "CC SALA 3" not in _bd(kpis["KPI-10B"])
+
+    async def test_kpi_10b_ignora_cirurgia_sem_entrada_na_sala(self, session_cirurgias):
+        """Sem entrada na sala não há espera a medir — mas a duração continua válida.
+
+        Este é o caso que separa os denominadores dos dois KPIs: a sala 4 é uma
+        cirurgia realizada e completa, só que sem o registro de entrada na sala.
+        Ela DEVE contar no KPI-10 e ficar fora do KPI-10B. Se aparecer nos dois,
+        o 10B está medindo espera a partir de um timestamp que não existe.
+        """
+        kpis = await _kpis(session_cirurgias)
+        assert _bd(kpis["KPI-10"])["CC SALA 4"] == (pytest.approx(3.0), 1)
+        assert "CC SALA 4" not in _bd(kpis["KPI-10B"])
+
+    async def test_kpi_10_ignora_cirurgia_sem_fim(self, session_cirurgias):
+        """Cirurgia em andamento (sem fim) não tem duração — mas já teve espera.
+
+        A sala 5 fica fora do KPI-10 e dentro do KPI-10B. Sem esta separação, um
+        `COALESCE` bem-intencionado no fim da cirurgia entraria como duração 0 e
+        puxaria a mediana para baixo sem quebrar nada.
+        """
+        kpis = await _kpis(session_cirurgias)
+        assert "CC SALA 5" not in _bd(kpis["KPI-10"])
+        assert _bd(kpis["KPI-10B"])["CC SALA 5"] == (pytest.approx(1.0), 1)
+
+    async def test_kpi_10_ignora_fim_antes_do_inicio(self, session_cirurgias):
+        """Duração negativa é dado sujo, não cirurgia instantânea.
+
+        A sala 6 tem fim ANTES do início e espera coerente: só a guarda de ordem
+        do KPI-10 a exclui, e ela permanece no KPI-10B. Sem a guarda o valor
+        negativo entraria na mediana e no histograma (que assume valor >= 0).
+        """
+        kpis = await _kpis(session_cirurgias)
+        assert "CC SALA 6" not in _bd(kpis["KPI-10"])
+        assert _bd(kpis["KPI-10B"])["CC SALA 6"] == (pytest.approx(1.0), 1)
+
+    async def test_kpi_10b_ignora_entrada_depois_do_inicio(self, session_cirurgias):
+        """Espera negativa é dado sujo — e a duração da mesma cirurgia segue válida.
+
+        Espelho do teste anterior: a sala 7 registra entrada na sala DEPOIS do
+        início da cirurgia. Só a guarda de ordem do KPI-10B a exclui; ela continua
+        contando no KPI-10, o que prova que foi a guarda certa que agiu.
+        """
+        kpis = await _kpis(session_cirurgias)
+        assert "CC SALA 7" not in _bd(kpis["KPI-10B"])
+        assert _bd(kpis["KPI-10"])["CC SALA 7"] == (pytest.approx(3.0), 1)
 
     async def test_kpi_05_so_conta_exame_com_resultado_liberado(self, session_exames_liberacao):
         """Só entra exame liberado — os outros dois são excluídos por motivos diferentes.
@@ -210,10 +272,28 @@ async def session_exames_liberacao(async_engine):
 
 @pytest.fixture
 async def session_cirurgias(async_engine):
-    """Banco próprio com 4 cirurgias: 2 realizadas coerentes, 1 cancelada, 1 incoerente.
+    """Banco próprio com 7 cirurgias — um motivo de exclusão por linha, isolado.
 
     Banco separado pelo mesmo motivo de `session_exames_liberacao`: a fixture
     compartilhada tem contagem de eventos fixada por `test_eventos.py`.
+
+    Cada cirurgia mora numa SALA diferente porque o breakdown padrão agrupa por
+    `unidade`: assim os testes conseguem afirmar QUAIS cirurgias entraram na
+    conta, e não só quantas — dois recortes errados podem devolver o mesmo `n`.
+
+    Cada linha viola no máximo UMA condição de cada `.sql`, de propósito. Um caso
+    que quebra dois filtros ao mesmo tempo não prova nada: o teste continua verde
+    se um dos dois for removido do SQL, e o motivo real da exclusão fica oculto.
+
+    | sala | entrada na sala | início | fim   | situação | KPI-10 | KPI-10B |
+    |------|-----------------|--------|-------|----------|--------|---------|
+    | 1    | 08:00           | 09:00  | 11:00 | RZDA     | 2h     | 1h      |
+    | 2    | 13:30           | 14:00  | 18:00 | RZDA     | 4h     | 0,5h    |
+    | 3    | 07:00           | 08:00  | 10:00 | CANC     | fora   | fora    |
+    | 4    | (sem)           | 09:00  | 12:00 | RZDA     | 3h     | fora    |
+    | 5    | 07:00           | 08:00  | (sem) | RZDA     | fora   | 1h      |
+    | 6    | 08:00           | 09:00  | 08:30 | RZDA     | fora   | 1h      |
+    | 7    | 10:00           | 09:00  | 12:00 | RZDA     | 3h     | fora    |
 
     Timestamps no formato que o ETL grava (`%Y-%m-%dT%H:%M:%S`, ver
     `etl/parsers.py`) — se um dia esse formato mudar para algo que o JULIANDAY
@@ -225,24 +305,41 @@ async def session_cirurgias(async_engine):
 
     factory = async_sessionmaker(async_engine, expire_on_commit=False)
 
-    def cirurgia(cid, entrada, inicio, fim, situacao):
+    def cirurgia(sala, entrada, inicio, fim, situacao="RZDA"):
+        """Uma cirurgia no dia `sala` de maio, na sala `sala`. Horas em HH:MM."""
+        # A data é montada com um dígito só. Com sala >= 10 sairia "2024-05-010",
+        # que o JULIANDAY do SQLite devolve como NULL — a cirurgia sumiria do KPI
+        # em silêncio, e um teste novo passaria sem nunca ter tido o dado.
+        assert 1 <= sala <= 9, "sala vira dia do mês: use 1..9 ou mude o formato da data"
+
+        def ts(hhmm):
+            return f"2024-05-0{sala}T{hhmm}:00" if hhmm else None
+
         return FatoEvento(
-            evento_id=f"X-{cid}", paciente_id=f"9{cid}", tipo_entidade="CIRURGIA",
-            entidade_id=str(cid), timestamp_agendamento=entrada,
-            timestamp_principal=inicio, timestamp_realizacao=fim,
-            unidade="BLOCO CIRURGICO", grupo="Procedimental", especialidade="CARDIOLOGIA",
+            evento_id=f"X-{sala}", paciente_id=f"9{sala}", tipo_entidade="CIRURGIA",
+            entidade_id=str(sala), timestamp_agendamento=ts(entrada),
+            timestamp_principal=ts(inicio), timestamp_realizacao=ts(fim),
+            unidade=f"CC SALA {sala}", grupo="Procedimental", especialidade="CARDIOLOGIA",
             tipo_evento="CIRURGIA/ELETIVA", situacao=situacao, dt_carga="2024-01-01",
         )
 
     eventos = [
-        # Realizadas: duração 2h/4h (mediana 3h), espera em sala 1h/0,5h (mediana 0,75h).
-        cirurgia(1, "2024-05-01T08:00:00", "2024-05-01T09:00:00", "2024-05-01T11:00:00", "RZDA"),
-        cirurgia(2, "2024-05-02T13:30:00", "2024-05-02T14:00:00", "2024-05-02T18:00:00", "RZDA"),
-        # Cancelada com os três timestamps preenchidos: só o filtro de situação a exclui.
-        cirurgia(3, "2024-05-03T07:00:00", "2024-05-03T08:00:00", "2024-05-03T10:00:00", "CANC"),
-        # Realizada, mas incoerente: sem fim (fora do KPI-10) e entrada DEPOIS do
-        # início (fora do KPI-10B, pela guarda de ordem).
-        cirurgia(4, "2024-05-04T12:00:00", "2024-05-04T10:00:00", None, "RZDA"),
+        # Completas e coerentes: entram nos dois KPIs. Duração 2h/4h, espera 1h/0,5h.
+        cirurgia(1, "08:00", "09:00", "11:00"),
+        cirurgia(2, "13:30", "14:00", "18:00"),
+        # CANCELADA com os três timestamps preenchidos e coerentes: passaria por
+        # todas as guardas de nulo e de ordem — só o filtro de situação a exclui.
+        cirurgia(3, "07:00", "08:00", "10:00", situacao="CANC"),
+        # Sem ENTRADA NA SALA: tem duração (entra no KPI-10), não tem espera a medir.
+        cirurgia(4, None, "09:00", "12:00"),
+        # Sem FIM: não tem duração, mas a espera em sala é medível (entra no KPI-10B).
+        cirurgia(5, "07:00", "08:00", None),
+        # FIM antes do INÍCIO: duração seria negativa → fora do KPI-10 pela guarda
+        # de ordem. A espera continua coerente, então segue no KPI-10B.
+        cirurgia(6, "08:00", "09:00", "08:30"),
+        # ENTRADA depois do INÍCIO: espera seria negativa → fora do KPI-10B pela
+        # guarda de ordem. A duração continua coerente, então segue no KPI-10.
+        cirurgia(7, "10:00", "09:00", "12:00"),
     ]
     async with factory() as session:
         session.add_all(eventos)
