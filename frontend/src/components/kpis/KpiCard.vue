@@ -3,7 +3,6 @@ import { computed, ref } from 'vue'
 import type { KpiDistribuicao, KpiItem } from '@/types/api.types'
 import { KPI_META } from '@/types/api.types'
 import { formatDuration, formatCasos } from '@/lib/format'
-import { intensityLevel, intensityBarClass } from '@/lib/intensity'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import Icon from '@/components/ui/Icon.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
@@ -31,22 +30,6 @@ const subDetalheAberto = ref(false)
 const temSubDetalhe = computed(() => !!props.submetric && props.submetric.breakdown.length > 0)
 
 const meta = computed(() => KPI_META[props.kpi.codigo])
-const subMeta = computed(() => (props.submetric ? KPI_META[props.submetric.codigo] : null))
-
-// Indicador de meta do KPI-07B (≤4h = ok). Nível de intensidade 0..4 em [0, 2*meta].
-const subBarClass = computed(() => {
-  if (!props.submetric || props.submetric.media_global === null || !subMeta.value?.metaHoras) return 'bg-primary'
-  const lvl = intensityLevel(props.submetric.media_global, 0, subMeta.value.metaHoras * 2)
-  return intensityBarClass(lvl)
-})
-const subBarRatio = computed(() => {
-  if (!props.submetric || props.submetric.media_global === null || !subMeta.value?.metaHoras) return 0
-  return Math.min(1, props.submetric.media_global / (subMeta.value.metaHoras * 2))
-})
-const subMeetsTarget = computed(() => {
-  if (!props.submetric || props.submetric.media_global === null || !subMeta.value?.metaHoras) return false
-  return props.submetric.media_global <= subMeta.value.metaHoras
-})
 </script>
 
 <template>
@@ -103,7 +86,7 @@ const subMeetsTarget = computed(() => {
       <Icon name="chevron" :size="13" />
     </button>
 
-    <!-- Sub-métrica aninhada (KPI-07B: alta médica → saída, meta 4h) -->
+    <!-- Sub-métrica aninhada (KPI-07B: alta médica → saída do leito) -->
     <div v-if="submetric" data-submetrica class="border-t border-border dark:border-border-dark pt-3">
       <div class="flex items-center justify-between gap-2">
         <span class="text-xs font-medium text-text-muted dark:text-text-dark-muted">{{ submetric.descricao }}</span>
@@ -111,16 +94,10 @@ const subMeetsTarget = computed(() => {
           {{ formatDuration(submetric.media_global, submetric.unidade_tempo) }}
         </span>
       </div>
-      <div class="mt-1.5 h-2 rounded-full bg-surface-offset dark:bg-surface-dark-offset overflow-hidden">
-        <div class="h-full rounded-full transition-all duration-500" :class="subBarClass" :style="{ width: `${(subBarRatio * 100).toFixed(1)}%` }" />
-      </div>
-      <p class="mt-1 text-[11px]" :class="subMeetsTarget ? 'text-success' : 'text-warning'">
-        meta: {{ subMeta?.metaHoras }}h · {{ subMeetsTarget ? 'dentro da meta' : 'acima da meta' }}
-      </p>
       <!--
-        Caso-âncora do gráfico: a mediana do 07B lê "< 1 min" e a barra de meta
-        diz "dentro da meta" — só o histograma mostra a cauda de horas que as
-        duas escondem. Vem logo depois delas, no mesmo ritmo vertical do bloco.
+        Caso-âncora do gráfico: a mediana do 07B lê "< 1 min" — só o histograma
+        mostra a cauda de horas que ela esconde. Vem logo depois do valor, no
+        mesmo ritmo vertical do bloco (margens explícitas, o bloco não usa `gap`).
       -->
       <div v-if="subDist && subDist.n_total > 0" class="mt-2">
         <HistogramaTempos :dist="subDist" />

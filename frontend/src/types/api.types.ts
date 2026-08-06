@@ -153,8 +153,6 @@ export interface KpiMeta {
   icon: string
   aviso?: string
   nota?: string
-  /** meta em horas (só KPI-07B) */
-  metaHoras?: number
   /** Metodologia (página "Como calculamos") */
   ancora?: string
   unidadeTempo?: 'dias' | 'horas'
@@ -201,7 +199,6 @@ export const KPI_META: Record<KpiCode, KpiMeta> = {
   },
   'KPI-07B': {
     label: 'Alta médica → saída do leito', icon: 'bed',
-    metaHoras: 4,
     ancora: 'Da alta médica até a saída efetiva do leito (alta administrativa).',
     unidadeTempo: 'horas',
     regras: 'Meta de 4 horas. Exclui saída anterior à alta médica e unidades inativas.',

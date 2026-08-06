@@ -178,6 +178,22 @@ describe('KpiGrid — seções por área da jornada', () => {
     expect(card07.find('[data-submetrica]').findComponent(HistogramaTempos).exists()).toBe(true)
   })
 
+  it('o bloco da submetrica nao fala mais em meta', async () => {
+    const w = await montar()
+    const bloco = w.find('[data-submetrica]')
+    expect(bloco.exists()).toBe(true)
+    expect(bloco.text()).not.toMatch(/meta/i)
+  })
+
+  it('mas o resto do bloco da submetrica continua inteiro', async () => {
+    // A remoção não pode levar junto o valor nem o histograma do KPI-07B —
+    // o caso-âncora da feature de gráficos mora exatamente ali.
+    const w = await montar()
+    const bloco = w.find('[data-submetrica]')
+    await vi.waitFor(() => expect(bloco.find('[data-balde]').exists()).toBe(true))
+    expect(bloco.text()).toMatch(/\d/) // o valor da submétrica segue renderizado
+  })
+
   it('erro mostra ErrorState, sem seções', async () => {
     const w = await montar()
     const store = useKpiStore()
