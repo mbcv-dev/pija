@@ -104,3 +104,23 @@ async def fixture_db_session(async_engine):
 
     async with factory() as session:
         yield session
+
+
+@pytest.fixture
+async def client(async_engine, fixture_db_session):
+    """HTTP client ASGI apontando para o mesmo engine populado por `fixture_db_session`.
+
+    Depende de `fixture_db_session` de propósito: é o que garante que o banco já
+    está populado antes da primeira requisição. Estava duplicada em quatro arquivos
+    de teste antes de subir para cá.
+
+    Os imports ficam aqui dentro porque este módulo define JWT_SECRET/SQLITE_PATH no
+    topo antes de tocar em `pija` — importar `pija.main` no topo inverteria essa ordem.
+    """
+    from httpx import ASGITransport, AsyncClient
+
+    from pija.main import app
+
+    app.state.session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac

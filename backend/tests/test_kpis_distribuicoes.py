@@ -9,24 +9,11 @@ A fixture do banco tem 2–5 casos por KPI, o que não exercita 17 baldes. Por i
 sintético (lista de valores conhecidos), onde dá para conferir balde a balde.
 """
 import pytest
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from pija.main import app
 from pija.providers.kpis_provider import _MEDIAN_SQL, _N_BUCKETS, KpisProvider
 from pija.schemas.common import GroupBy
 from pija.sql_filtros import Filtros
-
-
-@pytest.fixture
-async def client(async_engine, fixture_db_session):
-    """HTTP client (ASGI) apontando para o mesmo engine populado usado por
-    `fixture_db_session` — replica o padrão de test_kpis_multiselect.py para
-    exercitar a rota real /kpis/distribuicoes."""
-    app.state.session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        yield ac
 
 
 def _filtros(**kwargs) -> Filtros:

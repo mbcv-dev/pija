@@ -1,19 +1,3 @@
-import pytest
-from httpx import ASGITransport, AsyncClient
-
-from pija.main import app
-from pija.db import make_sessionmaker
-
-
-@pytest.fixture
-async def client(async_engine, fixture_db_session):
-    # fixture_db_session popula o banco; reusa o mesmo engine no app.
-    app.state.session_factory = make_sessionmaker(async_engine)
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
-
-
 class TestCiclicidadeEndpoint:
     async def test_agregado_200(self, client):
         r = await client.get("/api/v1/ciclicidade/transicoes")

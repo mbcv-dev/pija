@@ -1,20 +1,6 @@
-import pytest
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker
-
-from pija.main import app
 from pija.providers.gargalos_provider import GargalosProvider
 from pija.schemas.common import GroupBy
 from pija.sql_filtros import Filtros
-
-
-@pytest.fixture
-async def client(async_engine, fixture_db_session):
-    """HTTP client (ASGI/TestClient) apontando para o mesmo engine populado
-    usado por `fixture_db_session` — permite exercitar a rota real /gargalos."""
-    app.state.session_factory = async_sessionmaker(async_engine, expire_on_commit=False)
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        yield ac
 
 
 class TestGargalosMultiselect:
