@@ -261,7 +261,7 @@ Smoke test contra os 5 CSVs reais com `--sample 1000` por view, segunda execuç�
 - ✅ Idempotência: rerun NÃO duplica registros
 - ✅ 0 rejeições no top-1000 de cada view
 - ⚠️ **Dedup via upsert observada**:
-  - `vw_cirurgias`: read=1000, loaded=1000, mas apenas **648 distintos em `fato_eventos_jornada`** → ~35% dos `cirurgia_id` aparecem mais de uma vez nas primeiras 1000 linhas. Hipótese: múltiplos registros por cirurgia no AGHU (entrada/saída sala, anestesia, etc.) — o upsert por `evento_id = "X-{cirurgia_id}"` mantém o último. Em produção isso pode mascarar histórico/atualização — investigar antes de KPIs cirúrgicos na F2.
+  - `vw_cirurgias`: read=1000, loaded=1000, mas apenas **648 distintos em `fato_eventos_jornada`** → ~35% dos `cirurgia_id` aparecem mais de uma vez nas primeiras 1000 linhas. Hipótese: múltiplos registros por cirurgia no AGHU (entrada/saída sala, anestesia, etc.) — o upsert por `evento_id = "X-{cirurgia_id}"` mantém o último. Em produção isso pode mascarar histórico/atualização — investigar antes de KPIs cirúrgicos na F2. **✅ RESOLVIDO (2026-08-05) — ver §13.** Medido na carga completa: a linha que sobrevive ao upsert tem os três timestamps em 99,8% das cirurgias realizadas. A duplicação existe, mas não destrói dado — nenhuma correção de ETL foi necessária para KPI-10/10B.
   - `vw_consultas`: read=1000, loaded=1000, mas **956 distintos** (44 colisões em `num_consulta`). Mesma natureza.
 - 💡 Implicação para F2 (KPIs): a interpretação de "1 evento = 1 linha no fato" pode estar OK, mas precisamos confirmar com HC se as duplicatas representam (a) o mesmo evento atualizado várias vezes, (b) eventos distintos com mesmo ID, ou (c) outro artefato de exportação.
 
@@ -358,6 +358,76 @@ indicador futuro que pense em usar esse campo.
 `A EXECUTAR`, `AGENDADO`, `CANCELADO`). É o denominador correto para tempo de resposta — só se mede
 duração do que terminou — mas gera viés de sobrevivência: um exame parado há dois anos contribui
 com zero para o KPI.
+
+## 13. A duplicação de `vw_cirurgias` NÃO comprometeu os timestamps (investigação 2026-08-05)
+
+Investigação **bloqueante** exigida pela §8 antes de qualquer KPI cirúrgico: 40.934 linhas lidas
+viram 27.745 eventos distintos (~32% de colisão de `cirurgia_id`), e o upsert usa
+`evento_id = "X-{cirurgia_id}"`, então **a última linha lida vence**. A pergunta era se a linha
+sobrevivente carrega um recorte incompleto do evento — os dois KPIs de cirurgia dependem
+inteiramente de três timestamps.
+
+Medido no `pija_demo.db` (o mesmo banco que está em produção):
+
+| Medida | Valor | % das RZDA |
+|---|---:|---:|
+| Cirurgias `RZDA` (realizadas) | 19.351 | 100,0% |
+| com `timestamp_agendamento` (= entrada na sala) | 19.351 | **100,0%** |
+| com `timestamp_principal` (= início) | 19.351 | **100,0%** |
+| com `timestamp_realizacao` (= fim) | 19.321 | 99,8% |
+| com **os três** | 19.321 | **99,8%** |
+
+Ordem coerente, entre as 19.321 completas: `fim >= início` em **100,0%**; `início >= entrada na
+sala` em **99,7%** (56 linhas invertidas, 0,3%).
+
+**Veredito: a última-linha-vence não está destruindo timestamp nenhum.** A cobertura é praticamente
+total, muito acima do limiar de 80% que o plano usou como critério. A hipótese da §8 — de que as
+linhas duplicadas seriam recortes parciais do mesmo evento (entrada/saída de sala, anestesia) — não
+se confirma no efeito que importava: seja qual for a origem da duplicação, a linha que sobrevive
+está completa. **Nenhuma correção de ETL é necessária para KPI-10 e KPI-10B.**
+
+Situações presentes: `RZDA` 19.351 · `CANC` 5.669 · `AGND` 2.166 · `PREP` 446 · `TRAN` 89 ·
+`CHAM` 24 (total 27.745, confere com o distinto da carga).
+
+### `n` e ordem de grandeza dos dois KPIs
+
+| KPI | Definição | `n` | média |
+|---|---|---:|---:|
+| KPI-10 | início → fim (duração) | 19.321 | 1,06 h |
+| KPI-10B | entrada na sala → início (espera) | 19.295 | 1,19 h |
+
+Há outliers extremos nos dois — duração máxima de 534 h (22 dias) e espera máxima de 8.784 h
+(366 dias). Como o dashboard reporta **mediana**, não média, eles não distorcem o número exibido;
+aparecem na cauda aberta do histograma, que é onde devem aparecer.
+
+### Decisão de `KPI_GRUPO_SCOPE`: **sem escopo**, com evidência
+
+As cirurgias ocupam **9 unidades distintas**, e as 7 com volume relevante estão todas em
+`Procedimental`:
+
+| Unidade | Grupo | `n` (RZDA) |
+|---|---|---:|
+| BLOCO CIRURGICO | Procedimental | 8.476 |
+| ENDOSCOPIA | Procedimental | 4.682 |
+| CENTRO OBSTETRICO | Procedimental | 2.979 |
+| HEMODINAMICA - PDT | Procedimental | 1.834 |
+| BLOCO DERMATO | Procedimental | 973 |
+| BRONCOSCOPIA | Procedimental | 232 |
+| CARDIOLOGIA PDT | Procedimental | 175 |
+
+Distribuição por grupo em todo o `tipo_entidade = 'CIRURGIA'`: `Procedimental` 27.742 e
+`Ambulatorial` **3**.
+
+**Por que sem escopo:** os outros KPIs precisam de `grupo_scope` porque a entidade deles
+(`CONSULTA`, `EXAME`) atravessa vários grupos — `grupo` é o que separa "exame de laboratório" de
+"exame de imagem". `CIRURGIA` não tem esse problema: o próprio `tipo_entidade = 'CIRURGIA'` no
+`WHERE` já é um recorte **mais estrito** que o grupo. Acrescentar `GRUPO_PROCEDIMENTAL` seria uma
+condição redundante que só teria um efeito real — descartar as 3 linhas classificadas como
+`Ambulatorial`, sem nenhuma razão para descartá-las. `_scope_fragment` devolve string vazia quando
+o código não está em `KPI_GRUPO_SCOPE`, então basta **não adicionar entrada**.
+
+Nota: as mesmas 9 unidades registram 28.119 eventos que **não** são cirurgia, o que confirma que
+filtrar por unidade ou por grupo seria o recorte errado — só `tipo_entidade` separa o que interessa.
 
 ## 9. Próximos passos
 
